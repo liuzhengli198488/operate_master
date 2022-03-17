@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.TichengProplanProNMapper">
+
+    <select id="selectProductCommissionPlan" resultType="com.gys.entity.data.commissionplan.StoreCommissionSummary">
+        SELECT
+            gtps.ID subPlanId,
+            gtps.C_PLAN_NAME subPlanName,
+            gtpb.ID planId,
+            gtpb.CLIENT client,
+            gtpb.PLAN_NAME planName,
+            gtpb.PLAN_START_DATE planStartDate,
+            gtpb.PLAN_END_DATE planEndDate,
+            gtpb.PLAN_SCALE_STO planScaleSto,
+            gtpb.PLAN_SCALE_SALER planScaleSaler,
+            GROUP_CONCAT(gsd.STO_CODE) stoCode,
+            gtps.ID settingId,
+            gtps.PLAN_REJECT_DISCOUNT_RATE_SYMBOL planRejectDiscountRateSymbol,
+            gtps.PLAN_REJECT_DISCOUNT_RATE planRejectDiscountRate,
+            gtps.PLAN_IF_NEGATIVE planIfNegative
+        FROM GAIA_TICHENG_PROPLAN_BASIC gtpb
+        INNER JOIN GAIA_TICHENG_PROPLAN_STO_N gtpsn ON gtpb.CLIENT = gtpsn.CLIENT AND gtpb.ID = gtpsn.PID
+        INNER JOIN GAIA_STORE_DATA gsd ON gtpsn.CLIENT = gsd.CLIENT AND gtpsn.STO_CODE = gsd.STO_CODE
+        INNER JOIN GAIA_TICHENG_PROPLAN_SETTING gtps ON gtpb.ID = gtps.PID AND gtpb.CLIENT = gtps.CLIENT
+        WHERE gtpb.CLIENT = #{client}
+        AND gtpb.PLAN_STATUS = '1'
+        <if test="startDate!=null and startDate!='' and endDate!=null and endDate!=''" >
+            <![CDATA[
+               AND (
+              (gtpb.PLAN_START_DATE >= #{startDate} AND gtpb.PLAN_START_DATE <= #{endDate} )
+                  OR (gtpb.PLAN_START_DATE <=  #{startDate} AND gtpb.PLAN_END_DATE >= #{endDate} )
+                  OR (gtpb.PLAN_END_DATE >= #{startDate} AND gtpb.PLAN_END_DATE <=  #{endDate} )
+                )
+            ]]>
+        </if>
+        <if test="planName!=null and planName!=''">
+            AND gtpb.PLAN_NAME LIKE CONCAT('%', #{planName}, '%')
+        </if>
+        <if test="subPlanName!=null and subPlanName!=''">
+            AND gtps.C_PLAN_NAME LIKE CONCAT('%', #{subPlanName}, '%')
+        </if>
+        <if test="stoCodes!=null and stoCodes.size>0">
+            AND gsd.STO_CODE IN
+            <foreach collection="stoCodes" item="stoCode" separator="," open="(" close=")" >
+                #{stoCode}
+            </foreach>
+        </if>
+        GROUP BY gtpb.ID,gtps.ID
+    </select>
+
+    <select id="selectProCommissionMainPlan" resultType="com.gys.entity.data.commissionplan.StoreCommissionSummary">
+        SELECT
+            gtpb.ID planId,
+            gtpb.CLIENT client,
+            gtpb.PLAN_NAME planName,
+            gtpb.PLAN_START_DATE planStartDate,
+            gtpb.PLAN_END_DATE planEndDate,
+            gtpb.PLAN_SCALE_STO planScaleSto,
+            gtpb.PLAN_SCALE_SALER planScaleSaler,
+            GROUP_CONCAT(gsd.STO_CODE) stoCode
+        FROM GAIA_TICHENG_PROPLAN_BASIC gtpb
+        INNER JOIN GAIA_TICHENG_PROPLAN_STO_N gtpsn ON gtpb.CLIENT = gtpsn.CLIENT AND gtpb.ID = gtpsn.PID
+        INNER JOIN GAIA_STORE_DATA gsd ON gtpsn.CLIENT = gsd.CLIENT AND gtpsn.STO_CODE = gsd.STO_CODE
+        INNER JOIN GAIA_TICHENG_PROPLAN_SETTING gtps ON gtpb.ID = gtps.PID AND gtpb.CLIENT = gtps.CLIENT
+        WHERE gtpb.CLIENT = #{client}
+        AND gtpb.PLAN_STATUS = '1'
+        <if test="startDate!=null and startDate!='' and endDate!=null and endDate!=''" >
+            <![CDATA[
+               AND (
+              (gtpb.PLAN_START_DATE >= #{startDate} AND gtpb.PLAN_START_DATE <= #{endDate} )
+                  OR (gtpb.PLAN_START_DATE <=  #{startDate} AND gtpb.PLAN_END_DATE >= #{endDate} )
+                  OR (gtpb.PLAN_END_DATE >= #{startDate} AND gtpb.PLAN_END_DATE <=  #{endDate} )
+                )
+            ]]>
+        </if>
+        <if test="planName!=null and planName!=''">
+            AND gtpb.PLAN_NAME LIKE CONCAT('%', #{planName}, '%')
+        </if>
+        <if test="subPlanName!=null and subPlanName!=''">
+            AND gtps.C_PLAN_NAME LIKE CONCAT('%', #{subPlanName}, '%')
+        </if>
+        <if test="stoCodes!=null and stoCodes.size>0">
+            AND gsd.STO_CODE IN
+            <foreach collection="stoCodes" item="stoCode" separator="," open="(" close=")" >
+                #{stoCode}
+            </foreach>
+        </if>
+        GROUP BY gtpb.ID
+    </select>
+
+</mapper>

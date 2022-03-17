@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSoItemMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSoItem">
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="SO_ID" jdbcType="VARCHAR" property="soId" />
+    <id column="SO_LINE_NO" jdbcType="VARCHAR" property="soLineNo" />
+    <result column="SO_PRO_CODE" jdbcType="VARCHAR" property="soProCode" />
+    <result column="SO_QTY" jdbcType="DECIMAL" property="soQty" />
+    <result column="SO_UNIT" jdbcType="VARCHAR" property="soUnit" />
+    <result column="SO_PRICE" jdbcType="DECIMAL" property="soPrice" />
+    <result column="SO_LINE_AMT" jdbcType="DECIMAL" property="soLineAmt" />
+    <result column="SO_SITE_CODE" jdbcType="VARCHAR" property="soSiteCode" />
+    <result column="SO_LOCATION_CODE" jdbcType="VARCHAR" property="soLocationCode" />
+    <result column="SO_BATCH" jdbcType="VARCHAR" property="soBatch" />
+    <result column="SO_RATE" jdbcType="VARCHAR" property="soRate" />
+    <result column="SO_DELIVERY_DATE" jdbcType="VARCHAR" property="soDeliveryDate" />
+    <result column="SO_LINE_REMARK" jdbcType="VARCHAR" property="soLineRemark" />
+    <result column="SO_LINE_DELETE" jdbcType="VARCHAR" property="soLineDelete" />
+    <result column="SO_COMPLETE_FLAG" jdbcType="VARCHAR" property="soCompleteFlag" />
+    <result column="SO_DELIVERED_QTY" jdbcType="DECIMAL" property="soDeliveredQty" />
+    <result column="SO_DELIVERED_AMT" jdbcType="DECIMAL" property="soDeliveredAmt" />
+    <result column="SO_INVOICE_QTY" jdbcType="DECIMAL" property="soInvoiceQty" />
+    <result column="SO_INVOICE_AMT" jdbcType="DECIMAL" property="soInvoiceAmt" />
+    <result column="SO_REFER_ORDER" jdbcType="VARCHAR" property="soReferOrder" />
+    <result column="SO_REFER_ORDER_LINENO" jdbcType="VARCHAR" property="soReferOrderLineno" />
+    <result column="SO_RE_REASON" jdbcType="VARCHAR" property="soReReason" />
+    <result column="SO_BATCH_NO" jdbcType="VARCHAR" property="soBatchNo" />
+    <result column="SO_DN_QTY" jdbcType="DECIMAL" property="soDnQty" />
+    <result column="SO_HWH" jdbcType="VARCHAR" property="soHwh" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    CLIENT, SO_ID, SO_LINE_NO, SO_PRO_CODE, SO_QTY, SO_UNIT, SO_PRICE, SO_LINE_AMT, SO_SITE_CODE, 
+    SO_LOCATION_CODE, SO_BATCH, SO_RATE, SO_DELIVERY_DATE, SO_LINE_REMARK, SO_LINE_DELETE, 
+    SO_COMPLETE_FLAG, SO_DELIVERED_QTY, SO_DELIVERED_AMT, SO_INVOICE_QTY, SO_INVOICE_AMT, 
+    SO_REFER_ORDER, SO_REFER_ORDER_LINENO, SO_RE_REASON, SO_BATCH_NO, SO_DN_QTY, SO_HWH
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="com.gys.entity.GaiaSoItemKey" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from GAIA_SO_ITEM
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and SO_ID = #{soId,jdbcType=VARCHAR}
+      and SO_LINE_NO = #{soLineNo,jdbcType=VARCHAR}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="com.gys.entity.GaiaSoItemKey">
+    delete from GAIA_SO_ITEM
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and SO_ID = #{soId,jdbcType=VARCHAR}
+      and SO_LINE_NO = #{soLineNo,jdbcType=VARCHAR}
+  </delete>
+  <insert id="insert" keyColumn="CLIENT" keyProperty="client" parameterType="com.gys.entity.GaiaSoItem" useGeneratedKeys="true">
+    insert into GAIA_SO_ITEM (SO_ID, SO_LINE_NO, SO_PRO_CODE, 
+      SO_QTY, SO_UNIT, SO_PRICE, 
+      SO_LINE_AMT, SO_SITE_CODE, SO_LOCATION_CODE, 
+      SO_BATCH, SO_RATE, SO_DELIVERY_DATE, 
+      SO_LINE_REMARK, SO_LINE_DELETE, SO_COMPLETE_FLAG, 
+      SO_DELIVERED_QTY, SO_DELIVERED_AMT, SO_INVOICE_QTY, 
+      SO_INVOICE_AMT, SO_REFER_ORDER, SO_REFER_ORDER_LINENO, 
+      SO_RE_REASON, SO_BATCH_NO, SO_DN_QTY, 
+      SO_HWH)
+    values (#{soId,jdbcType=VARCHAR}, #{soLineNo,jdbcType=VARCHAR}, #{soProCode,jdbcType=VARCHAR}, 
+      #{soQty,jdbcType=DECIMAL}, #{soUnit,jdbcType=VARCHAR}, #{soPrice,jdbcType=DECIMAL}, 
+      #{soLineAmt,jdbcType=DECIMAL}, #{soSiteCode,jdbcType=VARCHAR}, #{soLocationCode,jdbcType=VARCHAR}, 
+      #{soBatch,jdbcType=VARCHAR}, #{soRate,jdbcType=VARCHAR}, #{soDeliveryDate,jdbcType=VARCHAR}, 
+      #{soLineRemark,jdbcType=VARCHAR}, #{soLineDelete,jdbcType=VARCHAR}, #{soCompleteFlag,jdbcType=VARCHAR}, 
+      #{soDeliveredQty,jdbcType=DECIMAL}, #{soDeliveredAmt,jdbcType=DECIMAL}, #{soInvoiceQty,jdbcType=DECIMAL}, 
+      #{soInvoiceAmt,jdbcType=DECIMAL}, #{soReferOrder,jdbcType=VARCHAR}, #{soReferOrderLineno,jdbcType=VARCHAR}, 
+      #{soReReason,jdbcType=VARCHAR}, #{soBatchNo,jdbcType=VARCHAR}, #{soDnQty,jdbcType=DECIMAL}, 
+      #{soHwh,jdbcType=VARCHAR})
+  </insert>
+  <insert id="insertSelective" keyColumn="CLIENT" keyProperty="client" parameterType="com.gys.entity.GaiaSoItem" useGeneratedKeys="true">
+    insert into GAIA_SO_ITEM
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="soId != null">
+        SO_ID,
+      </if>
+      <if test="soLineNo != null">
+        SO_LINE_NO,
+      </if>
+      <if test="soProCode != null">
+        SO_PRO_CODE,
+      </if>
+      <if test="soQty != null">
+        SO_QTY,
+      </if>
+      <if test="soUnit != null">
+        SO_UNIT,
+      </if>
+      <if test="soPrice != null">
+        SO_PRICE,
+      </if>
+      <if test="soLineAmt != null">
+        SO_LINE_AMT,
+      </if>
+      <if test="soSiteCode != null">
+        SO_SITE_CODE,
+      </if>
+      <if test="soLocationCode != null">
+        SO_LOCATION_CODE,
+      </if>
+      <if test="soBatch != null">
+        SO_BATCH,
+      </if>
+      <if test="soRate != null">
+        SO_RATE,
+      </if>
+      <if test="soDeliveryDate != null">
+        SO_DELIVERY_DATE,
+      </if>
+      <if test="soLineRemark != null">
+        SO_LINE_REMARK,
+      </if>
+      <if test="soLineDelete != null">
+        SO_LINE_DELETE,
+      </if>
+      <if test="soCompleteFlag != null">
+        SO_COMPLETE_FLAG,
+      </if>
+      <if test="soDeliveredQty != null">
+        SO_DELIVERED_QTY,
+      </if>
+      <if test="soDeliveredAmt != null">
+        SO_DELIVERED_AMT,
+      </if>
+      <if test="soInvoiceQty != null">
+        SO_INVOICE_QTY,
+      </if>
+      <if test="soInvoiceAmt != null">
+        SO_INVOICE_AMT,
+      </if>
+      <if test="soReferOrder != null">
+        SO_REFER_ORDER,
+      </if>
+      <if test="soReferOrderLineno != null">
+        SO_REFER_ORDER_LINENO,
+      </if>
+      <if test="soReReason != null">
+        SO_RE_REASON,
+      </if>
+      <if test="soBatchNo != null">
+        SO_BATCH_NO,
+      </if>
+      <if test="soDnQty != null">
+        SO_DN_QTY,
+      </if>
+      <if test="soHwh != null">
+        SO_HWH,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="soId != null">
+        #{soId,jdbcType=VARCHAR},
+      </if>
+      <if test="soLineNo != null">
+        #{soLineNo,jdbcType=VARCHAR},
+      </if>
+      <if test="soProCode != null">
+        #{soProCode,jdbcType=VARCHAR},
+      </if>
+      <if test="soQty != null">
+        #{soQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soUnit != null">
+        #{soUnit,jdbcType=VARCHAR},
+      </if>
+      <if test="soPrice != null">
+        #{soPrice,jdbcType=DECIMAL},
+      </if>
+      <if test="soLineAmt != null">
+        #{soLineAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="soSiteCode != null">
+        #{soSiteCode,jdbcType=VARCHAR},
+      </if>
+      <if test="soLocationCode != null">
+        #{soLocationCode,jdbcType=VARCHAR},
+      </if>
+      <if test="soBatch != null">
+        #{soBatch,jdbcType=VARCHAR},
+      </if>
+      <if test="soRate != null">
+        #{soRate,jdbcType=VARCHAR},
+      </if>
+      <if test="soDeliveryDate != null">
+        #{soDeliveryDate,jdbcType=VARCHAR},
+      </if>
+      <if test="soLineRemark != null">
+        #{soLineRemark,jdbcType=VARCHAR},
+      </if>
+      <if test="soLineDelete != null">
+        #{soLineDelete,jdbcType=VARCHAR},
+      </if>
+      <if test="soCompleteFlag != null">
+        #{soCompleteFlag,jdbcType=VARCHAR},
+      </if>
+      <if test="soDeliveredQty != null">
+        #{soDeliveredQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soDeliveredAmt != null">
+        #{soDeliveredAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="soInvoiceQty != null">
+        #{soInvoiceQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soInvoiceAmt != null">
+        #{soInvoiceAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="soReferOrder != null">
+        #{soReferOrder,jdbcType=VARCHAR},
+      </if>
+      <if test="soReferOrderLineno != null">
+        #{soReferOrderLineno,jdbcType=VARCHAR},
+      </if>
+      <if test="soReReason != null">
+        #{soReReason,jdbcType=VARCHAR},
+      </if>
+      <if test="soBatchNo != null">
+        #{soBatchNo,jdbcType=VARCHAR},
+      </if>
+      <if test="soDnQty != null">
+        #{soDnQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soHwh != null">
+        #{soHwh,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.GaiaSoItem">
+    update GAIA_SO_ITEM
+    <set>
+      <if test="soProCode != null">
+        SO_PRO_CODE = #{soProCode,jdbcType=VARCHAR},
+      </if>
+      <if test="soQty != null">
+        SO_QTY = #{soQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soUnit != null">
+        SO_UNIT = #{soUnit,jdbcType=VARCHAR},
+      </if>
+      <if test="soPrice != null">
+        SO_PRICE = #{soPrice,jdbcType=DECIMAL},
+      </if>
+      <if test="soLineAmt != null">
+        SO_LINE_AMT = #{soLineAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="soSiteCode != null">
+        SO_SITE_CODE = #{soSiteCode,jdbcType=VARCHAR},
+      </if>
+      <if test="soLocationCode != null">
+        SO_LOCATION_CODE = #{soLocationCode,jdbcType=VARCHAR},
+      </if>
+      <if test="soBatch != null">
+        SO_BATCH = #{soBatch,jdbcType=VARCHAR},
+      </if>
+      <if test="soRate != null">
+        SO_RATE = #{soRate,jdbcType=VARCHAR},
+      </if>
+      <if test="soDeliveryDate != null">
+        SO_DELIVERY_DATE = #{soDeliveryDate,jdbcType=VARCHAR},
+      </if>
+      <if test="soLineRemark != null">
+        SO_LINE_REMARK = #{soLineRemark,jdbcType=VARCHAR},
+      </if>
+      <if test="soLineDelete != null">
+        SO_LINE_DELETE = #{soLineDelete,jdbcType=VARCHAR},
+      </if>
+      <if test="soCompleteFlag != null">
+        SO_COMPLETE_FLAG = #{soCompleteFlag,jdbcType=VARCHAR},
+      </if>
+      <if test="soDeliveredQty != null">
+        SO_DELIVERED_QTY = #{soDeliveredQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soDeliveredAmt != null">
+        SO_DELIVERED_AMT = #{soDeliveredAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="soInvoiceQty != null">
+        SO_INVOICE_QTY = #{soInvoiceQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soInvoiceAmt != null">
+        SO_INVOICE_AMT = #{soInvoiceAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="soReferOrder != null">
+        SO_REFER_ORDER = #{soReferOrder,jdbcType=VARCHAR},
+      </if>
+      <if test="soReferOrderLineno != null">
+        SO_REFER_ORDER_LINENO = #{soReferOrderLineno,jdbcType=VARCHAR},
+      </if>
+      <if test="soReReason != null">
+        SO_RE_REASON = #{soReReason,jdbcType=VARCHAR},
+      </if>
+      <if test="soBatchNo != null">
+        SO_BATCH_NO = #{soBatchNo,jdbcType=VARCHAR},
+      </if>
+      <if test="soDnQty != null">
+        SO_DN_QTY = #{soDnQty,jdbcType=DECIMAL},
+      </if>
+      <if test="soHwh != null">
+        SO_HWH = #{soHwh,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and SO_ID = #{soId,jdbcType=VARCHAR}
+      and SO_LINE_NO = #{soLineNo,jdbcType=VARCHAR}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.gys.entity.GaiaSoItem">
+    update GAIA_SO_ITEM
+    set SO_PRO_CODE = #{soProCode,jdbcType=VARCHAR},
+      SO_QTY = #{soQty,jdbcType=DECIMAL},
+      SO_UNIT = #{soUnit,jdbcType=VARCHAR},
+      SO_PRICE = #{soPrice,jdbcType=DECIMAL},
+      SO_LINE_AMT = #{soLineAmt,jdbcType=DECIMAL},
+      SO_SITE_CODE = #{soSiteCode,jdbcType=VARCHAR},
+      SO_LOCATION_CODE = #{soLocationCode,jdbcType=VARCHAR},
+      SO_BATCH = #{soBatch,jdbcType=VARCHAR},
+      SO_RATE = #{soRate,jdbcType=VARCHAR},
+      SO_DELIVERY_DATE = #{soDeliveryDate,jdbcType=VARCHAR},
+      SO_LINE_REMARK = #{soLineRemark,jdbcType=VARCHAR},
+      SO_LINE_DELETE = #{soLineDelete,jdbcType=VARCHAR},
+      SO_COMPLETE_FLAG = #{soCompleteFlag,jdbcType=VARCHAR},
+      SO_DELIVERED_QTY = #{soDeliveredQty,jdbcType=DECIMAL},
+      SO_DELIVERED_AMT = #{soDeliveredAmt,jdbcType=DECIMAL},
+      SO_INVOICE_QTY = #{soInvoiceQty,jdbcType=DECIMAL},
+      SO_INVOICE_AMT = #{soInvoiceAmt,jdbcType=DECIMAL},
+      SO_REFER_ORDER = #{soReferOrder,jdbcType=VARCHAR},
+      SO_REFER_ORDER_LINENO = #{soReferOrderLineno,jdbcType=VARCHAR},
+      SO_RE_REASON = #{soReReason,jdbcType=VARCHAR},
+      SO_BATCH_NO = #{soBatchNo,jdbcType=VARCHAR},
+      SO_DN_QTY = #{soDnQty,jdbcType=DECIMAL},
+      SO_HWH = #{soHwh,jdbcType=VARCHAR}
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and SO_ID = #{soId,jdbcType=VARCHAR}
+      and SO_LINE_NO = #{soLineNo,jdbcType=VARCHAR}
+  </update>
+
+  <select id="getProCodes" parameterType="com.gys.entity.data.approval.dto.ApprovalDto" resultType="com.gys.entity.data.approval.vo.GaiaSoItemVo">
+    select
+      a.SO_PRO_CODE soProCode,
+      a.CLIENT client
+    from GAIA_SO_ITEM a
+    <where>
+      <if test="deliveryNumber != null and deliveryNumber != ''">
+        AND a.SO_ID = #{deliveryNumber}
+      </if>
+    </where>
+
+  </select>
+</mapper>

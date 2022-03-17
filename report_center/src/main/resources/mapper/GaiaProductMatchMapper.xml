@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaProductMatchMapper">
+  <select id="selectProductBasicList" resultType="com.gys.entity.ProductInfo" parameterType="com.gys.entity.GaiaProductMatch">
+    select PRO_CODE proCode,PRO_COMMONNAME proCommonName,IFNULL(PRO_SPECS,'') proSpecs,
+    IFNULL(PRO_BARCODE,'') proBarcode,IFNULL(PRO_BARCODE2,'') proBarcode2,
+    IFNULL(PRO_REGISTER_NO,'') proRegisterNo,IFNULL(PRO_FACTORY_NAME,'') factoryName,
+    PRO_CLASS proClass,PRO_CLASS_NAME proClassName,
+    PRO_COMPCLASS proCompClass,PRO_COMPCLASS_NAME proCompClassName
+    FROM GAIA_PRODUCT_BASIC
+    where locate(PRO_COMMONNAME,#{proName}) > 0
+    <if test = "proBarcode != null and proBarcode != ''">
+      OR (PRO_BARCODE = #{proBarcode} OR PRO_BARCODE2 = #{proBarcode})
+    </if>
+    <if test="proRegisterNo != null and proRegisterNo != ''">
+      OR PRO_REGISTER_NO = #{proRegisterNo}
+    </if>
+    <if test="proFactoryName != null and proFactoryName != ''">
+      OR PRO_FACTORY_NAME = #{proFactoryName}
+    </if>
+    ORDER BY PRO_CODE
+  </select>
+  <select id="selectStoreByCode" resultType="java.lang.String">
+    SELECT MATCH_CODE FROM GAIA_PRODUCT_MATCH_Z a
+    WHERE a.CLIENT = #{client} and MATCH_TYPE = '1'
+    <if test="stoCode != null and stoCode != ''">
+      and a.STO_CODE = #{stoCode}
+    </if>
+  </select>
+  <select id="selectClientByCode" resultType="java.lang.String">
+    SELECT MATCH_CODE FROM GAIA_PRODUCT_MATCH_Z a
+                             LEFT JOIN GAIA_STORE_DATA b ON a.CLIENT = b.CLIENT AND a.STO_CODE = b.STO_CODE
+    WHERE a.CLIENT = #{client} and MATCH_TYPE = '0'
+  </select>
+  <select id="selectNextCode" resultType="java.lang.String">
+    select concat( "MC",DATE_FORMAT(NOW(),'%Y'),LPAD(right(IFNULL(MAX(MATCH_CODE),0),6)+1, 6, '0'))
+    from GAIA_PRODUCT_MATCH_Z
+    where CLIENT = #{client}
+  </select>
+  <insert id="addProMatchRecord" parameterType="com.gys.entity.data.productMatch.ProductMatchZ">
+    INSERT INTO GAIA_PRODUCT_MATCH_Z (CLIENT,MATCH_BATCH,MATCH_CODE,STO_CODE,MATCH_CREATER,MATCH_CREATE_DATE,MATCH_TYPE,MATCH_DATA_CHECK_TOUCH_TEL,MATCH_DATA_CHECK_FLAG,MATCH_DATA_CHECK_TIME)
+    VALUES (#{client},#{matchBatch},#{matchCode},#{stoCode},#{matchCreater},#{matchCreateDate},#{matchType},#{matchDataCheckTouchTel},#{matchDataCheckFlag},#{matchDataCheckTime})
+  </insert>
+  <insert id="updateProMatchRecord" parameterType="com.gys.entity.data.productMatch.ProductMatchZ">
+    UPDATE GAIA_PRODUCT_MATCH_Z SET MATCH_UPDATE_DATE = #{matchUpdateDate},MATCH_UPDATER = #{matchUpdater},MATCH_DATA_CHECK_TOUCH_TEL = #{matchDataCheckTouchTel},MATCH_DATA_CHECK_FLAG = #{matchDataCheckFlag},MATCH_DATA_CHECK_TIME = #{matchDataCheckTime}
+    WHERE CLIENT = #{client} AND MATCH_CODE = #{matchCode} AND MATCH_TYPE = #{matchType} AND MATCH_BATCH = #{matchBatch}
+    <if test="stoCode != null and stoCode != ''">
+      AND STO_CODE = #{stoCode}
+    </if>
+  </insert>
+  <select id="selectProMatchList" parameterType="com.gys.entity.data.productMatch.MatchProductInData" resultType="com.gys.entity.data.productMatch.MatchProductOutData">
+    SELECT d.CLIENT clientId, d.MATCH_CODE matchCode, f.FRANC_NAME clientName,'' as stoCode,'' as stoName,
+    d.MATCH_TYPE matchStatus,(CASE d.MATCH_TYPE WHEN '0' THEN '0-未匹配' WHEN '1' THEN '1-部分匹配' ELSE '2-完全匹配' END) matchName,
+    d.MATCH_DEGREE matchDegreen,d.PRO_CODE proCode,d.PRO_NAME proCommonName,d.PRO_SPECS proSpecs,d.PRO_FACTORY_NAME factoryName,d.PRO_BARCODE proBarcode,d.PRO_REGISTER_NO proRegisterNo,d.MATCH_PRO_CODE proCodeG,b.PRO_COMMONNAME proCommonNameG,b.PRO_SPECS proSpecsG,b.PRO_FACTORY_NAME factoryNameG,
+    b.PRO_BARCODE proBarcodeG,b.PRO_BARCODE2 proBarcode2G,b.PRO_REGISTER_NO proRegisterNoG,IF(b.PRO_SPECS = d.PRO_SPECS,'Y','N') isProSpecs,IF(b.PRO_FACTORY_NAME = d.PRO_FACTORY_NAME,'Y','N') isFactoryName,IF(IF(b.PRO_BARCODE = d.PRO_BARCODE,b.PRO_BARCODE,IF(b.PRO_BARCODE2 = d.PRO_BARCODE,b.PRO_BARCODE2,
+    IFNULL(b.PRO_BARCODE,b.PRO_BARCODE2))) = d.PRO_BARCODE,'Y','N') isProBarcode,IF(b.PRO_REGISTER_NO = d.PRO_REGISTER_NO,'Y','N') isProRegisterNo,
+    (case when d.MATCH_PRO_CODE = '99999999' THEN d.PRO_CLASS ELSE b.PRO_CLASS end) proClassG,
+    (case when d.MATCH_PRO_CODE = '99999999' THEN d.PRO_CLASS_NAME ELSE b.PRO_CLASS_NAME end) proClassNameG,
+    (case when d.MATCH_PRO_CODE = '99999999' THEN d.PRO_COMPCLASS  ELSE b.PRO_COMPCLASS end) proCompClassG,
+    (case when d.MATCH_PRO_CODE = '99999999' THEN d.PRO_COMPCLASS_NAME ELSE b.PRO_COMPCLASS_NAME end) proCompClassNameG,
+    sum(IFNULL(cj.picCount,0)) picCount,d.MATCH_CREATE_DATE matchDate,d.MATCH_BATCH matchBatch,
+    (SELECT USER_NAM FROM GAIA_USER_DATA WHERE CLIENT = d.UPDATE_CLIENT AND USER_ID = d.UPDATE_USER) updater,d.UPDATE_TIME updateTime
+    FROM GAIA_PRODUCT_MATCH d
+    left join GAIA_PRODUCT_MATCH_Z z ON d.CLIENT = z.CLIENT and d.MATCH_CODE = z.MATCH_CODE
+    LEFT JOIN GAIA_FRANCHISEE f ON d.CLIENT = f.CLIENT
+    LEFT JOIN GAIA_PRODUCT_BASIC b ON d.MATCH_PRO_CODE = b.PRO_CODE
+    <if test="type == 0">
+      LEFT JOIN (SELECT COUNT(*) picCount,JIAMENGSHANG,ifnull(DIDIAN,'') site,SHANGPINZIBIANMA FROM GAIA_WMS_TUPIANCAIJI where WM_CLIENT = '1' AND JIAMENGSHANG = #{clientId} GROUP BY JIAMENGSHANG,ifnull(DIDIAN,''),SHANGPINZIBIANMA) cj ON d.CLIENT = cj.JIAMENGSHANG AND d.PRO_CODE = cj.SHANGPINZIBIANMA
+    </if>
+    <if test="type == 1">
+      LEFT JOIN (SELECT COUNT(*) picCount,JIAMENGSHANG,ifnull(DIDIAN,'') site,SHANGPINZIBIANMA FROM GAIA_WMS_TUPIANCAIJI where WM_CLIENT = '0' AND JIAMENGSHANG = #{clientId}
+      <if test="stoCodes != null and stoCodes.length &gt; 0">
+        AND DIDIAN IN
+        <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+          #{item}
+        </foreach>
+      </if>
+      GROUP BY JIAMENGSHANG,ifnull(DIDIAN,''),SHANGPINZIBIANMA) cj ON d.CLIENT = cj.JIAMENGSHANG AND d.PRO_CODE = cj.SHANGPINZIBIANMA and d.STO_CODE = cj.site
+    </if>
+    WHERE d.CLIENT = #{clientId} and z.MATCH_TYPE = #{type}
+    <if test="minMatchDegree != null and minMatchDegree != ''">
+      and d.MATCH_DEGREE &gt; ${minMatchDegree}
+    </if>
+    <if test="maxMatchDegree != null and maxMatchDegree != ''">
+      and d.MATCH_DEGREE &lt; ${maxMatchDegree}
+    </if>
+    <if test="proClass != null and proClass != ''">
+      and ( CASE WHEN d.MATCH_PRO_CODE = '99999999' THEN d.PRO_CLASS ELSE b.PRO_CLASS END ) = #{proClass}
+    </if>
+    <if test="proCompClass != null and proCompClass != ''">
+      and ( CASE WHEN d.MATCH_PRO_CODE = '99999999' THEN d.PRO_COMPCLASS ELSE b.PRO_COMPCLASS END ) = #{proCompClass}
+    </if>
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      and d.STO_CODE IN
+      <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+        #{item}
+      </foreach>
+    </if>
+    <if test="startDate != null and startDate != ''">
+      AND d.MATCH_CREATE_DATE <![CDATA[ >= ]]> #{startDate}
+    </if>
+    <if test="endDate != null and endDate != ''">
+      and d.MATCH_CREATE_DATE <![CDATA[ <= ]]> #{endDate}
+    </if>
+    <if test="matchType != null and matchType != ''">
+      AND d.MATCH_TYPE = #{matchType}
+    </if>
+    <if test="matchStatus != null and matchStatus != ''">
+      AND d.PRO_MATCH_STATUS = #{matchStatus}
+    </if>
+    <if test="nameOrCode != null and nameOrCode !=''">
+      and (b.PRO_CODE LIKE CONCAT('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE like concat('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE2 like concat('%',#{nameOrCode},'%') or
+      b.PRO_COMMONNAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_FACTORY_NAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_REGISTER_NO like concat('%',#{nameOrCode},'%')
+      OR d.PRO_CODE LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_NAME LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_BARCODE LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_REGISTER_NO LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_FACTORY_NAME LIKE CONCAT('%',#{nameOrCode},'%')
+      )
+    </if>
+    GROUP BY d.CLIENT,d.MATCH_BATCH,d.PRO_CODE
+    order by concat(d.MATCH_CREATE_DATE,d.MATCH_CREATE_TIME) DESC,d.PRO_CODE ASC
+    <if test="pageNum != null and pageNum != ''">
+      LIMIT #{pageNum}
+    </if>
+  </select>
+  <select id="selectProMatchStoGroup" parameterType="com.gys.entity.data.productMatch.MatchProductInData" resultType="com.gys.entity.data.productMatch.MatchProductOutData">
+    SELECT
+      GROUP_CONCAT( d.STO_CODE) stoCode,
+      GROUP_CONCAT( d.STO_CODE, '-', st.STO_SHORT_NAME) stoName,
+      d.CLIENT clientId,
+      d.PRO_CODE proCode,
+    <!-- edit by jinwencheng on 2022-01-07 将MATCH_BATCH修改为MATCH_CODE -->
+      d.MATCH_BATCH matchBatch,
+      d.MATCH_CODE matchCode
+    <!-- edit end -->
+    <!-- d.MATCH_BATCH matchBatch -->
+    FROM GAIA_PRODUCT_MATCH d
+    LEFT JOIN GAIA_PRODUCT_MATCH_Z z ON d.CLIENT = z.CLIENT AND d.MATCH_CODE = z.MATCH_CODE
+    LEFT JOIN GAIA_STORE_DATA st ON st.CLIENT = d.CLIENT AND st.STO_CODE = d.STO_CODE
+    LEFT JOIN GAIA_PRODUCT_BASIC b ON d.MATCH_PRO_CODE = b.PRO_CODE
+    WHERE d.CLIENT = #{clientId} and z.MATCH_TYPE = #{type}
+    <if test="startDate != null and startDate != ''">
+      AND d.MATCH_CREATE_DATE <![CDATA[ >= ]]> #{startDate}
+    </if>
+    <if test="endDate != null and endDate != ''">
+      and d.MATCH_CREATE_DATE <![CDATA[ <= ]]> #{endDate}
+    </if>
+    <if test="matchType != null and matchType != ''">
+      AND d.MATCH_TYPE = #{matchType}
+    </if>
+    <if test="matchStatus != null and matchStatus != ''">
+      AND d.PRO_MATCH_STATUS = #{matchStatus}
+    </if>
+    <if test="nameOrCode != null and nameOrCode !=''">
+      and (b.PRO_CODE LIKE CONCAT('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE like concat('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE2 like concat('%',#{nameOrCode},'%') or
+      b.PRO_COMMONNAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_FACTORY_NAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_REGISTER_NO like concat('%',#{nameOrCode},'%')
+      OR d.PRO_CODE LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_NAME LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_BARCODE LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_REGISTER_NO LIKE CONCAT('%',#{nameOrCode},'%')
+      OR d.PRO_FACTORY_NAME LIKE CONCAT('%',#{nameOrCode},'%')
+      )
+    </if>
+    GROUP BY d.CLIENT,d.MATCH_BATCH,d.PRO_CODE
+    order by d.CLIENT,d.MATCH_BATCH,d.PRO_CODE ASC
+  </select>
+  <select id="selectProMatchCount" parameterType="com.gys.entity.data.productMatch.MatchProductInData" resultType="java.lang.Integer">
+    SELECT COUNT(1) FROM ( SELECT d.CLIENT,d.MATCH_BATCH,d.PRO_CODE FROM GAIA_PRODUCT_MATCH d
+    left join GAIA_PRODUCT_MATCH_Z z ON d.CLIENT = z.CLIENT and d.MATCH_CODE = z.MATCH_CODE
+    LEFT JOIN GAIA_FRANCHISEE f ON d.CLIENT = f.CLIENT
+    LEFT JOIN GAIA_PRODUCT_BASIC b ON d.MATCH_PRO_CODE = b.PRO_CODE
+    LEFT JOIN GAIA_STORE_DATA st ON st.CLIENT = d.CLIENT AND st.STO_CODE = d.STO_CODE
+    WHERE d.CLIENT = #{clientId} and z.MATCH_TYPE = #{type}
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      and d.STO_CODE IN
+      <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+        #{item}
+      </foreach>
+    </if>
+    <if test="startDate != null and startDate != ''">
+      AND z.MATCH_CREATE_DATE <![CDATA[ >= ]]> #{startDate}
+    </if>
+    <if test="endDate != null and endDate != ''">
+      and z.MATCH_CREATE_DATE <![CDATA[ <= ]]> #{endDate}
+    </if>
+    <if test="matchType != null and matchType != ''">
+      AND d.MATCH_TYPE = #{matchType}
+    </if>
+    <if test="matchStatus != null and matchStatus != ''">
+      AND d.PRO_MATCH_STATUS = #{matchStatus}
+    </if>
+    <if test="nameOrCode != null and nameOrCode !=''">
+      and (b.PRO_CODE LIKE CONCAT('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE like concat('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE2 like concat('%',#{nameOrCode},'%') or
+      b.PRO_COMMONNAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_FACTORY_NAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_REGISTER_NO like concat('%',#{nameOrCode},'%')
+      )
+    </if>
+    GROUP BY d.CLIENT,d.MATCH_BATCH,d.PRO_CODE) a
+  </select>
+  <update id="sureProduct" parameterType="java.util.List">
+    <foreach collection="list" item="item" separator=";">
+      UPDATE GAIA_PRODUCT_MATCH SET PRO_MATCH_STATUS = '2',MATCH_PRO_CODE = #{item.proCodeG},MATCH_TYPE = '2',MATCH_DEGREE = '100',
+        UPDATE_CLIENT=#{item.updateClient},UPDATE_USER=#{item.updateUser},UPDATE_TIME=#{item.updateTime}
+      WHERE CLIENT = #{item.clientId} AND PRO_CODE = #{item.proCode} AND MATCH_BATCH = #{item.matchBatch}
+    </foreach>
+  </update>
+  <update id="modifyMatchClass" parameterType="com.gys.entity.data.productMatch.ProBasicInfo">
+    UPDATE GAIA_PRODUCT_MATCH SET
+    <if test="proClassG != null and proClassG != ''">
+      PRO_CLASS = #{proClassG},
+    </if>
+    <if test="proClassNameG != null and proClassNameG != ''">
+      PRO_CLASS_NAME = #{proClassNameG},
+    </if>
+    <if test="proComponentG != null and proComponentG != ''">
+      PRO_COMPCLASS = #{proComponentG},
+    </if>
+    <if test="proComponentNameG != null and proComponentNameG != ''">
+      PRO_COMPCLASS_NAME = #{proComponentNameG},
+    </if>
+    <if test="updateClient != null and updateClient != ''">
+      UPDATE_CLIENT = #{updateClient},
+    </if>
+    <if test="updateUser != null and updateUser != ''">
+      UPDATE_USER = #{updateUser},
+    </if>
+    <if test="updateTime != null and updateTime != ''">
+      UPDATE_TIME = #{updateTime},
+    </if>
+    MATCH_PRO_CODE = #{proCodeG}
+    where CLIENT = #{clientId} AND PRO_CODE = #{proCode} AND MATCH_BATCH = #{matchBatch}
+  </update>
+  <update id="modifyProBasicInfo" parameterType="com.gys.entity.data.productMatch.ProBasicInfo">
+    UPDATE GAIA_PRODUCT_BASIC SET PRO_COMMONNAME = #{proCommonNameG},PRO_SPECS = #{proSpecsG},
+    <if test="proBarcodeG != null and proBarcodeG != ''">
+      PRO_BARCODE = #{proBarcodeG},
+    </if>
+    <if test="proBarcode2G != null and proBarcode2G != ''">
+      PRO_BARCODE2 = #{proBarcode2G},
+    </if>
+    PRO_FACTORY_NAME = #{factoryNameG},
+    <if test="proClassG != null and proClassG != ''">
+      PRO_CLASS = #{proClassG},
+    </if>
+    <if test="proClassNameG != null and proClassNameG != ''">
+      PRO_CLASS_NAME = #{proClassNameG},
+    </if>
+    <if test="proComponentG != null and proComponentG != ''">
+      PRO_COMPCLASS = #{proComponentG},
+    </if>
+    <if test="proComponentNameG != null and proComponentNameG != ''">
+      PRO_COMPCLASS_NAME = #{proComponentNameG},
+    </if>
+    <if test="updateClient != null and updateClient != ''">
+      UPDATE_CLIENT = #{updateClient},
+    </if>
+    <if test="updateUser != null and updateUser != ''">
+      UPDATE_USER = #{updateUser},
+    </if>
+    <if test="updateTime != null and updateTime != ''">
+      UPDATE_TIME = #{updateTime},
+    </if>
+    PRO_REGISTER_NO = #{proRegisterNoG}
+    WHERE PRO_CODE = #{proCodeG}
+  </update>
+  <select id="selectProductClassList" resultType="com.gys.entity.data.productMatch.ProductClass">
+    SELECT
+      PRO_CLASS_CODE proClass,
+      PRO_BIG_CLASS_CODE proBigClass,
+      PRO_BIG_CLASS_NAME proBigClassName,
+      PRO_MID_CLASS_CODE proMidClass,
+      PRO_MID_CLASS_NAME proMidClassName,
+      PRO_CLASS_NAME proClassName
+    FROM
+      GAIA_PRODUCT_CLASS WHERE PRO_CLASS_STATUS = '0'
+  </select>
+  <select id="selectProductComponentList" resultType="com.gys.entity.data.productMatch.ProductCompClass">
+    SELECT
+      PRO_COMP_CODE proCompClass,
+      PRO_COMP_BIG_CODE proCompBigClass,
+      PRO_COMP_BIG_NAME proCompBigClassName,
+      PRO_COMP_MID_CODE proCompMidClass,
+      PRO_COMP_MID_NAME proCompMidClassName,
+      PRO_COMP_NAME proCompClassName
+    FROM
+      GAIA_PRODUCT_COMPONENT_CLASS WHERE PRO_COMP_STATUS = '0'
+  </select>
+  <select id="getStoListByClient" resultType="java.util.Map">
+    select  STO_CODE stoCode,IFNULL(STO_SHORT_NAME,STO_NAME) stoName FROM GAIA_STORE_DATA WHERE CLIENT = #{client}
+    <if test="stoName != null and stoName != ''">
+      AND (STO_NAME LIKE CONCAT ('%',#{stoName},'%') OR STO_SHORT_NAME LIKE CONCAT ('%',#{stoName},'%'))
+    </if>
+    order by STO_CODE ASC
+  </select>
+  <select id="selectProductMatch" parameterType="com.gys.entity.data.productMatch.MatchProductInData" resultType="com.gys.entity.GaiaProductMatch">
+    SELECT PRO_CODE proCode,PRO_NAME proName,PRO_SPECS proSpecs,PRO_UNIT proUnit,PRO_BARCODE proBarcode,PRO_REGISTER_NO proRegisterNo,MATCH_PRO_CODE matchProCode from GAIA_PRODUCT_MATCH d left join GAIA_PRODUCT_MATCH_Z z ON d.CLIENT = z.CLIENT and d.MATCH_CODE = z.MATCH_CODE
+    WHERE d.CLIENT = #{clientId} and z.MATCH_TYPE = #{type} AND d.PRO_CODE = #{proCode}
+    <if test="stoCode != null and stoCode != ''">
+      and d.STO_CODE = #{stoCode}
+    </if>
+  </select>
+  <select id="productMatchSchedule" parameterType="com.gys.entity.data.productMatch.MatchProductInData" resultType="com.gys.entity.data.productMatch.MatchSchedule">
+    select (a.matchedCount + b.unmatchCount) totalLine,a.matchedCount matchedLine,b.unmatchCount unmatchLine,CONCAT(round(a.matchedCount/(a.matchedCount+b.unmatchCount) *100,0),'%') matchSchedule from
+    (select count(1) matchedCount from GAIA_PRODUCT_MATCH a LEFT JOIN GAIA_PRODUCT_MATCH_Z b on a.CLIENT = b.CLIENT AND a.MATCH_CODE = b.MATCH_CODE WHERE a.CLIENT = #{clientId} AND b.MATCH_TYPE = #{type}
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      and a.STO_CODE IN
+      <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+        #{item}
+      </foreach>
+    </if>
+    AND a.MATCH_TYPE IN ('1','2')) a,
+    (SELECT count(1) unmatchCount from GAIA_PRODUCT_MATCH a LEFT JOIN GAIA_PRODUCT_MATCH_Z b on a.CLIENT = b.CLIENT AND a.MATCH_CODE = b.MATCH_CODE WHERE a.CLIENT = #{clientId} AND b.MATCH_TYPE = #{type}
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      and a.STO_CODE IN
+      <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+        #{item}
+      </foreach>
+    </if>
+    AND a.MATCH_TYPE = '0') b
+  </select>
+  <select id="imageQuery" resultType="com.gys.entity.data.productMatch.PictureMessage">
+    SELECT
+      WM_SCRQ acquisitionDate,
+      DIDIAN site,
+      SHANGCHUANCISHU uploadNumber,
+      TUPIANDIZHI pictureAddress,
+      TUPIANXUHAO serialNumber,
+      ID id
+    FROM
+      GAIA_WMS_TUPIANCAIJI
+    WHERE
+      DELETED = '0'
+      AND SHANGPINZIBIANMA = #{proCode}
+      AND JIAMENGSHANG = #{clientId}
+      AND WM_CLIENT = #{wmClient}
+      <if test="stoCode != null and stoCode.size() > 0">
+        and DIDIAN IN
+        <foreach close=")" collection="stoCode" index="index" item="item" open="(" separator=",">
+          #{item}
+        </foreach>
+      </if>
+      AND SHIFOUYINGYONG = '1'
+    ORDER BY TUPIANXUHAO
+  </select>
+  <update id="updateProductMatch" parameterType="com.gys.entity.data.productMatch.ProductSureMsg">
+    UPDATE GAIA_PRODUCT_MATCH SET PRO_MATCH_STATUS = '2',MATCH_PRO_CODE = #{proCodeG},MATCH_TYPE = '2',MATCH_DEGREE = '100'
+    <if test="updateClient != null and updateClient != ''">
+      ,UPDATE_CLIENT = #{updateClient}
+    </if>
+    <if test="updateUser != null and updateUser != ''">
+      ,UPDATE_USER = #{updateUser}
+    </if>
+    <if test="updateTime != null and updateTime != ''">
+      ,UPDATE_TIME = #{updateTime}
+    </if>
+    WHERE CLIENT = #{clientId} AND PRO_CODE = #{proCode}
+    <!-- edit by jinwencheng on 2022-01-07 17:49:32 将stoCode更新条件改为matchCode -->
+    AND MATCH_CODE = #{matchCode}
+    <!-- edit end -->
+    <!--<if test="stoCode != null and stoCode != ''">
+      AND STO_CODE = #{stoCode}
+    </if>
+    <if test="stoCode == null or stoCode == ''">
+      AND (STO_CODE = '' OR STO_CODE IS NULL)
+    </if>-->
+  </update>
+
+  <update id="updateTpCollect">
+    update GAIA_WMS_TUPIANCAIJI
+    set ZONGKUBIANMA = #{proCode}
+    where JIAMENGSHANG = #{clientId}
+    and SHANGPINZIBIANMA = #{proSelfCode}
+    AND WM_CLIENT = #{wmClient}
+    <if test="stoCode != null and stoCode != ''">
+      AND DIDIAN = #{stoCode}
+    </if>
+  </update>
+  <select id="selectProPym" resultType="java.lang.String">
+    SELECT F_GETPY(#{proName})
+  </select>
+  <insert id="batchAddProductMatch" parameterType="java.util.List">
+    INSERT INTO GAIA_PRODUCT_MATCH (CLIENT,
+    STO_CODE,MATCH_BATCH,
+    MATCH_CODE,
+    MATCH_PRO_CODE,
+    MATCH_TYPE,
+    MATCH_DEGREE,
+    PRO_CODE,
+    PRO_MATCH_STATUS,
+    PRO_NAME,
+    PRO_REGISTER_NO,
+    PRO_SPECS,
+    PRO_UNIT,
+    PRO_BARCODE,PRO_FACTORY_NAME,PRO_CLASS,PRO_CLASS_NAME,PRO_COMPCLASS,PRO_COMPCLASS_NAME,
+    MATCH_CREATER,MATCH_CREATE_DATE,MATCH_CREATE_TIME)
+    VALUES
+    <foreach collection="list" item="item" separator=",">
+      (#{item.client},
+      #{item.stoCode},#{item.matchBatch},
+      #{item.matchCode},
+      #{item.matchProCode},
+      #{item.matchType},
+      #{item.matchDegree},
+      #{item.proCode},
+      #{item.proMatchStatus},
+      #{item.proName},
+      #{item.proRegisterNo},
+      #{item.proSpecs},
+      #{item.proUnit},
+      #{item.proBarcode},#{item.proFactoryName},#{item.proClass},#{item.proClassName},#{item.proCompclass},#{item.proCompclassName},
+      #{item.matchCreater},#{item.matchCreateDate},#{item.matchCreateTime})
+    </foreach>
+    ON DUPLICATE KEY UPDATE
+    STO_CODE = values(STO_CODE),MATCH_TYPE = values(MATCH_TYPE),MATCH_BATCH = values(MATCH_BATCH),PRO_FACTORY_NAME = values(PRO_FACTORY_NAME),MATCH_PRO_CODE = values(MATCH_PRO_CODE),
+    MATCH_DEGREE = values(MATCH_DEGREE),PRO_CODE = values(PRO_CODE),PRO_MATCH_STATUS = values(PRO_MATCH_STATUS),PRO_NAME = values(PRO_NAME),PRO_REGISTER_NO = values(PRO_REGISTER_NO),
+    PRO_SPECS = values(PRO_SPECS),PRO_UNIT = values(PRO_UNIT),PRO_BARCODE = values(PRO_BARCODE),PRO_CLASS = values(PRO_CLASS),PRO_CLASS_NAME = values(PRO_CLASS_NAME),PRO_COMPCLASS = values(PRO_COMPCLASS),PRO_COMPCLASS_NAME = values(PRO_COMPCLASS_NAME),
+    MATCH_CREATER = values(MATCH_CREATER),MATCH_CREATE_DATE = values(MATCH_CREATE_DATE),
+    MATCH_CREATE_TIME = values(MATCH_CREATE_TIME)
+  </insert>
+  <insert id="addProductMatch" parameterType="com.gys.entity.GaiaProductMatch">
+    INSERT INTO GAIA_PRODUCT_MATCH (CLIENT,
+    STO_CODE,MATCH_BATCH,
+    MATCH_CODE,
+    MATCH_PRO_CODE,
+    MATCH_TYPE,
+    MATCH_DEGREE,
+    PRO_CODE,
+    PRO_MATCH_STATUS,
+    PRO_NAME,
+    PRO_REGISTER_NO,
+    PRO_SPECS,
+    PRO_UNIT,
+    PRO_BARCODE,PRO_FACTORY_NAME,PRO_CLASS,PRO_CLASS_NAME,PRO_COMPCLASS,PRO_COMPCLASS_NAME,
+    MATCH_CREATER,MATCH_CREATE_DATE,MATCH_CREATE_TIME)
+    VALUES
+      (#{client},
+      #{stoCode},#{matchBatch},
+      #{matchCode},
+      #{matchProCode},
+      #{matchType},
+      #{matchDegree},
+      #{proCode},
+      #{proMatchStatus},
+      #{proName},
+      #{proRegisterNo},
+      #{proSpecs},
+      #{proUnit},
+      #{proBarcode},#{proFactoryName},#{proClass},#{proClassName},#{proCompclass},#{proCompclassName},
+      #{matchCreater},#{matchCreateDate},#{matchCreateTime})
+    ON DUPLICATE KEY UPDATE
+    STO_CODE = values(STO_CODE),MATCH_TYPE = values(MATCH_TYPE),MATCH_BATCH = values(MATCH_BATCH),PRO_FACTORY_NAME = values(PRO_FACTORY_NAME),MATCH_PRO_CODE = values(MATCH_PRO_CODE),
+    MATCH_DEGREE = values(MATCH_DEGREE),PRO_MATCH_STATUS = values(PRO_MATCH_STATUS),PRO_NAME = values(PRO_NAME),PRO_REGISTER_NO = values(PRO_REGISTER_NO),
+    PRO_SPECS = values(PRO_SPECS),PRO_UNIT = values(PRO_UNIT),PRO_BARCODE = values(PRO_BARCODE),PRO_CLASS = values(PRO_CLASS),PRO_CLASS_NAME = values(PRO_CLASS_NAME),PRO_COMPCLASS = values(PRO_COMPCLASS),PRO_COMPCLASS_NAME = values(PRO_COMPCLASS_NAME),
+    MATCH_CREATER = values(MATCH_CREATER),MATCH_CREATE_DATE = values(MATCH_CREATE_DATE),
+    MATCH_CREATE_TIME = values(MATCH_CREATE_TIME)
+  </insert>
+  <select id="selectNextMatchBatch" resultType="java.lang.String">
+    select concat( "MCP",DATE_FORMAT(NOW(),'%Y'),LPAD(right(IFNULL(MAX(MATCH_BATCH),0),6)+1, 6, '0'))
+    from GAIA_PRODUCT_MATCH_Z
+    where CLIENT = #{clientId}
+  </select>
+  <select id="selectAllRatioCount" resultType="java.lang.Integer">
+    select count(1) from ( select CLIENT,MATCH_BATCH,PRO_CODE from GAIA_PRODUCT_MATCH where  CLIENT = #{clientId} and MATCH_BATCH = #{matchBatch} GROUP BY CLIENT,MATCH_BATCH,PRO_CODE) a
+  </select>
+  <select id="selectUnratioCount" resultType="java.lang.Integer">
+    select count(1) from ( select CLIENT,MATCH_BATCH,PRO_CODE from GAIA_PRODUCT_MATCH where  CLIENT = #{clientId} and MATCH_BATCH = #{matchBatch} and PRO_MATCH_STATUS = '5' GROUP BY CLIENT,MATCH_BATCH,PRO_CODE) a
+  </select>
+  <select id="selectMatchBatch" resultType="java.lang.String">
+    SELECT MATCH_BATCH FROM GAIA_PRODUCT_MATCH_Z WHERE CLIENT = #{clientId} AND MATCH_CODE = #{matchCode}
+  </select>
+  <select id="selectProCodeByClient" resultType="java.util.Map">
+    SELECT GROUP_CONCAT(PRO_CODE ORDER BY PRO_CODE separator ';') num,MATCH_PRO_CODE ydProCode,CLIENT clientId FROM GAIA_PRODUCT_MATCH WHERE CLIENT = #{clientId} AND STO_CODE = '' AND MATCH_PRO_CODE != '99999999' GROUP BY MATCH_PRO_CODE ORDER BY MATCH_PRO_CODE
+  </select>
+  <select id="selectProCodeByStore" resultType="java.util.Map">
+    SELECT GROUP_CONCAT(d.PRO_CODE ORDER BY d.PRO_CODE separator ';') num,d.MATCH_PRO_CODE ydProCode,d.STO_CODE stoCode,st.STO_SHORT_NAME stoName FROM GAIA_PRODUCT_MATCH d
+    LEFT JOIN GAIA_STORE_DATA st ON st.CLIENT = d.CLIENT AND st.STO_CODE = d.STO_CODE
+    WHERE d.CLIENT = #{clientId}
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      and d.STO_CODE IN
+      <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+        #{item}
+      </foreach>
+    </if>
+    AND MATCH_PRO_CODE != '99999999' GROUP BY MATCH_PRO_CODE,d.STO_CODE ORDER BY MATCH_PRO_CODE
+  </select>
+  <select id="selectMatchProCode" resultType="java.util.LinkedHashMap" parameterType="com.gys.entity.data.productMatch.MatchProductInData">
+    SELECT b.PRO_CODE matchProCode,b.PRO_COMMONNAME proCommonName,b.PRO_SPECS proSpecs,b.PRO_FACTORY_NAME factoryName,b.PRO_BARCODE proBarcode,b.PRO_BARCODE2 proBarcode2,
+           b.PRO_REGISTER_NO proRegisterNo,b.PRO_CLASS_NAME proClassName,b.PRO_COMPCLASS_NAME proCompClassName
+    FROM GAIA_PRODUCT_MATCH d
+    left join GAIA_PRODUCT_MATCH_Z z ON d.CLIENT = z.CLIENT and d.MATCH_CODE = z.MATCH_CODE
+    LEFT JOIN GAIA_PRODUCT_BASIC b ON d.MATCH_PRO_CODE = b.PRO_CODE
+    WHERE d.CLIENT = #{clientId} and z.MATCH_TYPE = #{type} AND d.MATCH_PRO_CODE != '99999999'
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      and d.STO_CODE IN
+      <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+        #{item}
+      </foreach>
+    </if>
+    <if test="nameOrCode != null and nameOrCode !=''">
+      and (b.PRO_CODE LIKE CONCAT('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE like concat('%',#{nameOrCode},'%') or
+      b.PRO_BARCODE2 like concat('%',#{nameOrCode},'%') or
+      b.PRO_COMMONNAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_FACTORY_NAME like concat('%',#{nameOrCode},'%')
+      or b.PRO_REGISTER_NO like concat('%',#{nameOrCode},'%')
+      )
+    </if>
+    GROUP BY b.PRO_CODE
+    order by b.PRO_CODE ASC
+  </select>
+
+  <select id="selectNoMatchProCode" resultType="java.util.LinkedHashMap" parameterType="com.gys.entity.data.productMatch.MatchProductInData">
+    SELECT b.PRO_CODE matchProCode,b.PRO_COMMONNAME proCommonName,b.PRO_SPECS proSpecs,b.PRO_FACTORY_NAME factoryName,b.PRO_BARCODE proBarcode,b.PRO_BARCODE2 proBarcode2,
+    b.PRO_REGISTER_NO proRegisterNo,d.PRO_CLASS_NAME proClassName,d.PRO_COMPCLASS_NAME proCompClassName,d.PRO_CODE proCode
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      ,CONCAT(d.STO_CODE,'-',sto.STO_SHORT_NAME) stoName
+    </if>
+    FROM GAIA_PRODUCT_MATCH d
+    left join GAIA_PRODUCT_MATCH_Z z ON d.CLIENT = z.CLIENT and d.MATCH_CODE = z.MATCH_CODE
+    LEFT JOIN GAIA_PRODUCT_BASIC b ON d.MATCH_PRO_CODE = b.PRO_CODE
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      LEFT JOIN GAIA_STORE_DATA sto ON d.CLIENT = sto.CLIENT AND d.STO_CODE = sto.STO_CODE
+    </if>
+    WHERE d.CLIENT = #{clientId} and z.MATCH_TYPE = #{type} AND d.MATCH_PRO_CODE = '99999999'
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+      and d.STO_CODE IN
+      <foreach close=")" collection="stoCodes" index="index" item="item" open="(" separator=",">
+        #{item}
+      </foreach>
+    </if>
+    GROUP BY b.PRO_CODE,d.PRO_CODE,d.CLIENT
+    <if test="stoCodes != null and stoCodes.length &gt; 0">
+        ,d.STO_CODE
+    </if>
+    order by b.PRO_CODE ASC
+  </select>
+</mapper>

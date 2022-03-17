@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaProductBusinessMapper">
+  <insert id="batchInsertProduct" parameterType="java.util.List">
+    INSERT INTO GAIA_PRODUCT_BUSINESS
+    (CLIENT,PRO_SITE,PRO_SELF_CODE,PRO_CODE, PRO_MATCH_STATUS, PRO_COMMONNAME, PRO_DEPICT, PRO_PYM, PRO_NAME, PRO_SPECS,
+     PRO_UNIT,PRO_FORM, PRO_PARTFORM, PRO_MINDOSE, PRO_TOTALDOSE, PRO_BARCODE, PRO_BARCODE2, PRO_REGISTER_CLASS, PRO_REGISTER_NO, PRO_REGISTER_DATE,
+     PRO_REGISTER_EXDATE, PRO_CLASS, PRO_CLASS_NAME, PRO_COMPCLASS, PRO_COMPCLASS_NAME, PRO_PRESCLASS, PRO_FACTORY_CODE, PRO_FACTORY_NAME,PRO_MARK, PRO_BRAND,
+     PRO_BRAND_CLASS, PRO_LIFE, PRO_LIFE_UNIT, PRO_HOLDER, PRO_INPUT_TAX, PRO_OUTPUT_TAX,PRO_BASIC_CODE, PRO_TAX_CLASS,PRO_CONTROL_CLASS, PRO_PRODUCE_CLASS,
+     PRO_STORAGE_CONDITION, PRO_STORAGE_AREA, PRO_LONG, PRO_WIDE,PRO_HIGH, PRO_MID_PACKAGE, PRO_BIG_PACKAGE,PRO_ELECTRONIC_CODE, PRO_QS_CODE, PRO_MAX_SALES,
+     PRO_INSTRUCTION_CODE, PRO_INSTRUCTION,PRO_MED_PRODCT, PRO_STATUS, PRO_MED_PRODCTCODE,PRO_COUNTRY, PRO_PLACE, PRO_TAKE_DAYS, PRO_USAGE, PRO_CONTRAINDICATION,
+     PRO_POSITION,PRO_NO_RETAIL, PRO_NO_PURCHASE, PRO_NO_DISTRIBUTED, PRO_NO_SUPPLIER,PRO_NO_DC, PRO_NO_ADJUST, PRO_NO_SALE, PRO_NO_APPLY, PRO_IFPART,
+     PRO_PART_UINT, PRO_PART_RATE, PRO_PURCHASE_UNIT, PRO_PURCHASE_RATE, PRO_SALE_UNIT, PRO_SALE_RATE,PRO_MIN_QTY, PRO_IF_MED, PRO_SLAE_CLASS,PRO_LIMIT_QTY,
+     PRO_MAX_QTY, PRO_PACKAGE_FLAG, PRO_KEY_CARE, PRO_TCM_SPECS, PRO_TCM_REGISTER_NO, PRO_TCM_FACTORY_CODE,PRO_TCM_PLACE,PRO_FIX_BIN, PRO_CREATE_DATE, PRO_CGJ,
+     PRO_LSJ, PRO_MLL, PRO_MED_LISTNUM, PRO_MED_LISTNAME, PRO_MED_LISTFORM, PRO_PICTURE_WBZ,PRO_PICTURE_SMS, PRO_PICTURE_PJ,PRO_PICTURE_NBZ, PRO_PICTURE_ZZ,
+     PRO_PICTURE_QT, PRO_ZDY1, PRO_ZDY2, PRO_ZDY3, PRO_ZDY4, PRO_ZDY5, PRO_SCLASS, PRO_MED_QTY,PRO_MED_ID, PRO_BDZ,
+     PRO_TSSX,PRO_YBLX, PRO_PWZCZ, PRO_ZLBZ, PRO_OUT, PRO_IF_WHOLESALE, PRO_JYLB)
+    VALUES
+      <foreach collection="list" item="item" separator=",">
+        (#{item.client},#{item.proSite},#{item.proSelfCode},#{item.proCode},#{item.proMatchStatus},#{item.proCommonname},#{item.proDepict},#{item.proPym},#{item.proName},#{item.proSpecs},
+         #{item.proUnit},#{item.proForm},#{item.proPartform},#{item.proMindose},#{item.proTotaldose},#{item.proBarcode},#{item.proBarcode2},#{item.proRegisterClass},#{item.proRegisterNo},#{item.proRegisterDate},
+         #{item.proRegisterExdate},#{item.proClass},#{item.proClassName},#{item.proCompclass},#{item.proCompclassName},#{item.proPresclass},#{item.proFactoryCode},#{item.proFactoryName},#{item.proMark},#{item.proBrand},
+         #{item.proBrandClass},#{item.proLife},#{item.proLifeUnit},#{item.proHolder},#{item.proInputTax},#{item.proOutputTax},#{item.proBasicCode},#{item.proTaxClass},#{item.proControlClass},#{item.proProduceClass},
+         #{item.proStorageCondition},#{item.proStorageArea},#{item.proLong},#{item.proWide},#{item.proHigh},#{item.proMidPackage},#{item.proBigPackage}, #{item.proElectronicCode},#{item.proQsCode},#{item.proMaxSales},
+         #{item.proInstructionCode},#{item.proInstruction},#{item.proMedProdct},#{item.proStatus},#{item.proMedProdctcode},#{item.proCountry},#{item.proPlace},#{item.proTakeDays},#{item.proUsage},#{item.proContraindication},
+         #{item.proPosition},#{item.proNoRetail},#{item.proNoPurchase},#{item.proNoDistributed},#{item.proNoSupplier},#{item.proNoDc},#{item.proNoAdjust},#{item.proNoSale},#{item.proNoApply},#{item.proIfpart},
+         #{item.proPartUint},#{item.proPartRate},#{item.proPurchaseUnit},#{item.proPurchaseRate},#{item.proSaleUnit},#{item.proSaleRate},#{item.proMinQty},#{item.proIfMed},#{item.proSlaeClass},#{item.proLimitQty},
+         #{item.proMaxQty},#{item.proPackageFlag},#{item.proKeyCare},#{item.proTcmSpecs},#{item.proTcmRegisterNo},#{item.proTcmFactoryCode},#{item.proTcmPlace},#{item.proFixBin},#{item.proCreateDate},#{item.proCgj},
+         #{item.proLsj},#{item.proMll},#{item.proMedListnum},#{item.proMedListname},#{item.proMedListform},#{item.proPictureWbz},#{item.proPictureSms},#{item.proPicturePj},#{item.proPictureNbz},#{item.proPictureZz},
+         #{item.proPictureQt},#{item.proZdy1},#{item.proZdy2},#{item.proZdy3},#{item.proZdy4},#{item.proZdy5},#{item.proSclass},#{item.proMedQty},#{item.proMedId},#{item.proBdz},
+         #{item.proTssx},#{item.proYblx},#{item.proPwzcz},#{item.proZlbz},#{item.proOut},#{item.proIfWholesale},#{item.proJylb}
+        )
+      </foreach>
+      ON DUPLICATE KEY UPDATE
+      PRO_CODE = VALUES(PRO_CODE),PRO_MATCH_STATUS  = VALUES(PRO_MATCH_STATUS),PRO_COMMONNAME = VALUES(PRO_COMMONNAME),PRO_DEPICT  = VALUES(PRO_DEPICT),
+      PRO_PYM  = VALUES(PRO_PYM),PRO_NAME  = VALUES(PRO_NAME), PRO_SPECS  = VALUES(PRO_SPECS), PRO_UNIT  = VALUES(PRO_UNIT),PRO_FORM = VALUES(PRO_FORM),
+      PRO_PARTFORM = VALUES(PRO_PARTFORM), PRO_MINDOSE = VALUES(PRO_MINDOSE), PRO_TOTALDOSE = VALUES(PRO_TOTALDOSE), PRO_BARCODE = VALUES(PRO_BARCODE),
+      PRO_BARCODE2 = VALUES(PRO_BARCODE2), PRO_REGISTER_CLASS = VALUES(PRO_REGISTER_CLASS), PRO_REGISTER_NO = VALUES(PRO_REGISTER_NO), PRO_REGISTER_DATE = VALUES(PRO_REGISTER_DATE),
+      PRO_REGISTER_EXDATE = VALUES(PRO_REGISTER_EXDATE), PRO_CLASS = VALUES(PRO_CLASS), PRO_CLASS_NAME = VALUES(PRO_CLASS_NAME), PRO_COMPCLASS = VALUES(PRO_COMPCLASS), PRO_COMPCLASS_NAME = VALUES(PRO_COMPCLASS_NAME),
+      PRO_PRESCLASS = VALUES(PRO_PRESCLASS), PRO_FACTORY_CODE = VALUES(PRO_FACTORY_CODE), PRO_FACTORY_NAME = VALUES(PRO_FACTORY_NAME),PRO_MARK = VALUES(PRO_MARK), PRO_BRAND = VALUES(PRO_BRAND), PRO_BRAND_CLASS = VALUES(PRO_BRAND_CLASS),
+      PRO_LIFE = VALUES(PRO_LIFE), PRO_LIFE_UNIT = VALUES(PRO_LIFE_UNIT), PRO_HOLDER = VALUES(PRO_HOLDER), PRO_INPUT_TAX = VALUES(PRO_INPUT_TAX), PRO_OUTPUT_TAX = VALUES(PRO_OUTPUT_TAX),PRO_BASIC_CODE = VALUES(PRO_BASIC_CODE), PRO_TAX_CLASS = VALUES(PRO_TAX_CLASS),
+      PRO_CONTROL_CLASS = VALUES(PRO_CONTROL_CLASS), PRO_PRODUCE_CLASS = VALUES(PRO_PRODUCE_CLASS), PRO_STORAGE_CONDITION = VALUES(PRO_STORAGE_CONDITION), PRO_STORAGE_AREA = VALUES(PRO_STORAGE_AREA), PRO_LONG = VALUES(PRO_LONG), PRO_WIDE = VALUES(PRO_WIDE),PRO_HIGH = VALUES(PRO_HIGH), PRO_MID_PACKAGE = VALUES(PRO_MID_PACKAGE), PRO_BIG_PACKAGE = VALUES(PRO_BIG_PACKAGE),
+      PRO_ELECTRONIC_CODE = VALUES(PRO_ELECTRONIC_CODE), PRO_QS_CODE = VALUES(PRO_QS_CODE), PRO_MAX_SALES = VALUES(PRO_MAX_SALES), PRO_INSTRUCTION_CODE = VALUES(PRO_INSTRUCTION_CODE), PRO_INSTRUCTION = VALUES(PRO_INSTRUCTION),PRO_MED_PRODCT = VALUES(PRO_MED_PRODCT), PRO_STATUS = VALUES(PRO_STATUS), PRO_MED_PRODCTCODE = VALUES(PRO_MED_PRODCTCODE),
+      PRO_COUNTRY = VALUES(PRO_COUNTRY), PRO_PLACE = VALUES(PRO_PLACE), PRO_TAKE_DAYS = VALUES(PRO_TAKE_DAYS), PRO_USAGE = VALUES(PRO_USAGE), PRO_CONTRAINDICATION = VALUES(PRO_CONTRAINDICATION), PRO_POSITION = VALUES(PRO_POSITION),PRO_NO_RETAIL = VALUES(PRO_NO_RETAIL), PRO_NO_PURCHASE = VALUES(PRO_NO_PURCHASE), PRO_NO_DISTRIBUTED = VALUES(PRO_NO_DISTRIBUTED), PRO_NO_SUPPLIER = VALUES(PRO_NO_SUPPLIER),
+      PRO_NO_DC = VALUES(PRO_NO_DC), PRO_NO_ADJUST = VALUES(PRO_NO_ADJUST), PRO_NO_SALE = VALUES(PRO_NO_SALE), PRO_NO_APPLY = VALUES(PRO_NO_APPLY), PRO_IFPART = VALUES(PRO_IFPART),PRO_PART_UINT = VALUES(PRO_PART_UINT), PRO_PART_RATE = VALUES(PRO_PART_RATE), PRO_PURCHASE_UNIT = VALUES(PRO_PURCHASE_UNIT), PRO_PURCHASE_RATE = VALUES(PRO_PURCHASE_RATE), PRO_SALE_UNIT = VALUES(PRO_SALE_UNIT), PRO_SALE_RATE = VALUES(PRO_SALE_RATE),
+      PRO_MIN_QTY = VALUES(PRO_MIN_QTY), PRO_IF_MED = VALUES(PRO_IF_MED), PRO_SLAE_CLASS = VALUES(PRO_SLAE_CLASS),PRO_LIMIT_QTY = VALUES(PRO_LIMIT_QTY), PRO_MAX_QTY = VALUES(PRO_MAX_QTY), PRO_PACKAGE_FLAG = VALUES(PRO_PACKAGE_FLAG), PRO_KEY_CARE = VALUES(PRO_KEY_CARE), PRO_TCM_SPECS = VALUES(PRO_TCM_SPECS), PRO_TCM_REGISTER_NO = VALUES(PRO_TCM_REGISTER_NO), PRO_TCM_FACTORY_CODE = VALUES(PRO_TCM_FACTORY_CODE),
+      PRO_TCM_PLACE = VALUES(PRO_TCM_PLACE),PRO_FIX_BIN = VALUES(PRO_FIX_BIN), PRO_CREATE_DATE = VALUES(PRO_CREATE_DATE), PRO_CGJ = VALUES(PRO_CGJ), PRO_LSJ = VALUES(PRO_LSJ), PRO_MLL = VALUES(PRO_MLL), PRO_MED_LISTNUM = VALUES(PRO_MED_LISTNUM), PRO_MED_LISTNAME = VALUES(PRO_MED_LISTNAME), PRO_MED_LISTFORM = VALUES(PRO_MED_LISTFORM), PRO_PICTURE_WBZ = VALUES(PRO_PICTURE_WBZ),
+      PRO_PICTURE_SMS = VALUES(PRO_PICTURE_SMS), PRO_PICTURE_PJ = VALUES(PRO_PICTURE_PJ),PRO_PICTURE_NBZ = VALUES(PRO_PICTURE_NBZ), PRO_PICTURE_ZZ = VALUES(PRO_PICTURE_ZZ), PRO_PICTURE_QT = VALUES(PRO_PICTURE_QT), PRO_ZDY1 = VALUES(PRO_ZDY1), PRO_ZDY2 = VALUES(PRO_ZDY2), PRO_ZDY3 = VALUES(PRO_ZDY3), PRO_ZDY4 = VALUES(PRO_ZDY4), PRO_ZDY5 = VALUES(PRO_ZDY5), PRO_SCLASS = VALUES(PRO_SCLASS), PRO_MED_QTY = VALUES(PRO_MED_QTY),
+      PRO_MED_ID = VALUES(PRO_MED_ID), PRO_BDZ = VALUES(PRO_BDZ), PRO_TSSX = VALUES(PRO_TSSX),PRO_YBLX = VALUES(PRO_YBLX), PRO_PWZCZ = VALUES(PRO_PWZCZ), PRO_ZLBZ = VALUES(PRO_ZLBZ), PRO_OUT = VALUES(PRO_OUT), PRO_IF_WHOLESALE = VALUES(PRO_IF_WHOLESALE), PRO_JYLB = VALUES(PRO_JYLB),PRO_MAX_QTY_MOUTH = VALUES(PRO_MAX_QTY_MOUTH), PRO_YLQX_ZCR = VALUES(PRO_YLQX_ZCR),
+      PRO_YLQX_BAR = VALUES(PRO_YLQX_BAR), PRO_YLQX_SCQY = VALUES(PRO_YLQX_SCQY), PRO_YLQX_SCQYXKZ = VALUES(PRO_YLQX_SCQYXKZ),PRO_YLQX_BAPZH = VALUES(PRO_YLQX_BAPZH), PRO_IF_SMS = VALUES(PRO_IF_SMS), PRO_BEIZHU = VALUES(PRO_BEIZHU), PRO_DOSE_UNIT = VALUES(PRO_DOSE_UNIT), PRO_JYGLLB = VALUES(PRO_JYGLLB)
+  </insert>
+
+
+    <select id="getApprovalVoList" resultType="com.gys.entity.data.approval.vo.ApprovalVo" parameterType="com.gys.entity.data.approval.dto.ApprovalDto">
+        select
+        a.CLIENT client,
+        a.PRO_SITE proSite,
+        a.PRO_SELF_CODE  proSelfCode,
+        a.PRO_NAME   proName,
+        a.PRO_SPECS    proSpecs,
+        a.PRO_UNIT    proUnit,
+        a.PRO_PLACE     proPlace,
+        a.PRO_PICTURE_PJ   proPicturePj
+        from GAIA_PRODUCT_BUSINESS a
+        LEFT JOIN GAIA_COMPADM_WMS cw ON cw.CLIENT = a.CLIENT
+        LEFT JOIN GAIA_DC_DATA dd on cw.COMPADM_ID=dd.DC_CHAIN_HEAD
+        <where>
+            <if test="client != null and client != ''">
+                and  a.CLIENT = #{client}
+            </if>
+            <if test="proSelfCode != null and proSelfCode != ''">
+                and  a.PRO_SELF_CODE LIKE concat('%',#{proSelfCode},'%')
+            </if>
+            <if test="proName != null and proName != ''">
+                and a.PRO_NAME LIKE concat('%',#{proName},'%')
+            </if>
+            <if test="proPym != null and proPym != ''">
+                and a.PRO_PYM  LIKE concat('%',#{proPym},'%')
+            </if>
+               and PRO_SITE=dd.DC_CODE
+        </where>
+          group by a.CLIENT,a.PRO_SITE ,a.PRO_SELF_CODE
+    </select>
+
+    <select id="getApprovalVoListByProCodes" resultType="com.gys.entity.data.approval.vo.ApprovalVo" parameterType="com.gys.entity.data.approval.dto.ApprovalDto">
+        select
+        a.CLIENT client,
+        a.PRO_SITE proSite,
+        a.PRO_SELF_CODE  proSelfCode,
+        a.PRO_NAME   proName,
+        a.PRO_SPECS    proSpecs,
+        a.PRO_UNIT    proUnit,
+        a.PRO_PLACE     proPlace,
+        a.PRO_PICTURE_PJ   proPicturePj,
+        wb.WM_JHDH whereWmJhdh
+        from GAIA_PRODUCT_BUSINESS a
+        LEFT JOIN GAIA_COMPADM_WMS cw ON cw.CLIENT = a.CLIENT
+        LEFT JOIN GAIA_DC_DATA dd on cw.COMPADM_ID=dd.DC_CHAIN_HEAD AND cw.CLIENT=dd.CLIENT
+        LEFT JOIN GAIA_WMS_DIAOBO_M dm ON dm.PRO_SITE = a.PRO_SITE AND dm.CLIENT = a.CLIENT AND dm.WM_SP_BM=a.PRO_SELF_CODE
+        LEFT JOIN GAIA_WMS_BOCI wb on dm.CLIENT = wb.CLIENT and  dm.PRO_SITE = wb.PRO_SITE and dm.WM_PSDH = wb.WM_PSDH
+        <where>
+
+        <if test="client != null and client != ''">
+            and  a.CLIENT = #{client}
+        </if>
+        <if test="whereWmJhdh != null and whereWmJhdh != ''">
+                and  wb.WM_JHDH = #{whereWmJhdh}
+         </if>
+        <if test="proCodes != null">
+            and a.PRO_SELF_CODE in
+            <foreach collection="proCodes" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+            and a.PRO_SITE=dd.DC_CODE
+        </where>
+
+    </select>
+
+    <select id="queryProFourthlyByStore" resultType="com.gys.entity.wk.vo.GetProductThirdlyOutData">
+        SELECT
+        gpb.PRO_SELF_CODE proCode,
+        gpb.PRO_COMMONNAME proCommonName,
+        gpb.PRO_NAME `name`,
+        gpb.PRO_PYM pym,
+        gpb.PRO_SPECS specs,
+        gpb.PRO_UNIT unit,
+        gpb.PRO_FORM form,
+        gpb.PRO_PLACE proPlace,
+        gpb.PRO_FACTORY_NAME proFactoryName,
+        MAX( kucen.WM_KYSL ) kysl,
+        pp.GSPP_PRICE_NORMAL priceNormal,
+        ROUND(ass.MAT_MOV_PRICE *( 100+( REPLACE ( tc.TAX_CODE_VALUE, '%', '' )))/100,2) unitPrice,
+        ROUND(IFNULL(
+        ap.ALP_ADD_AMT+ass.MAT_MOV_PRICE *( 100+( REPLACE ( tc.TAX_CODE_VALUE, '%', '' )))/100, ass.MAT_MOV_PRICE *(
+        100+( REPLACE ( tc.TAX_CODE_VALUE, '%', '' )))*( 100+ap.ALP_ADD_RATE )/ 10000
+        ),2) addAmt,
+        CASE
+        WHEN gpb.PRO_IF_MED = '1' THEN
+        '是'
+        WHEN gpb.PRO_MED_ID IS NOT NULL THEN
+        '是' ELSE '否'
+        END ifMed
+        FROM
+        GAIA_PRODUCT_BUSINESS gpb
+        LEFT JOIN GAIA_STORE_DATA sto ON ( sto.CLIENT = gpb.CLIENT AND sto.STO_CODE = gpb.PRO_SITE )
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        WM_SP_BM,
+        PRO_SITE,
+        SUM( WM_KYSL ) WM_KYSL
+        FROM
+        GAIA_WMS_KUCEN
+        WHERE
+        CLIENT = #{client} GROUP BY WM_SP_BM
+        ) kucen ON ( kucen.CLIENT = gpb.CLIENT AND kucen.WM_SP_BM = gpb.PRO_SELF_CODE AND sto.STO_DC_CODE = kucen.PRO_SITE )
+        LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( pp.CLIENT = gpb.CLIENT AND pp.GSPP_BR_ID = gpb.PRO_SITE AND
+        pp.GSPP_PRO_ID = gpb.PRO_SELF_CODE )
+        LEFT JOIN GAIA_ALLOT_PRICE ap ON(ap.CLIENT = gpb.CLIENT AND ap.ALP_RECEIVE_SITE = gpb.PRO_SITE AND
+        ap.ALP_PRO_CODE = gpb.PRO_SELF_CODE)
+        LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( gpb.CLIENT = ass.CLIENT AND gpb.PRO_SITE = ass.MAT_ASSESS_SITE AND
+        gpb.PRO_SELF_CODE = ass.MAT_PRO_CODE )
+        LEFT JOIN GAIA_TAX_CODE tc ON ( tc.TAX_CODE = gpb.PRO_INPUT_TAX AND tc.TAX_CODE_CLASS = '1' )
+        WHERE
+        gpb.CLIENT = #{client}
+        <if test="proSite != null and proSite != ''">
+            AND gpb.PRO_SITE = #{proSite}
+        </if>
+        <if test="mateType == 0">
+            <if test="proArr != null and proArr.length > 0 ">
+                <trim prefix="AND (" prefixOverrides="OR" suffix=")">
+                    <foreach collection="proArr" separator="OR" item="item">
+                        gpb.PRO_SELF_CODE LIKE '%${item}%'
+                        OR gpb.PRO_COMMONNAME LIKE '%${item}%'
+                        OR gpb.PRO_NAME LIKE '%${item}%'
+                        OR gpb.PRO_PYM LIKE '%${item}%'
+                        OR gpb.PRO_FACTORY_NAME LIKE '%${item}%'
+                        or gpb.PRO_REGISTER_NO like '%${item}%'
+                        OR gpb.PRO_BARCODE like '%${item}%'
+                    </foreach>
+                </trim>
+            </if>
+        </if>
+        <if test="mateType == 1">
+            <if test="proArr != null and proArr.length > 0">
+                and gpb.PRO_SELF_CODE IN
+                <foreach collection="proArr" open="(" separator="," item="item" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </if>
+        GROUP BY
+        gpb.CLIENT,
+        gpb.PRO_SELF_CODE
+        ORDER BY
+        gpb.PRO_SELF_CODE
+    </select>
+
+
+    <select id="queryProFourthlyByClinet" resultType="com.gys.entity.wk.vo.GetProductThirdlyOutData">
+        SELECT
+        gpb.PRO_SELF_CODE proCode,
+        gpb.PRO_COMMONNAME proCommonName,
+        gpb.PRO_NAME `name`,
+        gpb.PRO_PYM pym,
+        gpb.PRO_SPECS specs,
+        gpb.PRO_UNIT unit,
+        gpb.PRO_FORM form,
+        gpb.PRO_PLACE proPlace,
+        gpb.PRO_FACTORY_NAME proFactoryName,
+        gpb.PRO_REGISTER_NO approvalNo,
+        gpb.PRO_STORAGE_CONDITION proStorage,
+        gpb.PRO_CLASS proCategory,
+        gpb.PRO_CLASS_NAME proCategoryName,
+        MAX( kucen.WM_KYSL ) kysl,
+        ROUND(max(pp.GSPP_PRICE_NORMAL),2) priceNormal,
+        ROUND(ass.MAT_MOV_PRICE *( 100+( REPLACE ( tc.TAX_CODE_VALUE, '%', '' )))/100,2) unitPrice,
+        CONCAT(ROUND(IFNULL(
+        ap.ALP_ADD_AMT/(ass.MAT_MOV_PRICE *( 100+( REPLACE ( tc.TAX_CODE_VALUE, '%', '' ))))*10000, ap.ALP_ADD_RATE
+        ),2),'%') addRate,
+        ROUND(IFNULL(
+        ap.ALP_ADD_AMT+ass.MAT_MOV_PRICE *( 100+( REPLACE ( tc.TAX_CODE_VALUE, '%', '' )))/100, ass.MAT_MOV_PRICE *(
+        100+( REPLACE ( tc.TAX_CODE_VALUE, '%', '' )))*( 100+ap.ALP_ADD_RATE )/ 10000
+        ),2) addAmt,
+        CASE
+        WHEN gpb.PRO_IF_MED = '1' THEN
+        '是'
+        WHEN gpb.PRO_MED_ID IS NOT NULL THEN
+        '是' ELSE '否'
+        END ifMed
+        FROM
+        GAIA_PRODUCT_BUSINESS gpb
+        LEFT JOIN GAIA_STORE_DATA sto ON ( sto.CLIENT = gpb.CLIENT AND sto.STO_CODE = gpb.PRO_SITE )
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        WM_SP_BM,
+        PRO_SITE,
+        SUM( WM_KYSL ) WM_KYSL
+        FROM
+        GAIA_WMS_KUCEN
+        WHERE
+        CLIENT = #{client} GROUP BY WM_SP_BM
+        ) kucen ON ( kucen.CLIENT = gpb.CLIENT AND kucen.WM_SP_BM = gpb.PRO_SELF_CODE AND sto.STO_DC_CODE = kucen.PRO_SITE )
+        LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( pp.CLIENT = gpb.CLIENT AND pp.GSPP_BR_ID = gpb.PRO_SITE AND
+        pp.GSPP_PRO_ID = gpb.PRO_SELF_CODE )
+        LEFT JOIN GAIA_ALLOT_PRICE ap ON(ap.CLIENT = gpb.CLIENT AND ap.ALP_RECEIVE_SITE = gpb.PRO_SITE AND
+        ap.ALP_PRO_CODE = gpb.PRO_SELF_CODE)
+        LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( gpb.CLIENT = ass.CLIENT AND gpb.PRO_SITE = ass.MAT_ASSESS_SITE AND
+        gpb.PRO_SELF_CODE = ass.MAT_PRO_CODE )
+        LEFT JOIN GAIA_TAX_CODE tc ON ( tc.TAX_CODE = gpb.PRO_INPUT_TAX AND tc.TAX_CODE_CLASS = '1' )
+        WHERE
+        gpb.CLIENT = #{client}
+        <if test="mateType == 0">
+            <if test="proArr != null and proArr.length > 0 ">
+                <trim prefix="AND (" prefixOverrides="OR" suffix=")">
+                    <foreach collection="proArr" separator="OR" item="item">
+                        gpb.PRO_SELF_CODE LIKE '%${item}%'
+                        OR gpb.PRO_COMMONNAME LIKE '%${item}%'
+                        OR gpb.PRO_NAME LIKE '%${item}%'
+                        OR gpb.PRO_PYM LIKE '%${item}%'
+                        OR gpb.PRO_FACTORY_NAME LIKE '%${item}%'
+                        or gpb.PRO_REGISTER_NO like '%${item}%'
+                        OR gpb.PRO_BARCODE like '%${item}%'
+                    </foreach>
+                </trim>
+            </if>
+        </if>
+        <if test="mateType == 1">
+            <if test="proArr != null and proArr.length > 0">
+                AND gpb.PRO_SELF_CODE IN
+                <foreach collection="proArr" open="(" separator="," item="item" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </if>
+        GROUP BY
+        gpb.CLIENT,
+        gpb.PRO_SELF_CODE
+        ORDER BY
+        gpb.PRO_SELF_CODE
+    </select>
+
+    <select id="getProTssxByClient" resultType="com.gys.report.entity.ProductTssxOutData">
+        select PRO_TSSX code,
+               case PRO_TSSX when '1' then '防疫'
+               else '' end ProTssxName
+        from GAIA_PRODUCT_BUSINESS
+        where CLIENT = #{client} and PRO_TSSX is not null and PRO_TSSX != '' GROUP BY PRO_TSSX
+    </select>
+
+    <select id="getTestList" resultType="com.gys.entity.GaiaProductBusiness">
+        select * from GAIA_PRODUCT_BUSINESS where CLIENT = '10000005'
+    </select>
+</mapper>

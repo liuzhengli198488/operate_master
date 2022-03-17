@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.MibSetlInfoMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.MibSetlInfo">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="BR_ID" jdbcType="VARCHAR" property="brId" />
+    <id column="BILL_NO" jdbcType="VARCHAR" property="billNo" />
+    <id column="MSG_ID" jdbcType="VARCHAR" property="msgId" />
+    <result column="SETL_ID" jdbcType="VARCHAR" property="setlId" />
+    <result column="MDTRT_ID" jdbcType="VARCHAR" property="mdtrtId" />
+    <result column="PSN_NO" jdbcType="VARCHAR" property="psnNo" />
+    <result column="PSN_NAME" jdbcType="VARCHAR" property="psnName" />
+    <result column="PSN_CERT_TYPE" jdbcType="VARCHAR" property="psnCertType" />
+    <result column="CERTNO" jdbcType="VARCHAR" property="certno" />
+    <result column="GEND" jdbcType="VARCHAR" property="gend" />
+    <result column="NATY" jdbcType="VARCHAR" property="naty" />
+    <result column="BRDY" jdbcType="VARCHAR" property="brdy" />
+    <result column="AGE" jdbcType="VARCHAR" property="age" />
+    <result column="INSUTYPE" jdbcType="VARCHAR" property="insutype" />
+    <result column="PSN_TYPE" jdbcType="VARCHAR" property="psnType" />
+    <result column="CVLSERV_FLAG" jdbcType="VARCHAR" property="cvlservFlag" />
+    <result column="SETL_TIME" jdbcType="VARCHAR" property="setlTime" />
+    <result column="MDTRT_CERT_TYPE" jdbcType="VARCHAR" property="mdtrtCertType" />
+    <result column="MED_TYPE" jdbcType="VARCHAR" property="medType" />
+    <result column="MEDFEE_SUMAMT" jdbcType="VARCHAR" property="medfeeSumamt" />
+    <result column="FULAMT_OWNPAY_AMT" jdbcType="VARCHAR" property="fulamtOwnpayAmt" />
+    <result column="OVERLMT_SELFPAY" jdbcType="VARCHAR" property="overlmtSelfpay" />
+    <result column="PRESELFPAY_AMT" jdbcType="VARCHAR" property="preselfpayAmt" />
+    <result column="INSCP_SCP_AMT" jdbcType="VARCHAR" property="inscpScpAmt" />
+    <result column="ACT_PAY_DEDC" jdbcType="VARCHAR" property="actPayDedc" />
+    <result column="HIFP_PAY" jdbcType="VARCHAR" property="hifpPay" />
+    <result column="POOL_PROP_SELFPAY" jdbcType="VARCHAR" property="poolPropSelfpay" />
+    <result column="CVLSERV_PAY" jdbcType="VARCHAR" property="cvlservPay" />
+    <result column="HIFES_PAY" jdbcType="VARCHAR" property="hifesPay" />
+    <result column="HIFMI_PAY" jdbcType="VARCHAR" property="hifmiPay" />
+    <result column="HIFOB_PAY" jdbcType="VARCHAR" property="hifobPay" />
+    <result column="MAF_PAY" jdbcType="VARCHAR" property="mafPay" />
+    <result column="OTH_PAY" jdbcType="VARCHAR" property="othPay" />
+    <result column="FUND_PAY_SUMAMT" jdbcType="VARCHAR" property="fundPaySumamt" />
+    <result column="PSN_PART_AMT" jdbcType="VARCHAR" property="psnPartAmt" />
+    <result column="ACCT_PAY" jdbcType="VARCHAR" property="acctPay" />
+    <result column="PSN_CASH_PAY" jdbcType="VARCHAR" property="psnCashPay" />
+    <result column="CASH_PAYAMT" jdbcType="VARCHAR" property="cashPayamt" />
+    <result column="BALC" jdbcType="VARCHAR" property="balc" />
+    <result column="ACCT_MULAID_PAY" jdbcType="VARCHAR" property="acctMulaidPay" />
+    <result column="MEDINS_SETL_ID" jdbcType="VARCHAR" property="medinsSetlId" />
+    <result column="CLR_OPTINS" jdbcType="VARCHAR" property="clrOptins" />
+    <result column="CLR_WAY" jdbcType="VARCHAR" property="clrWay" />
+    <result column="CLR_TYPE" jdbcType="VARCHAR" property="clrType" />
+    <result column="PSN_PAY" jdbcType="VARCHAR" property="psnPay" />
+    <result column="STATE" jdbcType="VARCHAR" property="state" />
+    <result column="CZ_FLAG" jdbcType="VARCHAR" property="czFlag" />
+    <result column="CZ_DATE" jdbcType="VARCHAR" property="czDate" />
+    <result column="EMP_NAME" jdbcType="VARCHAR" property="empName" />
+    <result column="SETL_ID_RETURN" jdbcType="VARCHAR" property="setlIdReturn" />
+    <result column="OINF_NO" jdbcType="VARCHAR" property="oinfNo" />
+  </resultMap>
+
+  <select id="getSeltInfo" resultType="com.gys.entity.MibInfoOutData">
+    SELECT
+      di.BILL_NO billNo,
+      from_unixtime( di.BEGNTIME / 1000, '%Y-%m-%d %H:%i:%S' ) gsshDate,
+      di.MSG_ID msgId,
+      di.PSN_NO psnNo,
+      si.MDTRT_CERT_TYPE mdtrtCertType,
+      si.MEDFEE_SUMAMT medfeeSumamt,
+      si.FUND_PAY_SUMAMT fundPaySumamt,
+      si.ACCT_PAY acctPay,
+      si.CASH_PAYAMT cashPayamt,
+      ifnull(di.OINF_NO, si.OINF_NO) oinfNo,
+      di.MSG_ID omsgid,
+      si.SETL_ID setlId,
+      si.MDTRT_ID mdtrtId,
+      si.CLR_TYPE clrType,
+      CASE
+        WHEN si.BILL_NO IS NULL THEN
+          '4'
+        WHEN msg.GSSPM_BILL_NO IS NULL THEN
+          '2' ELSE si.STATE
+        END state,
+      si.CLR_OPTINS clrOptins,
+      ma.ADMVS_NAME clrOptinsName,
+      IF
+        ( di.CZ_FLAG = 'Y', '已冲正', '未冲正' ) czFlag,
+      di.CZ_DATE czDate,
+      if(ifnull(di.PSN_NAME,'') = '', si.PSN_NAME ,di.PSN_NAME) psnName,
+      CONCAT(ud.USER_NAM,'(',di.CZ_USER,')') czUser,
+      di.FAIL_MSG failMsg
+    FROM
+      MIB_DRUG_INFO di
+        LEFT JOIN MIB_SETL_INFO si ON di.CLIENT = si.CLIENT
+        AND di.BR_ID = si.BR_ID
+        AND di.BILL_NO = si.BILL_NO
+        AND di.MSG_ID = si.MSG_ID
+        LEFT JOIN GAIA_SD_SALE_H sh ON sh.CLIENT = di.CLIENT
+        AND sh.GSSH_BR_ID = di.BR_ID
+        AND sh.GSSH_BILL_NO = di.BILL_NO
+        LEFT JOIN GAIA_SD_SALE_PAY_MSG msg ON msg.CLIENT = di.CLIENT
+        AND msg.GSSPM_BR_ID = di.BR_ID
+        AND msg.GSSPM_BILL_NO = si.BILL_NO
+        AND msg.GSSPM_CARD_NO = si.SETL_ID
+        AND msg.GSSPM_ID ='4000'
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = di.CLIENT
+        AND ud.USER_ID = di.CZ_USER
+        LEFT JOIN MIB_ADMVS ma ON ma.ADMVS_CODE = CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' )
+        WHERE
+      di.CLIENT =    #{client}
+      AND di.BR_ID = #{stoCode}
+      AND ( from_unixtime( di.BEGNTIME / 1000, '%Y%m%d' ) BETWEEN #{startDate} AND #{endDate} )
+      AND ifnull( si.BILL_NO, '' ) != '999999999999'
+      AND ifnull( STATE, '' ) != '5'
+    UNION ALL
+    SELECT
+      si.BILL_NO gsshBillNo,
+      from_unixtime( si.SETL_TIME / 1000, '%Y-%m-%d %H:%i:%S' ) gsshDate,
+      si.MSG_ID msgId,
+      si.PSN_NO psnNo,
+      si.MDTRT_CERT_TYPE mdtrtCertType,
+      si.MEDFEE_SUMAMT medfeeSumamt,
+      si.FUND_PAY_SUMAMT fundPaySumamt,
+      si.ACCT_PAY acctPay,
+      si.CASH_PAYAMT cashPayamt,
+      ifnull(di.OINF_NO, si.OINF_NO) oinfNo,
+      si.MSG_ID omsgid,
+      si.SETL_ID setlId,
+      si.MDTRT_ID mdtrtId,
+      si.CLR_TYPE clrType,
+      si.STATE state,
+      si.CLR_OPTINS clrOptins,
+      ma.ADMVS_NAME clrOptinsName,
+      IF
+        ( di.CZ_FLAG = 'Y', '已冲正', '未冲正' ) czFlag,
+      di.CZ_DATE czDate,
+      if(ifnull(di.PSN_NAME,'') = '', si.PSN_NAME ,di.PSN_NAME) psnName,
+      CONCAT(ud.USER_NAM,'(',di.CZ_USER,')') czUser,
+      di.FAIL_MSG failMsg
+    FROM
+      MIB_SETL_INFO si
+        LEFT JOIN MIB_DRUG_INFO di ON di.CLIENT = si.CLIENT
+        AND di.BR_ID = si.BR_ID
+        AND di.BILL_NO = si.BILL_NO
+        AND di.MSG_ID = si.MSG_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = di.CLIENT
+        AND ud.USER_ID = di.CZ_USER
+        LEFT JOIN MIB_ADMVS ma ON ma.ADMVS_CODE = CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' )
+    WHERE
+      si.CLIENT =   #{client}
+      AND si.BR_ID =#{stoCode}
+      AND (ifnull( si.BILL_NO, '' ) = '999999999999' or STATE in ('1','3','5','6'))
+      AND (from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) BETWEEN #{startDate} AND #{endDate})
+  </select>
+  <select id="getSeltInfoSum" resultType="com.gys.entity.MibInfoOutData">
+    SELECT
+      si.INSUTYPE insutype,
+      si.CLR_TYPE clrType,
+      si.CLR_OPTINS clrOptins,
+      ma.ADMVS_NAME clrOptinsName,
+      from_unixtime( si.SETL_TIME / 1000, '%Y-%m-%d' ) gsshDate,
+      sum( cast(si.MEDFEE_SUMAMT as DECIMAL(10,2))) medfeeSumamt,
+      sum( cast(si.FUND_PAY_SUMAMT  as DECIMAL(10,2))) fundPaySumamt,
+      sum( cast(si.ACCT_PAY  as DECIMAL(10,2))) acctPay,
+      sum( cast(si.CASH_PAYAMT  as DECIMAL(10,2))) cashPayamt,
+      count( DISTINCT si.BILL_NO ) fixmedinsSetlCnt
+    FROM
+      MIB_SETL_INFO si
+        LEFT JOIN MIB_DRUG_INFO di ON si.CLIENT = di.CLIENT
+        AND si.BR_ID = di.BR_ID
+        AND si.BILL_NO = di.BILL_NO
+        AND di.MSG_ID = si.MSG_ID
+        LEFT JOIN MIB_ADMVS ma ON ma.ADMVS_CODE = CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' )
+    WHERE
+      si.CLIENT = #{client}
+      AND si.BR_ID = #{stoCode}
+      AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) = #{startDate}
+      AND si.STATE != '5'
+      AND IFNULL(di.CZ_FLAG,'') != 'Y'
+    GROUP BY
+      si.CLIENT,
+      si.BR_ID,
+      si.INSUTYPE,
+      si.CLR_TYPE,
+      CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' )
+  </select>
+  <select id="getSeltInfo3202" resultType="com.gys.entity.MibInfoOutData">
+    SELECT
+      si.BILL_NO gsshBillNo,
+      sh2.GSSH_BILL_NO gsshBillNo2,
+      si.MSG_ID msgId,
+      si.PSN_NO psnNo,
+      si.PSN_NAME psnName,
+      si.MDTRT_CERT_TYPE mdtrtCertType,
+      si.MEDFEE_SUMAMT +0 medfeeSumamt,
+      si.FUND_PAY_SUMAMT +0 fundPaySumamt,
+      si.ACCT_PAY +0 acctPay,
+      si.CASH_PAYAMT +0 cashPayamt,
+      si.MSG_ID omsgid,
+      si.SETL_ID setlId,
+      si.MDTRT_ID mdtrtId,
+      si.STATE state,
+      si.CLR_TYPE clrType,
+     si.MEDINS_SETL_ID medInsSetlId,
+           si.CLR_WAY clrWay,
+           si.MED_TYPE medType,
+      si.PSN_PAY psnPay,
+           si.ACCT_PAY acctPay,
+      from_unixtime( si.SETL_TIME / 1000, '%Y-%m-%d %H:%i:%S' ) gsshDate,
+      CASE
+
+        WHEN sh.GSSH_BILL_NO_RETURN IS NOT NULL THEN
+          '1'
+        WHEN sh2.GSSH_BILL_NO IS NOT NULL THEN
+          '1' ELSE '0'
+        END refdSetlFlag
+    FROM
+      MIB_SETL_INFO si
+        LEFT JOIN GAIA_SD_SALE_H sh ON si.CLIENT = sh.CLIENT
+        AND si.BR_ID = sh.GSSH_BR_ID
+        AND si.BILL_NO = sh.GSSH_BILL_NO
+        LEFT JOIN GAIA_SD_SALE_PAY_MSG msg ON msg.CLIENT = si.CLIENT
+        AND msg.GSSPM_BR_ID = si.BR_ID
+        AND msg.GSSPM_BILL_NO = si.BILL_NO
+        AND msg.GSSPM_CARD_NO = si.SETL_ID
+        AND msg.GSSPM_ID = '4000'
+        LEFT JOIN GAIA_SD_SALE_H sh2 ON sh2.CLIENT = sh.CLIENT
+        AND sh2.GSSH_BR_ID = sh.GSSH_BR_ID
+        AND sh2.GSSH_BILL_NO_RETURN = sh.GSSH_BILL_NO
+    WHERE
+      si.CLIENT =  #{client}
+      AND si.BR_ID = #{stoCode}
+      AND IFNULL( STATE, '' ) != '5'
+      AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) &gt;= #{startDate}
+      AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) &lt;= #{endDate}
+  </select>
+  <select id="getSeltInfoSumByHlj" resultType="com.gys.entity.MibInfoOutData">
+    SELECT
+      si.INSUTYPE insutype,
+      si.CLR_TYPE clrType,
+      si.CLR_OPTINS clrOptins,
+      ma.ADMVS_NAME clrOptinsName,
+      concat(#{startDate}, '-',#{endDate} ) gsshDate,
+      sum( cast(si.MEDFEE_SUMAMT as DECIMAL(10,2))) medfeeSumamt,
+      sum( cast(si.FUND_PAY_SUMAMT  as DECIMAL(10,2))) fundPaySumamt,
+      sum( cast(si.ACCT_PAY  as DECIMAL(10,2))) acctPay,
+      sum( cast(si.CASH_PAYAMT  as DECIMAL(10,2))) cashPayamt,
+      count( si.BILL_NO ) fixmedinsSetlCnt
+    FROM
+      MIB_SETL_INFO si
+        LEFT JOIN MIB_DRUG_INFO di ON si.CLIENT = di.CLIENT
+        AND si.BR_ID = di.BR_ID
+        AND si.BILL_NO = di.BILL_NO
+        AND di.MSG_ID = si.MSG_ID
+        LEFT JOIN MIB_ADMVS ma ON ma.ADMVS_CODE = CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' )
+    WHERE
+      si.CLIENT = #{client}
+      AND si.BR_ID = #{stoCode}
+      AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) &gt;= #{startDate}
+      AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) &lt;= #{endDate}
+      AND si.STATE != '5'
+    GROUP BY
+      si.CLIENT,
+      si.BR_ID,
+      si.INSUTYPE,
+      si.CLR_TYPE
+  </select>
+  <select id="getSeltInfoSumByHlj2" resultType="com.gys.entity.MibInfoOutData">
+    SELECT
+      si.INSUTYPE insutype,
+      si.CLR_TYPE clrType,
+      si.CLR_OPTINS clrOptins,
+      ma.ADMVS_NAME clrOptinsName,
+      concat(#{startDate}, '-',#{endDate} ) gsshDate,
+      sum( cast(si.MEDFEE_SUMAMT as DECIMAL(10,2))) medfeeSumamt,
+      sum( cast(si.FUND_PAY_SUMAMT  as DECIMAL(10,2))) fundPaySumamt,
+      sum( cast(si.ACCT_PAY  as DECIMAL(10,2))) acctPay,
+      sum( cast(si.CASH_PAYAMT  as DECIMAL(10,2))) cashPayamt,
+      count( si.BILL_NO ) fixmedinsSetlCnt
+    FROM
+      MIB_SETL_INFO si
+        LEFT JOIN MIB_DRUG_INFO di ON si.CLIENT = di.CLIENT
+        AND si.BR_ID = di.BR_ID
+        AND si.BILL_NO = di.BILL_NO
+        AND di.MSG_ID = si.MSG_ID
+        LEFT JOIN MIB_ADMVS ma ON ma.ADMVS_CODE = CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' )
+    WHERE
+      si.CLIENT = #{client}
+      AND si.BR_ID = #{stoCode}
+      AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) &gt;= #{startDate}
+      AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) &lt;= #{endDate}
+      AND si.STATE != '5'
+    GROUP BY
+      si.CLIENT,
+      si.BR_ID,
+      si.INSUTYPE,
+      si.CLR_TYPE,
+      si.CLR_OPTINS
+  </select>
+  <select id="selectStoPriceComparison" resultType="java.lang.String">
+    SELECT GSSP_PARA from GAIA_SD_SYSTEM_PARA where CLIENT = #{clientId} AND GSSP_ID = #{paramStr}
+    <if test="stoCode != null and stoCode != ''">
+      AND GSSP_BR_ID = #{stoCode}
+    </if>
+    limit 1
+  </select>
+    <select id="getSeltInfoSum2" resultType="com.gys.entity.MibInfoOutData">
+      SELECT
+        si.INSUTYPE insutype,
+        si.CLR_TYPE clrType,
+        si.CLR_OPTINS clrOptins,
+        ma.ADMVS_NAME clrOptinsName,
+        from_unixtime( si.SETL_TIME / 1000, '%Y-%m-%d' ) gsshDate,
+        sum(cast(si.MEDFEE_SUMAMT AS DECIMAL ( 10, 2 ))) medfeeSumamt,
+        sum(cast( si.FUND_PAY_SUMAMT AS DECIMAL ( 10, 2 ))) fundPaySumamt,
+        sum(cast(si.ACCT_PAY AS DECIMAL ( 10, 2 ))) acctPay,
+        sum(cast(si.CASH_PAYAMT AS DECIMAL ( 10, 2 ))) cashPayamt,
+        count( si.BILL_NO ) fixmedinsSetlCnt
+      FROM
+        MIB_SETL_INFO si
+          LEFT JOIN MIB_DRUG_INFO di ON si.CLIENT = di.CLIENT  AND si.BR_ID = di.BR_ID  AND si.BILL_NO = di.BILL_NO AND di.MSG_ID = si.MSG_ID
+          LEFT JOIN MIB_ADMVS ma ON ma.ADMVS_CODE = CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' )
+      WHERE
+        si.CLIENT = #{client}
+        AND si.BR_ID =  #{stoCode}
+        AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) <![CDATA[ >= ]]>  #{startDate}
+        AND from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) <![CDATA[ <= ]]>  #{endDate}
+        AND si.STATE != '5'
+    AND IFNULL( di.CZ_FLAG, '' ) != 'Y'
+      GROUP BY
+        si.CLIENT,
+        si.BR_ID,
+        si.INSUTYPE,
+        si.CLR_TYPE,
+        CONCAT( LEFT ( si.CLR_OPTINS, 4 ), '00' ),
+        from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' )
+      ORDER BY from_unixtime( si.SETL_TIME / 1000, '%Y%m%d' ) desc
+    </select>
+
+  <!--居民医保费用汇总-->
+    <select id="queryMedicalInsuranceSummary" resultType="com.gys.report.entity.vo.MedicalInsturanceSummaryVO">
+        SELECT
+        '门诊' as outpatient,
+        CASE
+	        WHEN
+		    msi.PSN_TYPE LIKE '15%'
+		    OR msi.PSN_TYPE LIKE '16%' THEN
+			    '普通成年人'
+		    WHEN msi.PSN_TYPE LIKE '14%' THEN
+			    '普通未成年人'
+		END AS personType ,
+
+        count(msi.PSN_TYPE) as  visits,
+      sum(cast(msi.MEDFEE_SUMAMT as decimal (10,2))) totalMedicalExpenses,
+      sum(cast(msi.HIFP_PAY as decimal (10,2))) as BasicFundPayments,
+      sum(cast(msi.HIFES_PAY as decimal (10,2))) supplementaryFundPayments,
+      sum(cast(msi.HIFMI_PAY as decimal (10,2))) criticalIllnessFundPayments,
+      sum(cast(msi.ACCT_PAY as decimal (10,2))) outpatientCompensationPayments,
+      0 hospitalPayments, <!-- 医院承担金额取值为0-->
+      sum(cast(msi.MAF_PAY as decimal (10,2))) medicalAidAmount
+        FROM
+	    MIB_SETL_INFO msi
+        where
+        CLIENT = #{clientId}
+        <if test="startDate != null and startDate != ''">
+            and from_unixtime( SETL_TIME / 1000, '%Y%m%d') &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and from_unixtime( SETL_TIME / 1000, '%Y%m%d') &lt;= #{endDate}
+       </if>
+        <if test = "stoCode != null and stoCode != ''">
+            and BR_ID = #{stoCode}
+        </if>
+	    GROUP by personType
+	    having personType is not null
+    </select>
+</mapper>

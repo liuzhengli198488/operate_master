@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.TichengProplanBasicMapper">
+
+    <select id="selectUserName" resultType="map" >
+        SELECT USER_ID userId, USER_NAM userName
+        FROM GAIA_USER_DATA
+        <where>
+            <if test="client!=null and client!=''">
+                AND CLIENT = #{client}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectStoreByStoreCodes" resultType="com.gys.common.data.CommonVo">
+        SELECT STO_CODE as lable, STO_NAME AS `value` from GAIA_STORE_DATA WHERE CLIENT = #{client}
+        <if test="stoArr != null and stoArr.size() > 0">
+            and STO_CODE  in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+</mapper>

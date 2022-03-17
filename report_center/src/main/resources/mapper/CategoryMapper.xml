@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.CategoryMapper">
+    <select id="categoryExecuteData" resultType="com.gys.entity.data.Category.CategoryExecuteResponse"
+            parameterType="com.gys.entity.data.Category.StoreTimeRequest">
+        SELECT
+        SUM( CASE WHEN APL_CON_TEXT = '1' THEN 1 ELSE 0 END ) recommendAdjust,
+        SUM( CASE WHEN APL_CON_TEXT = '2' THEN 1 ELSE 0 END ) recommendOut,
+        SUM( CASE WHEN APL_CON_TEXT = '3' THEN 1 ELSE 0 END ) recommendImport,
+        SUM(
+        CASE
+
+        WHEN APL_CON_TEXT = '1'
+        AND APL_CON_STU = '2'
+        AND EXISTS (
+        SELECT
+        1
+        FROM
+        GAIA_PRODUCT_CHANGE pc
+        WHERE
+        dataTemp.CLIENT = pc.CLIENT
+        AND dataTemp.APL_BR_ID = pc.PRO_SITE
+        AND dataTemp.APL_PRO_CODE = pc.PRO_SELF_CODE
+        ) THEN
+        1 ELSE 0
+        END
+        ) actualAdjust,
+        SUM(
+        CASE
+        WHEN APL_CON_TEXT = '2'
+        AND APL_CON_STU = '2'
+        AND EXISTS (
+        SELECT
+        1
+        FROM
+        GAIA_PRODUCT_CHANGE pc
+        WHERE
+        dataTemp.CLIENT = pc.CLIENT
+        AND dataTemp.APL_BR_ID = pc.PRO_SITE
+        AND dataTemp.APL_PRO_CODE = pc.PRO_SELF_CODE
+        ) THEN
+        1 ELSE 0
+        END
+        ) actualOut,
+        SUM( CASE WHEN APL_CON_TEXT = '3' AND APL_CON_STU = '2' THEN 1 ELSE 0 END ) actualImport
+
+        FROM
+        (
+        SELECT DISTINCT
+        CLIENT,
+        APL_BR_ID,
+        APL_PRO_CODE,
+        APL_CON_TEXT,
+        APL_CON_STU,
+        APL_CON_DATE
+        FROM
+        GAIA_AL_PL_CON
+        WHERE
+        CLIENT = #{client}
+        <if test="stoCode !=null and stoCode!=''">
+            AND APL_BR_ID = #{stoCode}
+        </if>
+        AND #{startDate} &lt;= DATE_FORMAT(APL_CON_DATE,'%Y-%m-%d') AND #{endDate} &gt;= DATE_FORMAT(APL_CON_DATE,'%Y-%m-%d')
+        ) AS dataTemp
+
+    </select>
+
+    <select id="categoryStatisticData" resultType="com.gys.entity.data.Category.CategoryStatisticResponse"
+            parameterType="com.gys.entity.data.Category.StoreTimeRequest">
+        SELECT
+        APL_CON_TEXT as type,
+        SUM( GSSD_AMT ) salesAmount,
+        SUM( TotalProfit ) profitAmount,
+        SUM( OrderCount ) orderCount
+        FROM
+        (
+        SELECT DISTINCT
+        APL_PRO_CODE,
+        APL_CON_TEXT,
+        APL_CON_STU
+        FROM
+        GAIA_AL_PL_CON apc
+        WHERE
+        CLIENT = #{client}
+        <if test="stoCode !=null and stoCode!=''">
+            AND APL_BR_ID = #{stoCode}
+        </if>
+        AND APL_CON_STU = 2
+        AND #{startDate} &lt;= DATE_FORMAT( APL_CON_DATE, '%Y-%m-%d' ) AND #{endDate} >= DATE_FORMAT( APL_CON_DATE, '%Y-%m-%d' )
+        AND (
+        APL_CON_TEXT = 3
+        OR EXISTS (
+        SELECT
+        1
+        FROM
+        GAIA_PRODUCT_CHANGE pc
+        WHERE
+        apc.CLIENT = pc.CLIENT
+        AND apc.APL_BR_ID = pc.PRO_SITE
+        AND apc.APL_PRO_CODE = pc.PRO_SELF_CODE
+        )
+        )
+        ) a -- 实际品类
+        INNER JOIN (
+        SELECT
+        GSSD_PRO_ID,
+        SUM( GSSD_AMT ) GSSD_AMT,-- 销售额
+        (SUM(GSSD_AMT)-SUM(GSSD_MOV_PRICE)) TotalProfit,-- 毛利额
+        COUNT(*) OrderCount -- 交易次数
+
+        FROM
+        GAIA_SD_SALE_D
+        WHERE
+        CLIENT = #{client}
+
+        <if test="stoCode !=null and stoCode!=''">
+            AND GSSD_BR_ID = #{stoCode}
+        </if>
+        AND DATE_FORMAT(GSSD_DATE, '%Y-%m-%d' ) &gt;= #{startDate} AND DATE_FORMAT(GSSD_DATE, '%Y-%m-%d' ) &lt;= #{endDate}
+        GROUP BY
+        GSSD_PRO_ID
+        ) b -- 订单统计
+        ON a.APL_PRO_CODE = b.GSSD_PRO_ID
+        GROUP BY
+        APL_CON_TEXT
+
+    </select>
+
+    <select id="supplierCostStatisticData" resultType="com.gys.entity.data.Category.SupplierCostStatisticResponse"
+            parameterType="com.gys.entity.data.Category.StoreTimeRequest">
+        SELECT
+        sb.SUP_SELF_CODE as supplierCode,
+        sb.SUP_NAME as supplierName,
+        IFNULL(SUM( MAT_QTY ),0) count,(
+        IFNULL(SUM( MAT_ADD_AMT ),0)+ IFNULL(SUM( MAT_ADD_TAX ),0)) cost,pic.proCount
+        FROM
+        (
+        SELECT
+        CLIENT,
+        MAT_SITE_CODE,
+        MAT_PO_ID,
+        MAT_QTY,
+        MAT_ADD_AMT,
+        MAT_ADD_TAX
+        FROM
+        GAIA_MATERIAL_DOC
+        WHERE
+        MAT_TYPE='CD'
+        AND CLIENT = #{client}
+        <if test="stoCode !=null and stoCode!=''">
+            AND MAT_SITE_CODE = #{stoCode}
+        </if>
+        AND DATE_FORMAT(MAT_POST_DATE,'%Y-%m-%d') >= #{startDate}
+        AND DATE_FORMAT(MAT_POST_DATE,'%Y-%m-%d') &lt;= #{endDate}
+        ) dataTemp
+        INNER JOIN GAIA_PO_HEADER ph ON dataTemp.CLIENT = ph.CLIENT
+        AND dataTemp.MAT_SITE_CODE = ph.PO_COMPANY_CODE
+        AND dataTemp.MAT_PO_ID = ph.PO_ID
+        INNER JOIN GAIA_SUPPLIER_BUSINESS sb ON ph.CLIENT = sb.CLIENT
+        AND ph.PO_COMPANY_CODE = sb.SUP_SITE
+        AND ph.PO_SUPPLIER_ID = sb.SUP_SELF_CODE
+        INNER JOIN (SELECT count(PO_PRO_CODE) proCount,PO_SUPPLIER_ID FROM ( select ph.PO_SUPPLIER_ID,pi.PO_PRO_CODE from GAIA_PO_ITEM pi
+        INNER JOIN GAIA_PO_HEADER ph on pi.CLIENT = ph.CLIENT AND pi.PO_SITE_CODE = ph.PO_COMPANY_CODE AND pi.PO_ID = ph.PO_ID
+        INNER JOIN GAIA_MATERIAL_DOC md ON md.CLIENT = ph.CLIENT AND md.MAT_SITE_CODE = ph.PO_COMPANY_CODE AND md.MAT_PO_ID = ph.PO_ID
+        WHERE md.MAT_TYPE = 'CD'
+        AND pi.CLIENT = #{client}
+        <if test="stoCode !=null and stoCode!=''">
+            AND pi.PO_SITE_CODE = #{stoCode}
+        </if>
+        AND DATE_FORMAT(md.MAT_POST_DATE,'%Y-%m-%d') >= #{startDate}
+        AND DATE_FORMAT(md.MAT_POST_DATE,'%Y-%m-%d') &lt;= #{endDate}
+        GROUP BY ph.PO_SUPPLIER_ID,pi.PO_PRO_CODE) a GROUP BY PO_SUPPLIER_ID ) pic ON sb.SUP_SELF_CODE = pic.PO_SUPPLIER_ID
+        GROUP BY
+        sb.CLIENT,
+        sb.SUP_SITE,
+        sb.SUP_SELF_CODE
+        ORDER BY
+        (
+        SUM( MAT_ADD_AMT )+ SUM( MAT_ADD_TAX )) DESC
+        LIMIT 10
+    </select>
+</mapper>

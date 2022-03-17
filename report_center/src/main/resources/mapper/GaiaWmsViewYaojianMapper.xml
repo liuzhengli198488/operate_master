@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaWmsViewYaojianMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaWmsViewYaojian">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <result column="SUPPLIERCODER" jdbcType="VARCHAR" property="suppliercoder" />
+    <result column="SUPPLIERNAME" jdbcType="VARCHAR" property="suppliername" />
+    <result column="COMMODITYCODE" jdbcType="VARCHAR" property="commoditycode" />
+    <result column="PRO_NAME" jdbcType="VARCHAR" property="proName" />
+    <result column="SPECIFICATIONS" jdbcType="VARCHAR" property="specifications" />
+    <result column="MANUFACTURER" jdbcType="VARCHAR" property="manufacturer" />
+    <result column="PRODUCTBATCHNO" jdbcType="VARCHAR" property="productbatchno" />
+    <result column="PRODUCTIONDATE" jdbcType="VARCHAR" property="productiondate" />
+    <result column="VALIDITYDATE" jdbcType="VARCHAR" property="validitydate" />
+    <result column="ISREPORT" jdbcType="INTEGER" property="isreport" />
+    <result column="CREATEUSER" jdbcType="VARCHAR" property="createuser" />
+    <result column="ACCEPTDATE" jdbcType="VARCHAR" property="acceptdate" />
+    <result column="UPLOADUSER" jdbcType="VARCHAR" property="uploaduser" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="PRO_SITE" jdbcType="VARCHAR" property="proSite" />
+    <result column="WM_YSR_ID" jdbcType="VARCHAR" property="wmYsrId" />
+  </resultMap>
+
+  <select id="getListByProductInfo" parameterType="com.gys.entity.data.YaoJianInData" resultType="com.gys.entity.data.YaoJianOutData">
+    SELECT
+      yj.COMMODITYCODE proCode,
+      yj.PRO_NAME proName,
+      yj.SPECIFICATIONS proSpecs,
+      pb.PRO_UNIT proUnit,
+      yj.MANUFACTURER proFactoryName,
+      yj.PRODUCTBATCHNO batchNo,
+      yj.VALIDITYDATE validityDate,
+      yj.ISREPORT isReport,
+      yj.SUPPLIERCODER supplierCoder,
+      yj.PRODUCTBATCHNO yjBatchNo
+    FROM GAIA_WMS_VIEW_YAOJIAN yj
+    LEFT JOIN GAIA_COMPADM_WMS cw ON yj.CLIENT = cw.CLIENT
+    LEFT JOIN GAIA_DC_DATA dc ON cw.CLIENT = dc.CLIENT AND cw.COMPADM_ID = dc.DC_CHAIN_HEAD
+    LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = yj.CLIENT
+      AND pb.PRO_SITE = yj.PRO_SITE
+      AND pb.PRO_SELF_CODE = yj.COMMODITYCODE
+    <where>
+      yj.CLIENT = #{client}
+      and yj.PRO_SITE = dc.DC_CODE
+      <if test="proCode != null and proCode != ''">
+        and yj.COMMODITYCODE like CONCAT('%',#{proCode},'%')
+      </if>
+      <if test="proName != null and proName != ''">
+        AND yj.PRO_NAME like CONCAT('%',#{proName},'%')
+      </if>
+      <if test="proPYM != null and proPYM != ''">
+        AND pb.PRO_PYM like CONCAT('%',#{proPYM},'%')
+      </if>
+      <if test="batchNo != null and batchNo != ''">
+        AND yj.PRODUCTBATCHNO like CONCAT('%',#{batchNo},'%')
+      </if>
+    </where>
+  </select>
+
+  <select id="getListByBillNo" parameterType="com.gys.entity.data.YaoJianInData" resultType="com.gys.entity.data.YaoJianOutData">
+    SELECT
+    dm.WM_PSDH billNo,
+    dm.WM_JHDH whereWmJhdh,
+    pb.PRO_SELF_CODE proCode,
+    pb.PRO_COMMONNAME proName,
+    pb.PRO_SPECS proSpecs,
+    pb.PRO_UNIT proUnit,
+    pb.PRO_FACTORY_NAME proFactoryName,
+    bi.BAT_BATCH_NO batchNo,
+    yj.PRODUCTBATCHNO yjBatchNo,
+    bi.BAT_EXPIRY_DATE validityDate,
+    yj.ISREPORT isReport,
+    yj.SUPPLIERCODER supplierCoder
+    FROM
+    (
+    select wb.WM_JHDH,wb.WM_PSDH, m.CLIENT, m.WM_SP_BM, m.WM_PCH,m.PRO_SITE from GAIA_WMS_BOCI wb
+    LEFT JOIN GAIA_WMS_DIAOBO_M m on wb.CLIENT = m.CLIENT and wb.PRO_SITE = m.PRO_SITE and wb.WM_PSDH = m.WM_PSDH
+    WHERE wb.CLIENT = #{client}
+    <if test="whereWmJhdh != null and whereWmJhdh != ''">
+      AND wb.WM_JHDH = #{whereWmJhdh}
+    </if>
+    ) dm
+    LEFT JOIN GAIA_COMPADM_WMS cw ON dm.CLIENT = cw.CLIENT
+    LEFT JOIN GAIA_DC_DATA dc ON cw.CLIENT = dc.CLIENT
+    AND cw.COMPADM_ID = dc.DC_CHAIN_HEAD
+    LEFT JOIN GAIA_BATCH_INFO bi ON dm.CLIENT = bi.CLIENT
+    AND dm.WM_PCH = bi.BAT_BATCH
+    AND dm.WM_SP_BM = bi.BAT_PRO_CODE
+    LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = bi.CLIENT
+    and pb.PRO_SITE = bi.BAT_SITE_CODE
+    AND pb.PRO_SELF_CODE = bi.BAT_PRO_CODE
+    LEFT JOIN GAIA_WMS_VIEW_YAOJIAN yj ON bi.CLIENT = yj.CLIENT
+    AND bi.BAT_PRO_CODE = yj.COMMODITYCODE
+    AND yj.PRODUCTBATCHNO = bi.BAT_BATCH_NO
+    AND bi.BAT_SITE_CODE = yj.PRO_SITE
+    WHERE
+      dm.CLIENT = #{client}
+      AND dm.PRO_SITE = dc.DC_CODE
+      AND pb.PRO_SELF_CODE is not null
+      <if test="billNo != null and billNo != ''">
+        AND dm.WM_PSDH = #{billNo}
+      </if>
+      <if test="proCode != null and proCode != ''">
+        and pb.PRO_SELF_CODE like CONCAT('%',#{proCode},'%')
+      </if>
+      <if test="proName != null and proName != ''">
+        AND pb.PRO_COMMONNAME like CONCAT('%',#{proName},'%')
+      </if>
+      <if test="proPYM != null and proPYM != ''">
+        AND pb.PRO_PYM like CONCAT('%',#{proPYM},'%')
+      </if>
+      <if test="batchNo != null and batchNo != ''">
+        AND bi.BAT_BATCH_NO like CONCAT('%',#{batchNo},'%')
+      </if>
+  </select>
+</mapper>

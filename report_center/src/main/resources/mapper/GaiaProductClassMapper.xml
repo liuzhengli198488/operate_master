@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.business.mapper.GaiaProductClassMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaProductClass">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="PRO_CLASS_CODE" jdbcType="VARCHAR" property="proClassCode" />
+    <id column="PRO_BIG_CLASS_CODE" jdbcType="VARCHAR" property="proBigClassCode" />
+    <id column="PRO_MID_CLASS_CODE" jdbcType="VARCHAR" property="proMidClassCode" />
+    <result column="PRO_BIG_CLASS_NAME" jdbcType="VARCHAR" property="proBigClassName" />
+    <result column="PRO_MID_CLASS_NAME" jdbcType="VARCHAR" property="proMidClassName" />
+    <result column="PRO_CLASS_NAME" jdbcType="VARCHAR" property="proClassName" />
+    <result column="PRO_CLASS_STATUS" jdbcType="VARCHAR" property="proClassStatus" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+
+</mapper>

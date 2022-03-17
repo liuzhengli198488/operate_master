@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdStoresGroupMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdStoresGroup">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSSG_ID" jdbcType="VARCHAR" property="gssgId" />
+    <id column="GSSG_BR_ID" jdbcType="VARCHAR" property="gssgBrId" />
+    <result column="GSSG_TYPE" jdbcType="VARCHAR" property="gssgType" />
+    <result column="GSSG_UPDATE_EMP" jdbcType="VARCHAR" property="gssgUpdateEmp" />
+    <result column="GSSG_UPDATE_DATE" jdbcType="VARCHAR" property="gssgUpdateDate" />
+    <result column="GSSG_UPDATE_TIME" jdbcType="VARCHAR" property="gssgUpdateTime" />
+    <result column="GSSG_NAME" jdbcType="VARCHAR" property="gssgName" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, GSSG_ID, GSSG_BR_ID, GSSG_TYPE, GSSG_UPDATE_EMP, GSSG_UPDATE_DATE, GSSG_UPDATE_TIME, 
+    GSSG_NAME, LAST_UPDATE_TIME
+  </sql>
+
+  <select id="selectStoreCategoryByClient" resultType="com.gys.report.entity.GaiaStoreCategoryType">
+    SELECT DISTINCT
+      gssg.GSSG_BR_ID gssgBrId,
+      gssg.GSSG_ID gssgId,
+      gssg.GSSG_TYPE gssgType,
+      gt.GSSG_TYPE_NAME  gssgTypeName,
+      gi.GSSG_ID_NAME  gssgIdName
+    FROM
+      GAIA_STORE_DATA c
+        LEFT JOIN GAIA_SD_STORES_GROUP gssg ON c.CLIENT = gssg.CLIENT AND c.STO_CODE = gssg.GSSG_BR_ID
+        LEFT JOIN (SELECT gssgs.CLIENT,gssgs.GSSG_TYPE,gssgs.GSSG_TYPE_NAME
+                   FROM GAIA_SD_STORES_GROUP_SET gssgs
+                   WHERE gssgs.CLIENT = #{clientId}
+                   GROUP  BY gssgs.GSSG_TYPE,gssgs.GSSG_TYPE_NAME ) gt ON gt.GSSG_TYPE = gssg.GSSG_TYPE
+        LEFT JOIN (SELECT gssgs.GSSG_TYPE,gssgs.GSSG_ID,gssgs.GSSG_ID_NAME
+                   FROM GAIA_SD_STORES_GROUP_SET gssgs
+                   WHERE gssgs.CLIENT = #{clientId}
+                   GROUP  BY gssgs.GSSG_ID,gssgs.GSSG_ID_NAME ) gi ON  gi.GSSG_TYPE = gssg.GSSG_TYPE AND gi.GSSG_ID = gssg.GSSG_ID
+    WHERE c.CLIENT = #{clientId} AND gt.CLIENT IS NOT NULL ORDER BY gssg.GSSG_BR_ID
+  </select>
+</mapper>

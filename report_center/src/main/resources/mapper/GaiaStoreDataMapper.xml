@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaStoreDataMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaStoreData">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="STO_CODE" jdbcType="VARCHAR" property="stoCode" />
+    <result column="STO_NAME" jdbcType="VARCHAR" property="stoName" />
+    <result column="STO_PYM" jdbcType="VARCHAR" property="stoPym" />
+    <result column="STO_SHORT_NAME" jdbcType="VARCHAR" property="stoShortName" />
+    <result column="STO_ATTRIBUTE" jdbcType="VARCHAR" property="stoAttribute" />
+    <result column="STO_DELIVERY_MODE" jdbcType="VARCHAR" property="stoDeliveryMode" />
+    <result column="STO_RELATION_STORE" jdbcType="VARCHAR" property="stoRelationStore" />
+    <result column="STO_STATUS" jdbcType="VARCHAR" property="stoStatus" />
+    <result column="STO_AREA" jdbcType="VARCHAR" property="stoArea" />
+    <result column="STO_OPEN_DATE" jdbcType="VARCHAR" property="stoOpenDate" />
+    <result column="STO_CLOSE_DATE" jdbcType="VARCHAR" property="stoCloseDate" />
+    <result column="STO_ADD" jdbcType="VARCHAR" property="stoAdd" />
+    <result column="STO_PROVINCE" jdbcType="VARCHAR" property="stoProvince" />
+    <result column="STO_CITY" jdbcType="VARCHAR" property="stoCity" />
+    <result column="STO_DISTRICT" jdbcType="VARCHAR" property="stoDistrict" />
+    <result column="STO_IF_MEDICALCARE" jdbcType="VARCHAR" property="stoIfMedicalcare" />
+    <result column="STO_IF_DTP" jdbcType="VARCHAR" property="stoIfDtp" />
+    <result column="STO_TAX_CLASS" jdbcType="VARCHAR" property="stoTaxClass" />
+    <result column="STO_DELIVERY_COMPANY" jdbcType="VARCHAR" property="stoDeliveryCompany" />
+    <result column="STO_CHAIN_HEAD" jdbcType="VARCHAR" property="stoChainHead" />
+    <result column="STO_TAX_SUBJECT" jdbcType="VARCHAR" property="stoTaxSubject" />
+    <result column="STO_TAX_RATE" jdbcType="VARCHAR" property="stoTaxRate" />
+    <result column="STO_NO" jdbcType="VARCHAR" property="stoNo" />
+    <result column="STO_LEGAL_PERSON" jdbcType="VARCHAR" property="stoLegalPerson" />
+    <result column="STO_QUA" jdbcType="VARCHAR" property="stoQua" />
+    <result column="STO_CRE_DATE" jdbcType="VARCHAR" property="stoCreDate" />
+    <result column="STO_CRE_TIME" jdbcType="VARCHAR" property="stoCreTime" />
+    <result column="STO_CRE_ID" jdbcType="VARCHAR" property="stoCreId" />
+    <result column="STO_MODI_DATE" jdbcType="VARCHAR" property="stoModiDate" />
+    <result column="STO_MODI_TIME" jdbcType="VARCHAR" property="stoModiTime" />
+    <result column="STO_MODI_ID" jdbcType="VARCHAR" property="stoModiId" />
+    <result column="STO_LOGO" jdbcType="VARCHAR" property="stoLogo" />
+    <result column="STOG_CODE" jdbcType="VARCHAR" property="stogCode" />
+    <result column="STO_LEADER" jdbcType="VARCHAR" property="stoLeader" />
+    <result column="STO_DC_CODE" jdbcType="VARCHAR" property="stoDcCode" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, STO_CODE, STO_NAME, STO_PYM, STO_SHORT_NAME, STO_ATTRIBUTE, STO_DELIVERY_MODE, 
+    STO_RELATION_STORE, STO_STATUS, STO_AREA, STO_OPEN_DATE, STO_CLOSE_DATE, STO_ADD, 
+    STO_PROVINCE, STO_CITY, STO_DISTRICT, STO_IF_MEDICALCARE, STO_IF_DTP, STO_TAX_CLASS, 
+    STO_DELIVERY_COMPANY, STO_CHAIN_HEAD, STO_TAX_SUBJECT, STO_TAX_RATE, STO_NO, STO_LEGAL_PERSON, 
+    STO_QUA, STO_CRE_DATE, STO_CRE_TIME, STO_CRE_ID, STO_MODI_DATE, STO_MODI_TIME, STO_MODI_ID, 
+    STO_LOGO, STOG_CODE, STO_LEADER, STO_DC_CODE
+  </sql>
+
+
+    <sql id="STORE_DATA" >
+        <trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+            <if test="stoGssgTypes!=null and stoGssgTypes.size">
+                EXISTS (
+                SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE sto.CLIENT = gssg.CLIENT AND sto.STO_CODE = gssg.GSSG_BR_ID
+                AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+                <foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+                    (#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+                </foreach>
+                )
+            </if>
+            <if test="stoAttributes!=null and stoAttributes.size">
+                OR sto.STO_ATTRIBUTE IN
+                <foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+                    #{stoAttribute}
+                </foreach>
+            </if>
+            <if test="stoAttribute==''" >
+                OR sto.STO_ATTRIBUTE IS NOT NULL AND sto.STO_ATTRIBUTE != ''
+            </if>
+            <if test="stoIfMedicals!=null and stoIfMedicals.size">
+                OR sto.STO_IF_MEDICALCARE IN
+                <foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+                    #{stoIfMedical}
+                </foreach>
+            </if>
+            <if test="stoIfMedical==''" >
+                OR sto.STO_IF_MEDICALCARE IS NOT NULL AND sto.STO_IF_MEDICALCARE != ''
+            </if>
+            <if test="stoTaxClasss!=null and stoTaxClasss.size">
+                OR sto.STO_TAX_CLASS IN
+                <foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+                    #{stoTaxClass}
+                </foreach>
+            </if>
+            <if test="stoTaxClass==''" >
+                OR sto.STO_TAX_CLASS IS NOT NULL AND sto.STO_TAX_CLASS != ''
+            </if>
+            <if test="stoIfDtps!=null and stoIfDtps.size">
+                OR sto.STO_IF_DTP IN
+                <foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+                    #{stoIfDtp}
+                </foreach>
+            </if>
+            <if test="stoIfDtp==''" >
+                OR sto.STO_IF_DTP IS NOT NULL AND sto.STO_IF_DTP != ''
+            </if>
+        </trim>
+    </sql>
+<!--    0901-->
+	<select id="getInventoryStore" resultType="com.gys.entity.data.InventoryInquiry.InventoryStore">
+      SELECT
+          a.*
+      FROM
+          (
+          SELECT
+              concat( 'sto_', sto.STO_CODE ) columnCode,
+              sto.STO_CODE siteCode,
+              IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) stoName,
+              '2' sort
+          FROM
+              GAIA_STORE_DATA sto
+          WHERE
+              CLIENT =#{client}
+        <if test="stoArr != null and stoArr.length > 0">
+            and STO_CODE  in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <include refid="STORE_DATA" />
+          UNION ALL
+          SELECT
+              concat ( 'dc_', DC_CODE ) siteCode,
+              DC_CODE siteCode,
+              DC_NAME stoName,
+              '1' sort
+          FROM
+              GAIA_DC_DATA
+          WHERE
+              CLIENT =#{client}
+        <if test="dcCode != null and dcCode != ''">
+            and DC_CODE = #{dcCode}
+        </if>
+          ) a
+          <where>
+              <if test="type != null and type != ''">
+                  and a.sort = #{type}
+              </if>
+
+
+          </where>
+      ORDER BY
+          a.sort,
+          a.siteCode
+    </select>
+
+    <select id="selectStoPriceComparison" resultType="java.lang.String">
+        SELECT GSSP_PARA from GAIA_SD_SYSTEM_PARA where CLIENT = #{clientId} AND GSSP_ID = #{paramStr}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSP_BR_ID = #{stoCode}
+        </if>
+        limit 1
+    </select>
+    <select id="selectStoreAndDcCodes" resultType="com.gys.entity.data.productMatch.StoreInfo">
+        SELECT CLIENT clientId,STO_CODE proSite,'store' site FROM GAIA_STORE_DATA WHERE CLIENT = #{clientId} UNION
+        SELECT CLIENT clientId,DC_CODE proSite,'dc' site  FROM GAIA_DC_DATA WHERE CLIENT = #{clientId}
+    </select>
+    <select id="selectStores" resultType="com.gys.entity.data.productMatch.StoreInfo">
+        SELECT CLIENT clientId,STO_CODE proSite,'store' site FROM GAIA_STORE_DATA WHERE CLIENT = #{clientId}
+    </select>
+    <select id="selectAreaNameByLevel" resultType="java.util.Map">
+        select AREA_ID areaId,AREA_NAME areaName FROM GAIA_AREA
+    </select>
+    <select id="selectClientName" resultType="java.util.Map">
+        SELECT CLIENT clientId,FRANC_NAME clientName FROM GAIA_FRANCHISEE
+    </select>
+    <select id="selectClientList" resultType="java.util.Map">
+        select CLIENT clientId,FRANC_NAME clientName FROM GAIA_FRANCHISEE
+        <where>
+            <if test="content != null and content != ''">
+                FRANC_NAME like concat('%',#{content},'%')
+            </if>
+        </where>
+        ORDER BY CLIENT;
+    </select>
+
+    <select id="getStoreData" resultType="com.gys.report.entity.StoreOutData">
+
+        SELECT
+            CLIENT as client,
+            STO_CODE as stoCode,
+            STO_SHORT_NAME as stoName,
+            STO_PYM as stoPym,
+            STO_SHORT_NAME as stoShortName,
+            STO_ATTRIBUTE as stoAttribute,
+            STO_DELIVERY_MODE as stoDeliveryMode,
+            STO_RELATION_STORE as stoRelationStore,
+            STO_STATUS as stoStatus,
+            STO_AREA as stoArea,
+            STO_OPEN_DATE as stoOpenDate,
+            STO_CLOSE_DATE as stoCloseDate,
+            STO_ADD as stoAdd,
+            STO_PROVINCE as stoProvince,
+            STO_CITY as stoCity,
+            STO_DISTRICT as stoDistrict,
+            STO_IF_MEDICALCARE as stoIfMedicalcare,
+            STO_IF_DTP as stoIfDtp,
+            STO_TAX_CLASS as stoTaxClass,
+            STO_DELIVERY_COMPANY  as stoDeliveryCompany,
+            STO_CHAIN_HEAD as stoChainHead,
+            STO_TAX_SUBJECT as stoTaxSubject,
+            STO_TAX_RATE as stoTaxRate,
+            STO_NO as stoNo,
+            STO_LEGAL_PERSON as stoLegalPerson ,
+            STO_QUA as stoQua ,
+            STO_CRE_DATE as stoCreDate,
+            STO_CRE_TIME as stoCreTime,
+            STO_CRE_ID as stoCreId,
+            STO_MODI_DATE as stoModiDate,
+            STO_MODI_TIME as stoModiTime,
+            STO_MODI_ID as stoModiId,
+            STO_LOGO as stoLogo,
+            STOG_CODE as stogCode,
+            STO_LEADER as stoLeader,
+            STO_DC_CODE as stoDcCode
+        FROM
+            GAIA_STORE_DATA
+        WHERE
+            CLIENT = #{client} AND STO_STATUS = '0' AND STO_CODE = #{brId}
+    </select>
+
+    <select id="getStores" resultType="com.gys.entity.data.xhl.vo.StoreData">
+        SELECT
+        STO_CODE stoCode,
+        STO_NAME  stoName
+        FROM GAIA_STORE_DATA
+        where  STO_CODE like  concat('%',#{store},'%') or STO_NAME like  concat('%',#{store},'%')
+    </select>
+
+    <select id="getStoreCodeByStoClass" parameterType="com.gys.report.entity.InventoryChangeCheckInData"
+            resultType="com.gys.report.entity.StoClassOutData">
+        SELECT
+        sto.STO_CODE stoCode,
+        sto.STO_ATTRIBUTE stoAttribute,
+        sto.STO_IF_DTP stoIfDtp,
+        sto.STO_IF_MEDICALCARE stoIfMedicalcare,
+        sto.STO_TAX_CLASS stoTaxClass
+        FROM
+        GAIA_STORE_DATA sto
+        WHERE
+        CLIENT =#{client}
+        <include refid="STORE_CLASS" />
+    </select>
+
+    <sql id="STORE_CLASS" >
+        <trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+            <if test="stoGssgTypes!=null and stoGssgTypes.size">
+                EXISTS (
+                SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE sto.CLIENT = gssg.CLIENT AND sto.STO_CODE = gssg.GSSG_BR_ID
+                AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+                <foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+                    (#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+                </foreach>
+                )
+            </if>
+            <if test="stoAttributes!=null and stoAttributes.size">
+                OR sto.STO_ATTRIBUTE IN
+                <foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+                    #{stoAttribute}
+                </foreach>
+            </if>
+            <if test="stoAttribute==''" >
+                OR sto.STO_ATTRIBUTE IS NOT NULL AND sto.STO_ATTRIBUTE != ''
+            </if>
+            <if test="stoIfMedicals!=null and stoIfMedicals.size">
+                OR sto.STO_IF_MEDICALCARE IN
+                <foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+                    #{stoIfMedical}
+                </foreach>
+            </if>
+            <if test="stoIfMedical==''" >
+                OR sto.STO_IF_MEDICALCARE IS NOT NULL AND sto.STO_IF_MEDICALCARE != ''
+            </if>
+            <if test="stoTaxClasss!=null and stoTaxClasss.size">
+                OR sto.STO_TAX_CLASS IN
+                <foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+                    #{stoTaxClass}
+                </foreach>
+            </if>
+            <if test="stoTaxClass==''" >
+                OR sto.STO_TAX_CLASS IS NOT NULL AND sto.STO_TAX_CLASS != ''
+            </if>
+            <if test="stoIfDtps!=null and stoIfDtps.size">
+                OR sto.STO_IF_DTP IN
+                <foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+                    #{stoIfDtp}
+                </foreach>
+            </if>
+            <if test="stoIfDtp==''" >
+                OR sto.STO_IF_DTP IS NOT NULL AND sto.STO_IF_DTP != ''
+            </if>
+        </trim>
+    </sql>
+
+</mapper>

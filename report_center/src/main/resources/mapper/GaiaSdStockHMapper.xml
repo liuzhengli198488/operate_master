@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdStockHMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdStockH">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSS_BR_ID" jdbcType="VARCHAR" property="gssBrId" />
+    <id column="GSS_PRO_ID" jdbcType="VARCHAR" property="gssProId" />
+    <id column="MAT_ASSESS_YEAR" jdbcType="VARCHAR" property="matAssessYear" />
+    <id column="MAT_ASSESS_MONTH" jdbcType="VARCHAR" property="matAssessMonth" />
+    <result column="GSS_QTY" jdbcType="DECIMAL" property="gssQty" />
+    <result column="GSS_UPDATE_DATE" jdbcType="VARCHAR" property="gssUpdateDate" />
+    <result column="GSS_UPDATE_EMP" jdbcType="VARCHAR" property="gssUpdateEmp" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, GSS_BR_ID, GSS_PRO_ID, MAT_ASSESS_YEAR, MAT_ASSESS_MONTH, GSS_QTY, GSS_UPDATE_DATE, 
+    GSS_UPDATE_EMP, LAST_UPDATE_TIME
+  </sql>
+  <select id="selectEndingInventoryByPro"
+          resultType="com.gys.entity.data.InventoryInquiry.EndingInventoryOutData">
+  SELECT
+	tab.siteCode,
+	tab.siteName,
+	tab.proCode,
+	tab.recordDate,
+	pb.PRO_NAME proName,
+	pb.PRO_COMMONNAME proCommonName,
+	pb.PRO_BARCODE proBarcode,
+	ROUND(sum( tab.qty ),2) qty,
+	pb.PRO_FACTORY_NAME factory,
+	pb.PRO_PLACE origin,
+	pb.PRO_FORM dosageForm,
+	pb.PRO_UNIT unit,
+	pb.PRO_SPECS format,
+	pb.PRO_REGISTER_NO approvalNum,
+	IF(pb.PRO_IF_WHOLESALE ='1' ,'是','否') noWholesale,
+	concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+	concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+	concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+	ROUND(sum( cost ),2) cost,
+	ROUND(sum( taxes ),2) taxes,
+	ROUND(sum( includeTax),2) includeTax,
+    tab.stoAttribute,
+    tab.stoIfDtp,
+    tab.stoIfMedical,
+    tab.stoTaxClass
+FROM
+	(
+	SELECT
+		sb.CLIENT client,
+		sb.GSS_BR_ID siteCode,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName,
+		sb.GSS_PRO_ID proCode,
+		concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate,
+		sb.GSS_QTY qty,
+		ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS cost,
+		ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS taxes,
+		( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS includeTax,
+		'store' site,
+	    sto.STO_ATTRIBUTE stoAttribute,
+	    sto.STO_IF_DTP stoIfDtp,
+	    sto.STO_IF_MEDICALCARE stoIfMedical,
+	    sto.STO_TAX_CLASS stoTaxClass
+	FROM
+		GAIA_SD_STOCK_H sb
+		LEFT JOIN GAIA_STORE_DATA sto ON sb.CLIENT = sto.CLIENT
+		AND sb.GSS_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON sb.CLIENT = ass.CLIENT
+		AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE
+		AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE
+		AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR
+        AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+
+    WHERE
+    sb.CLIENT = #{clientId}
+    <if test="recordDate != null and recordDate !=''">
+      and concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH )  = #{recordDate}
+    </if>
+      <if test="siteArr != null and siteArr.length > 0">
+        and sb.GSS_BR_ID  in
+        <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="proArr != null and proArr.length > 0">
+        and sb.GSS_PRO_ID  in
+        <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+    UNION ALL
+	SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE siteCode,
+		dc.DC_NAME siteName,
+		kc.WM_SP_BM proCode,
+		kc.WM_TBSJ recordDate,
+		kc.WM_KCSL qty,
+		ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost,
+		ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes,
+	  	(ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax,
+		'dc' site,
+	    "" stoAttribute,
+	    "" stoIfDtp,
+	    "" stoIfMedical,
+	    "" stoTaxClass
+	FROM
+		GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc ON kc.CLIENT = dc.CLIENT
+		AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON kc.CLIENT = ass.CLIENT
+		AND kc.PRO_SITE = ass.MAT_ASSESS_SITE
+		AND kc.WM_SP_BM = ass.MAT_PRO_CODE
+        AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat(ass.MAT_ASSESS_YEAR,ass.MAT_ASSESS_MONTH)
+    WHERE
+      kc.CLIENT = #{clientId}
+	  <if test="dcDate != null and dcDate !=''">
+		  and kc.WM_TBSJ  = #{dcDate}
+	  </if>
+    <if test="siteArr != null and siteArr.length > 0">
+        and kc.PRO_SITE  in
+        <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="proArr != null and proArr.length > 0">
+        and kc.WM_SP_BM  in
+        <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      	) tab
+	LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.client = pb.CLIENT
+	AND tab.siteCode = pb.PRO_SITE
+	AND tab.proCode = pb.PRO_SELF_CODE
+	LEFT JOIN (
+	SELECT
+		*
+	FROM
+		(
+		SELECT
+			PRO_BIG_CLASS_CODE AS classId,
+			PRO_BIG_CLASS_CODE,
+			PRO_BIG_CLASS_NAME,
+			NULL AS PRO_MID_CLASS_CODE,
+			NULL AS PRO_MID_CLASS_NAME,
+			NULL AS PRO_CLASS_CODE,
+			NULL AS PRO_CLASS_NAME
+		FROM
+			GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+			PRO_MID_CLASS_CODE AS classId,
+			PRO_BIG_CLASS_CODE,
+			PRO_BIG_CLASS_NAME,
+			PRO_MID_CLASS_CODE,
+			PRO_MID_CLASS_NAME,
+			NULL AS PRO_CLASS_CODE,
+			NULL AS PRO_CLASS_NAME
+		FROM
+			GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+			PRO_CLASS_CODE AS classId,
+			PRO_BIG_CLASS_CODE,
+			PRO_BIG_CLASS_NAME,
+			PRO_MID_CLASS_CODE,
+			PRO_MID_CLASS_NAME,
+			PRO_CLASS_CODE,
+			PRO_CLASS_NAME
+		FROM
+			GAIA_PRODUCT_CLASS
+		) proClass
+	GROUP BY
+		classId
+	) pc ON pc.classId = pb.PRO_CLASS
+    <where>
+      <if test="factory != null and factory != ''">
+        AND (pb.PRO_FACTORY_CODE LIKE '%${factory}%' OR pb.PRO_FACTORY_NAME LIKE '%${factory}%')
+      </if>
+      <if test="classArrs != null and classArrs.size > 0">
+        and pb.PRO_CLASS  in
+        <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+		<include refid="STORE_CLASS_PRO" />
+    </where>
+GROUP BY
+	tab.recordDate,
+	tab.siteCode,
+	tab.proCode
+	  HAVING
+	   qty != 0
+	ORDER BY
+	  tab.recordDate,
+	  tab.siteCode,
+	  tab.proCode
+  </select>
+
+	<sql id="STORE_CLASS_PRO" >
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+			<if test="stoGssgTypes!=null and stoGssgTypes.size">
+				EXISTS (
+				SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE tab.CLIENT = gssg.CLIENT AND tab.siteCode = gssg.GSSG_BR_ID
+				AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+				<foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+					(#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+				</foreach>
+				)
+			</if>
+			<if test="stoAttributes!=null and stoAttributes.size">
+				OR tab.stoAttribute IN
+				<foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+					#{stoAttribute}
+				</foreach>
+			</if>
+			<if test="stoAttribute==''" >
+				OR tab.stoAttribute IS NOT NULL AND tab.stoAttribute != ''
+			</if>
+			<if test="stoIfMedicals!=null and stoIfMedicals.size">
+				OR tab.stoIfMedical IN
+				<foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+					#{stoIfMedical}
+				</foreach>
+			</if>
+			<if test="stoIfMedical==''" >
+				OR tab.stoIfMedical IS NOT NULL AND tab.stoIfMedical != ''
+			</if>
+			<if test="stoTaxClasss!=null and stoTaxClasss.size">
+				OR tab.stoTaxClass IN
+				<foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+					#{stoTaxClass}
+				</foreach>
+			</if>
+			<if test="stoTaxClass==''" >
+				OR tab.stoTaxClass IS NOT NULL AND tab.stoTaxClass != ''
+			</if>
+			<if test="stoIfDtps!=null and stoIfDtps.size">
+				OR tab.stoIfDtp IN
+				<foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+					#{stoIfDtp}
+				</foreach>
+			</if>
+			<if test="stoIfDtp==''" >
+				OR tab.stoIfDtp IS NOT NULL AND tab.stoIfDtp != ''
+			</if>
+		</trim>
+	</sql>
+
+</mapper>

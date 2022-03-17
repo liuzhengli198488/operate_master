@@ -1,0 +1,631 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdPhysicalCountDiffMapper">
+
+     <select id="getDifferenceResultDetailedQuery"
+             resultType="com.gys.report.entity.DifferenceResultDetailedQueryOutData"
+             parameterType="com.gys.report.entity.DifferenceResultQueryInVo">
+         SELECT
+         ent.GSISH_BR_ID AS brId,
+         GPB.PRO_SPECS AS proSpecs,
+         GPB.PRO_FACTORY_NAME AS proFactoryName,
+         doc.MAT_DOC_DATE AS gspcExamineDate,
+         GPB.PRO_COMMONNAME as proCommonname,
+         st.STO_SHORT_NAME AS brName,
+         GPB.PRO_SELF_CODE AS proCode,
+         cou.GSPC_VOUCHER_ID AS inventoryOrderNumber,
+         GPB.PRO_NAME AS proName,
+         IF( PRC.PRICE IS NOT NULL,PRC.PRICE,GPB.PRO_LSJ) AS retailPrice,
+         CASE
+         tax.STO_TAX_CLASS
+         WHEN '1' THEN
+         '一般纳税人'
+         WHEN '2' THEN
+         '小规模纳税人'
+         WHEN '3' THEN
+         '个体工商户'
+         END AS taxAttributes,
+         round( CASE doc.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( doc.MAT_RATE_MOV, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_RATE_MOV ), DECIMAL ( 10, 4 ) )  END, 2  ) AS tax,
+         round( CASE doc.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( doc.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_QTY ), DECIMAL ( 10, 4 ) )  END, 2  ) AS numberOfDifferences,
+         doc.MAT_POST_DATE AS postingDate,
+         round( CASE doc.MAT_DEBIT_CREDIT WHEN 'S' THEN CONVERT ( doc.MAT_MOV_AMT, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_MOV_AMT ), DECIMAL ( 10, 4 ) )  END, 	2  ) AS varianceCost,
+         round( IF(st.STO_CODE IS NOT NULL AND PRC.PRICE IS NOT NULL,PRC.PRICE,GPB.PRO_LSJ) * round( CASE doc.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( doc.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_QTY ), DECIMAL ( 10, 4 ) )  END, 2  ), 2  ) AS differentialRetailSales,
+         CASE WHEN GPB.PRO_CLASS = '301' THEN 'Y' ELSE 'N'  END CMNAME,
+         doc.MAT_BATCH
+         FROM
+         GAIA_SD_INCOME_STATEMENT_H ent
+         LEFT JOIN (
+             SELECT CLIENT,
+                    GSPC_BR_ID,
+                    GSPC_VOUCHER_ID,
+                    GSPC_PRO_ID
+             FROM GAIA_SD_PHYSICAL_COUNTING
+             GROUP BY CLIENT, GSPC_BR_ID, GSPC_VOUCHER_ID, GSPC_PRO_ID
+             ) cou ON ( ent.CLIENT = cou.CLIENT AND ent.GSISH_BR_ID = cou.GSPC_BR_ID AND ent.GSISH_PC_VOUCHER_ID = cou.GSPC_VOUCHER_ID )
+         LEFT JOIN GAIA_MATERIAL_DOC doc ON (cou.CLIENT = doc.CLIENT  AND ent.GSISH_VOUCHER_ID = doc.MAT_DN_ID  AND cou.GSPC_BR_ID = doc.MAT_SITE_CODE  AND cou.GSPC_PRO_ID = doc.MAT_PRO_CODE)
+         LEFT JOIN GAIA_PRODUCT_BUSINESS GPB ON ( GPB.CLIENT = ent.CLIENT  AND GPB.PRO_SITE = cou.GSPC_BR_ID  AND GPB.PRO_SELF_CODE = cou.GSPC_PRO_ID)
+         LEFT JOIN GAIA_STORE_DATA st ON ( st.CLIENT = ent.CLIENT AND st.STO_CODE = ent.GSISH_BR_ID )
+         LEFT JOIN (
+             SELECT
+                    CLIENT,
+                    STO_CODE,
+                    STO_TAX_CLASS
+             FROM GAIA_STORE_TAX
+             WHERE CLIENT = #{client}
+             GROUP BY CLIENT, STO_CODE
+             ) tax ON ( tax.CLIENT = ent.CLIENT AND tax.STO_CODE = ent.GSISH_BR_ID )
+         LEFT JOIN (
+         SELECT
+         GSPP.CLIENT,
+         GSPP.GSPP_PRO_ID,
+         SUBSTRING_INDEX( GROUP_CONCAT( GSPP.GSPP_PRICE_NORMAL ORDER BY GSPP.GSPP_BR_ID ), ',', 1 ) PRICE
+         FROM
+         GAIA_SD_PRODUCT_PRICE GSPP
+         WHERE
+         CLIENT = #{client}
+
+         GROUP BY
+         GSPP.CLIENT,
+         GSPP.GSPP_PRO_ID
+         ) PRC ON PRC.CLIENT = ent.CLIENT
+         AND PRC.GSPP_PRO_ID = cou.GSPC_PRO_ID
+         WHERE
+         ent.CLIENT = #{client}
+         AND ent.GSISH_IS_TYPE = '1'
+
+         <if test="proArr != null and proArr.length > 0">
+             and  GPB.PRO_SELF_CODE in
+             <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                 #{item}
+             </foreach>
+         </if>
+
+         <if test="brSite != null and brSite != ''">
+             and ent.GSISH_BR_ID =#{brSite}
+         </if>
+
+         <if test="gspcVoucherId != null and gspcVoucherId != ''">
+             and cou.GSPC_VOUCHER_ID =#{gspcVoucherId}
+         </if>
+         <if test="startDate != null and startDate != ''">
+             AND ent.GSISH_DATE <![CDATA[>=]]> #{startDate}
+         </if>
+         <if test="endDate != null and endDate != ''">
+             AND ent.GSISH_DATE <![CDATA[<=]]> #{endDate}
+         </if>
+         and doc.MAT_PRO_CODE is not null
+         and cou.GSPC_VOUCHER_ID is not null
+         and GPB.PRO_SELF_CODE is not null
+
+         UNION
+
+         SELECT
+         GWSZ.PRO_SITE AS brId,
+         GPB.PRO_SPECS AS proSpecs,
+         GPB.PRO_FACTORY_NAME AS proFactoryName,
+         GMD.MAT_DOC_DATE AS gspcExamineDate,
+         GPB.PRO_COMMONNAME as proCommonname,
+         GDD.DC_NAME AS brName,
+         GMD.MAT_PRO_CODE AS proCode,
+         GWPM.WM_PDRWDH AS inventoryOrderNumber,
+         GPB.PRO_COMMONNAME AS proName,
+         GPB.PRO_LSJ AS retailPrice,
+         '一般纳税人' AS taxAttributes,
+         round( CASE GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( GMD.MAT_RATE_MOV, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_RATE_MOV ), DECIMAL ( 10, 4 ) )  END, 2  ) AS tax,
+         round(  CASE GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( GMD.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_QTY ), DECIMAL ( 10, 4 ) )  END,  2 ) AS numberOfDifferences,
+         GMD.MAT_POST_DATE AS postingDate,
+         round( CASE  GMD.MAT_DEBIT_CREDIT WHEN 'S' THEN CONVERT ( GMD.MAT_MOV_AMT, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_MOV_AMT ), DECIMAL ( 10, 4 ) ) END, 2 ) AS varianceCost,
+         round(GPB.PRO_LSJ* round( CASE  GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( GMD.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_QTY ), DECIMAL ( 10, 4 ) ) END,  2  ),2) AS differentialRetailSales ,
+         CASE WHEN GPB.PRO_CLASS = '301' THEN 'Y' ELSE 'N' END CMNAME,
+         GMD.MAT_BATCH
+         FROM GAIA_WMS_SUNYI_Z GWSZ
+         LEFT JOIN (
+             SELECT
+                 CLIENT,
+                 PRO_SITE,
+                 WM_SP_BM,
+                 WM_PCH,
+                 WM_SYDH,
+                 WM_LYDH
+             FROM GAIA_WMS_SUNYI_M
+             WHERE CLIENT = #{client}
+             GROUP BY CLIENT, PRO_SITE, WM_SP_BM,WM_SYDH
+             ) GWSM ON GWSM.CLIENT = GWSZ.CLIENT AND GWSM.PRO_SITE = GWSZ.PRO_SITE AND GWSM.WM_SYDH = GWSZ.WM_SYDH
+         LEFT JOIN (
+             select
+                 CLIENT,
+                 PRO_SITE,
+                 WM_PDRWDH,
+                 WM_SP_BM
+             from GAIA_WMS_PANDIAN_M
+             GROUP BY CLIENT,PRO_SITE,WM_SP_BM,WM_PDRWDH
+             ) GWPM ON GWSM.CLIENT = GWPM.CLIENT AND GWSM.PRO_SITE = GWPM.PRO_SITE AND GWSM.WM_LYDH = GWPM.WM_PDRWDH AND GWSM.WM_SP_BM = GWPM.WM_SP_BM
+         LEFT JOIN GAIA_MATERIAL_DOC GMD ON GWSM.CLIENT = GMD.CLIENT AND GWSM.WM_SYDH = GMD.MAT_DN_ID AND GWSM.PRO_SITE = GMD.MAT_SITE_CODE AND GWSM.WM_SP_BM = GMD.MAT_PRO_CODE AND GWSM.WM_PCH  = GMD.MAT_BATCH
+         LEFT JOIN GAIA_DC_DATA GDD ON GDD.CLIENT = GWSZ.CLIENT AND GDD.DC_CODE = GWSZ.PRO_SITE
+         LEFT JOIN GAIA_PRODUCT_BUSINESS GPB ON GPB.CLIENT = GWSM.CLIENT AND GPB.PRO_SITE = GWSM.PRO_SITE AND GPB.PRO_SELF_CODE = GWSM.WM_SP_BM
+         LEFT JOIN GAIA_SD_INCOME_STATEMENT_H ent ON ( GPB.CLIENT = ent.CLIENT and GWSZ.PRO_SITE = ent.GSISH_BR_ID)
+         LEFT JOIN GAIA_SD_PHYSICAL_COUNTING cou ON ( ent.CLIENT = cou.CLIENT AND ent.GSISH_BR_ID = cou.GSPC_BR_ID AND ent.GSISH_PC_VOUCHER_ID = cou.GSPC_VOUCHER_ID )
+         LEFT JOIN (
+         SELECT GSPP.CLIENT,GSPP.GSPP_PRO_ID,
+         SUBSTRING_INDEX(GROUP_CONCAT( GSPP.GSPP_PRICE_NORMAL ORDER BY GSPP.GSPP_BR_ID),',',1) PRICE
+         FROM GAIA_SD_PRODUCT_PRICE GSPP
+         WHERE CLIENT= #{client}
+         GROUP BY GSPP.CLIENT,GSPP.GSPP_PRO_ID
+         ) PRC ON PRC.CLIENT= GWSZ.CLIENT AND PRC.GSPP_PRO_ID=GWSM.WM_SP_BM
+         WHERE
+         GWSZ.CLIENT = #{client}
+
+         <if test="proArr != null and proArr.length > 0">
+             and  GMD.MAT_PRO_CODE in
+             <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                 #{item}
+             </foreach>
+         </if>
+
+         <if test="brSite != null and brSite != ''">
+             and ent.GSISH_BR_ID =#{brSite}
+         </if>
+
+         <if test="gspcVoucherId != null and gspcVoucherId != ''">
+             and cou.GSPC_VOUCHER_ID =#{gspcVoucherId}
+         </if>
+
+         <if test="startDate != null and startDate != ''">
+             AND GWSZ.WM_CJRQ <![CDATA[>=]]> #{startDate}
+         </if>
+         <if test="endDate != null and endDate != ''">
+             AND GWSZ.WM_CJRQ <![CDATA[<=]]> #{endDate}
+         </if>
+         and GMD.MAT_PRO_CODE is not null
+         and GWPM.WM_PDRWDH is not null
+         AND GWSZ.WM_SFSP = '0'
+         AND GWSZ.WM_SFTG = '0'
+         ORDER BY numberOfDifferences DESC
+     </select>
+    <select id="getDcData" resultType="com.gys.report.entity.GaiaDcData">
+SELECT
+	CLIENT AS client,
+	DC_CODE AS dcCode,
+	DC_NAME AS dcName,
+	DC_PYM AS dcPym,
+	DC_SHORT_NAME AS dcShortName,
+	DC_ADD AS dcAdd,
+	DC_TEL AS dcTel,
+	DC_STATUS AS dcStatus,
+	DC_INVENT AS dcInvent,
+	DC_WHOLESALE AS dcWholesale,
+	DC_CHAIN_HEAD AS dcChainHead,
+	DC_DELIVERY_DAYS AS dcTaxSubject,
+	DC_TYPE AS dcHeadId,
+	DC_TAX_SUBJECT AS dcHeadNam,
+	DC_HEAD_ID AS dcCreDate,
+	DC_HEAD_NAM AS dcCreTime,
+	DC_CRE_DATE AS dcCreId,
+	DC_CRE_TIME AS dcModiDate,
+	DC_CRE_ID AS dcModiTime,
+	DC_MODI_DATE AS dcModiId,
+	DC_MODI_TIME,
+	DC_MODI_ID,
+	DC_NO,
+	DC_LEGAL_PERSON,
+	DC_QUA,
+	DC_JYFWGK,
+	DC_ZZXQGK
+FROM
+	GAIA_DC_DATA
+WHERE
+	CLIENT =  #{client}
+	AND DC_CODE = #{brId}
+	AND DC_STATUS = '0'
+    </select>
+
+    <select id="getDifferenceResultDetailedQueryByClientBrCode"
+            resultType="com.gys.report.entity.DifferenceResultDetailedQueryOutData" parameterType="com.gys.report.entity.DifferenceResultQueryInVo" >
+        SELECT
+        GWSZ.PRO_SITE AS brId,
+        GDD.DC_SHORT_NAME AS brName,
+        GPB.PRO_SELF_CODE AS proCode,
+        GWPM.WM_PDRWDH AS inventoryOrderNumber,
+        GPB.PRO_NAME AS proName,
+        GPB.PRO_LSJ AS retailPrice,
+        GPB.PRO_SPECS as proSpecs,
+        GPB.PRO_COMMONNAME as proCommonname,
+        GPB.PRO_FACTORY_NAME as proFactoryName,
+        GMD.MAT_DOC_DATE as gspcExamineDate,
+        round(  sum(CASE GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( GMD.MAT_RATE_MOV, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_RATE_MOV ), DECIMAL ( 10, 4 ) )  END),  2 ) AS tax,
+        round(  sum(CASE GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( GMD.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_QTY ), DECIMAL ( 10, 4 ) )  END),  2 ) AS numberOfDifferences,
+        GMD.MAT_POST_DATE AS postingDate,
+        round( sum(CASE  GMD.MAT_DEBIT_CREDIT WHEN 'S' THEN CONVERT ( GMD.MAT_MOV_AMT, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_MOV_AMT ), DECIMAL ( 10, 4 ) ) END), 2 ) AS varianceCost,
+        round(GPB.PRO_LSJ* round( sum(CASE  GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( GMD.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_QTY ), DECIMAL ( 10, 4 ) ) END),  2  ),2) AS differentialRetailSales ,
+        CASE WHEN GPB.PRO_CLASS = '301' THEN 'Y' ELSE 'N' END CMNAME
+        FROM GAIA_WMS_SUNYI_Z GWSZ
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        PRO_SITE,
+        WM_SP_BM,
+        WM_PCH,
+        WM_SYDH,
+        WM_LYDH
+        FROM GAIA_WMS_SUNYI_M
+        WHERE CLIENT = #{client}
+        GROUP BY CLIENT, PRO_SITE, WM_SP_BM,WM_SYDH
+        ) GWSM ON GWSM.CLIENT = GWSZ.CLIENT AND GWSM.PRO_SITE = GWSZ.PRO_SITE AND GWSM.WM_SYDH = GWSZ.WM_SYDH
+        LEFT JOIN (
+        select
+        CLIENT,
+        PRO_SITE,
+        WM_PDRWDH,
+        WM_SP_BM
+        from
+        GAIA_WMS_PANDIAN_M
+        GROUP BY CLIENT,PRO_SITE,WM_SP_BM,WM_PDRWDH
+        ) GWPM ON GWSM.CLIENT = GWPM.CLIENT AND GWSM.PRO_SITE = GWPM.PRO_SITE AND GWSM.WM_LYDH = GWPM.WM_PDRWDH AND GWSM.WM_SP_BM = GWPM.WM_SP_BM
+        LEFT JOIN GAIA_MATERIAL_DOC GMD ON GWSM.CLIENT = GMD.CLIENT AND GWSM.WM_SYDH = GMD.MAT_DN_ID AND GWSM.PRO_SITE = GMD.MAT_SITE_CODE AND GWSM.WM_SP_BM = GMD.MAT_PRO_CODE
+        LEFT JOIN GAIA_DC_DATA GDD ON GDD.CLIENT = GWSZ.CLIENT AND GDD.DC_CODE = GWSZ.PRO_SITE
+        LEFT JOIN GAIA_PRODUCT_BUSINESS GPB ON GPB.CLIENT = GWSM.CLIENT AND GPB.PRO_SITE = GWSM.PRO_SITE AND GPB.PRO_SELF_CODE = GWSM.WM_SP_BM
+        WHERE
+        GWSZ.CLIENT = #{client}
+        <if test="brSite != null and brSite != ''">
+            AND GWSZ.PRO_SITE = #{brSite}
+        </if>
+
+        <if test="gspcVoucherId != null and gspcVoucherId != ''">
+            and GWPM.WM_PDRWDH =#{gspcVoucherId}
+        </if>
+
+        <if test="proArr != null and proArr.length > 0">
+            and  GPB.PRO_SELF_CODE in
+            <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        <if test="startDate != null and startDate != ''">
+            AND GWSZ.WM_CJRQ <![CDATA[>=]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND GWSZ.WM_CJRQ <![CDATA[<=]]> #{endDate}
+        </if>
+        AND GWSZ.WM_SFSP = '0'
+        AND GWSZ.WM_SFTG = '0'
+        and GMD.MAT_PRO_CODE is not null
+        and GWPM.WM_PDRWDH is not null
+        and GPB.PRO_SELF_CODE is not null
+        GROUP BY GWPM.WM_PDRWDH,GPB.PRO_SELF_CODE
+        order by numberOfDifferences desc
+    </select>
+
+    <select id="getDifferenceResultQueryByAll"
+            resultType="com.gys.report.entity.DifferenceResultQueryOutData" parameterType="com.gys.report.entity.DifferenceResultQueryInVo">
+        SELECT
+        h.GSISH_BR_ID AS brId,
+        st.STO_NAME AS brName,
+        count( DISTINCT c.GSPC_PRO_ID ) AS totalNumberOfItems,
+        COUNT( DISTINCT SY.MAT_PRO_CODE ) AS totalProductDifference,
+        CONCAT( ROUND( COUNT( DISTINCT SY.MAT_PRO_CODE ) / COUNT( DISTINCT  c.GSPC_PRO_ID ) * 100, 2 ), '%' ) AS totalDifferenceRate,
+        SUM( SY.varianceCost ) AS totalVarianceCost,
+        SUM( round( SY.PRICE * SY.SY.numberOfDifferences, 2 )) AS  totalVarianceSales,
+        COUNT( DISTINCT CASE WHEN SY.numberOfDifferences > 0 THEN SY.MAT_PRO_CODE ELSE NULL END ) inventoryItems,
+        SUM( CASE WHEN SY.numberOfDifferences > 0 THEN SY.varianceCost ELSE 0 END ) inventoryCost,
+        COUNT( DISTINCT CASE WHEN SY.numberOfDifferences <![CDATA[<]]> 0 THEN SY.MAT_PRO_CODE ELSE NULL END ) lostItems,
+        SUM( CASE WHEN SY.numberOfDifferences <![CDATA[<]]> 0 THEN SY.varianceCost ELSE 0 END ) inventoryLossCost,
+        COUNT( DISTINCT CASE WHEN SY.CMNAME = 'Y' THEN SY.MAT_PRO_CODE ELSE NULL END ) differenceItemsOfChineseMedicine,
+        SUM( CASE WHEN SY.CMNAME = 'Y' THEN SY.varianceCost ELSE 0 END ) chineseMedicineDifferenceAmount,
+        COUNT( DISTINCT CASE WHEN IFNULL( SY.CMNAME, '' )!= 'Y' THEN SY.MAT_PRO_CODE ELSE NULL END ) eliminateChineseMedicineItems,
+        SUM( CASE WHEN IFNULL( SY.CMNAME, '' )!= 'Y' THEN SY.varianceCost ELSE 0 END ) excludeTheAmountOfChineseMedicine,
+        CONCAT( ROUND( COUNT( DISTINCT CASE WHEN IFNULL( SY.CMNAME, '' )!= 'Y' THEN SY.MAT_PRO_CODE ELSE NULL END )/ COUNT( DISTINCT c.GSPC_PRO_ID ) * 100, 	2  ), '%' ) AS eliminateTheDifferenceRateOfChineseMedicine
+        FROM
+        GAIA_SD_INCOME_STATEMENT_H h
+        LEFT JOIN GAIA_SD_PHYSICAL_COUNTING c ON ( h.CLIENT = c.CLIENT AND h.GSISH_BR_ID = c.GSPC_BR_ID AND h.GSISH_PC_VOUCHER_ID = c.GSPC_VOUCHER_ID )
+        LEFT JOIN GAIA_MATERIAL_DOC d ON ( h.CLIENT = d.CLIENT AND h.GSISH_VOUCHER_ID = d.MAT_DN_ID AND h.GSISH_BR_ID = d.MAT_SITE_CODE AND c.GSPC_PRO_ID = d.MAT_PRO_CODE)
+        LEFT JOIN GAIA_STORE_DATA st ON ( st.CLIENT = h.CLIENT AND st.STO_CODE = h.GSISH_BR_ID )
+        LEFT JOIN (
+        SELECT
+        ent.CLIENT,
+        ent.GSISH_BR_ID,
+        doc.MAT_PRO_CODE,
+        cou.GSPC_VOUCHER_ID,
+        GPB.PRO_NAME,
+        PRC.PRICE,
+        round( CASE doc.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( doc.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_QTY ), DECIMAL ( 10, 4 ) )  END, 2  ) AS numberOfDifferences,
+        doc.MAT_POST_DATE AS postingDate,
+        round( CASE doc.MAT_DEBIT_CREDIT  	WHEN 'S' THEN CONVERT ( doc.MAT_MOV_AMT, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_MOV_AMT ), DECIMAL ( 10, 4 ) )  END, 	2  ) AS varianceCost,
+        CASE WHEN GPB.PRO_CLASS = '301' THEN 'Y' ELSE 'N'  END CMNAME
+        FROM
+        GAIA_SD_INCOME_STATEMENT_H ent
+        LEFT JOIN GAIA_SD_PHYSICAL_COUNTING cou ON ( ent.CLIENT = cou.CLIENT AND ent.GSISH_BR_ID = cou.GSPC_BR_ID AND ent.GSISH_PC_VOUCHER_ID = cou.GSPC_VOUCHER_ID )
+        LEFT JOIN GAIA_MATERIAL_DOC doc ON (cou.CLIENT = doc.CLIENT  AND ent.GSISH_VOUCHER_ID = doc.MAT_DN_ID  AND cou.GSPC_BR_ID = doc.MAT_SITE_CODE  AND cou.GSPC_PRO_ID = doc.MAT_PRO_CODE)
+        LEFT JOIN GAIA_PRODUCT_BUSINESS GPB ON ( GPB.CLIENT = ent.CLIENT  AND GPB.PRO_SITE = cou.GSPC_BR_ID  AND GPB.PRO_SELF_CODE = cou.GSPC_PRO_ID)
+        LEFT JOIN (
+        SELECT
+        GSPP.CLIENT,
+        GSPP.GSPP_PRO_ID,
+        SUBSTRING_INDEX( GROUP_CONCAT( GSPP.GSPP_PRICE_NORMAL ORDER BY GSPP.GSPP_BR_ID ), ',', 1 ) PRICE
+        FROM
+        GAIA_SD_PRODUCT_PRICE GSPP
+        WHERE
+        CLIENT = #{client}
+        GROUP BY
+        GSPP.CLIENT,
+        GSPP.GSPP_PRO_ID
+        ) PRC ON PRC.CLIENT = ent.CLIENT  AND PRC.GSPP_PRO_ID = doc.MAT_PRO_CODE
+        WHERE
+        ent.CLIENT = #{client}
+        AND ent.GSISH_DATE <![CDATA[>=]]> #{startDate}
+        AND ent.GSISH_DATE <![CDATA[<=]]> #{endDate}
+        AND ent.GSISH_IS_TYPE = '1'
+        and doc.MAT_PRO_CODE is not null
+
+        )SY ON SY.CLIENT = h.CLIENT  AND SY.GSISH_BR_ID = h.GSISH_BR_ID  AND SY.MAT_PRO_CODE = c.GSPC_PRO_ID
+        WHERE
+        h.CLIENT = #{client}
+        AND h.GSISH_IS_TYPE = '1'
+        AND h.GSISH_DATE <![CDATA[>=]]> #{startDate}
+        AND h.GSISH_DATE <![CDATA[<=]]> #{endDate}
+        GROUP BY h.GSISH_BR_ID
+        union
+
+         SELECT
+        GWPZ.PRO_SITE as brId,
+        GDD.DC_NAME as brName,
+        COUNT(DISTINCT GWPM.WM_SP_BM) as totalNumberOfItems,
+        COUNT(DISTINCT SY.MAT_PRO_CODE) as totalProductDifference,
+        CONCAT( ROUND( COUNT( DISTINCT SY.MAT_PRO_CODE ) /COUNT(DISTINCT GWPM.WM_SP_BM) * 100, 2 ), '%' ) AS totalDifferenceRate,
+        SUM(SY.varianceCost) as totalVarianceCost,
+        SUM(round(SY.PRICE*SY.SY.numberOfDifferences,2)) as totalVarianceSales,
+        COUNT(DISTINCT CASE WHEN SY.numberOfDifferences>0 THEN SY.MAT_PRO_CODE ELSE NULL END ) inventoryItems,
+        SUM(CASE WHEN SY.numberOfDifferences>0 THEN SY.varianceCost ELSE 0 END) inventoryCost,
+        COUNT(DISTINCT CASE WHEN SY.numberOfDifferences <![CDATA[<]]> 0 THEN SY.MAT_PRO_CODE ELSE NULL END ) lostItems,
+        SUM(CASE WHEN SY.numberOfDifferences<![CDATA[<]]>0 THEN SY.varianceCost ELSE 0 END) inventoryLossCost,
+        COUNT(DISTINCT CASE WHEN SY.CMNAME='Y' THEN SY.MAT_PRO_CODE ELSE NULL END ) differenceItemsOfChineseMedicine,
+        SUM(CASE WHEN SY.CMNAME='Y' THEN SY.varianceCost ELSE 0 END) chineseMedicineDifferenceAmount,
+        COUNT(DISTINCT CASE WHEN IFNULL(SY.CMNAME,'')!='Y' THEN SY.MAT_PRO_CODE ELSE NULL END ) eliminateChineseMedicineItems,
+        SUM(CASE WHEN IFNULL(SY.CMNAME,'')!='Y' THEN SY.varianceCost ELSE 0 END) excludeTheAmountOfChineseMedicine,
+        CONCAT( ROUND(COUNT( DISTINCT CASE WHEN IFNULL( SY.CMNAME, '' )!= 'Y' THEN SY.MAT_PRO_CODE ELSE NULL END )/ COUNT( DISTINCT GWPM.WM_SP_BM )  * 100, 	2  ), '%'  ) AS eliminateTheDifferenceRateOfChineseMedicine
+        FROM GAIA_WMS_PANDIAN_Z GWPZ
+        LEFT JOIN GAIA_WMS_PANDIAN_M GWPM ON GWPM.CLIENT=GWPZ.CLIENT AND GWPM.PRO_SITE = GWPZ.PRO_SITE  AND GWPM.WM_PDRWDH = GWPZ.WM_PDRWDH
+        LEFT JOIN GAIA_DC_DATA GDD ON GDD.CLIENT = GWPZ.CLIENT AND GDD.DC_CODE = GWPZ.PRO_SITE
+        LEFT JOIN (
+        SELECT
+        GWSZ.CLIENT,
+        GWSZ.PRO_SITE,
+        GMD.MAT_PRO_CODE,
+        GWPM.WM_PDRWDH,
+        GPB.PRO_NAME,
+        PRC.PRICE,
+        round(  CASE  GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN  CONVERT ( GMD.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_QTY ), DECIMAL ( 10, 4 ) ) END,  2 ) AS numberOfDifferences,
+        GMD.MAT_POST_DATE AS postingDate,
+        round( CASE GMD.MAT_DEBIT_CREDIT  WHEN 'S' THEN CONVERT ( GMD.MAT_MOV_AMT, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', GMD.MAT_MOV_AMT ), DECIMAL ( 10, 4 ) )  END, 2 ) AS varianceCost,
+        CASE WHEN GPB.PRO_CLASS = '301' THEN 'Y' ELSE 'N' END CMNAME
+        FROM GAIA_WMS_SUNYI_Z GWSZ
+        LEFT JOIN GAIA_WMS_SUNYI_M GWSM ON GWSM.CLIENT = GWSZ.CLIENT AND GWSM.PRO_SITE = GWSZ.PRO_SITE AND GWSM.WM_SYDH = GWSZ.WM_SYDH
+        LEFT JOIN GAIA_WMS_PANDIAN_M GWPM ON GWSM.CLIENT = GWPM.CLIENT AND GWSM.PRO_SITE = GWPM.PRO_SITE AND GWSM.WM_LYDH = GWPM.WM_PDRWDH AND GWSM.WM_SP_BM = GWPM.WM_SP_BM
+        LEFT JOIN GAIA_MATERIAL_DOC GMD ON GWSM.CLIENT = GMD.CLIENT AND GWSM.WM_SYDH = GMD.MAT_DN_ID AND GWSM.PRO_SITE = GMD.MAT_SITE_CODE AND GWSM.WM_SP_BM = GMD.MAT_PRO_CODE AND GWSM.WM_PCH  = GMD.MAT_BATCH
+        LEFT JOIN GAIA_PRODUCT_BUSINESS GPB ON GPB.CLIENT = GWSM.CLIENT AND GPB.PRO_SITE = GWSM.PRO_SITE AND GPB.PRO_SELF_CODE = GWSM.WM_SP_BM
+        LEFT JOIN (
+        SELECT GSPP.CLIENT,GSPP.GSPP_PRO_ID,
+        SUBSTRING_INDEX(GROUP_CONCAT( GSPP.GSPP_PRICE_NORMAL ORDER BY GSPP.GSPP_BR_ID),',',1) PRICE
+        FROM GAIA_SD_PRODUCT_PRICE GSPP
+        WHERE CLIENT= #{client}
+        GROUP BY GSPP.CLIENT,GSPP.GSPP_PRO_ID
+        ) PRC ON PRC.CLIENT= GWSZ.CLIENT AND PRC.GSPP_PRO_ID=GWSM.WM_SP_BM
+        WHERE
+        GWSZ.CLIENT = #{client}
+        AND GWSZ.WM_CJRQ <![CDATA[>=]]> #{startDate}
+        AND GWSZ.WM_CJRQ <![CDATA[<=]]> #{endDate}
+        AND GWSZ.WM_SFSP = '0'
+        AND GWSZ.WM_SFTG = '0'
+        ) SY ON SY.CLIENT=GWPZ.CLIENT AND SY.PRO_SITE=GWPZ.PRO_SITE AND SY.MAT_PRO_CODE=GWPM.WM_SP_BM
+        WHERE
+        GWPZ.CLIENT = #{client}
+        AND GWPZ.WM_CJRQ <![CDATA[>=]]> #{startDate}
+        AND GWPZ.WM_CJRQ <![CDATA[<=]]> #{endDate}
+        AND GWPZ.WM_SFSQ = '1'
+        GROUP BY GWPZ.PRO_SITE
+    </select>
+    <select id="inventoryDocumentQueryByBrId"
+            parameterType="com.gys.report.entity.DifferenceResultQueryInVo"
+            resultType="com.gys.report.entity.InventoryDocumentsOutData">
+
+        SELECT
+        h.CLIENT AS client,
+        h.GSPH_BR_ID AS brId,
+        st.STO_SHORT_NAME AS brName,
+        h.GSPH_DATE AS gspcDate,
+        h.GSPH_CRE_EMP AS gsphCreEmp,
+        ud.USER_NAM AS gspcEmp,
+        ss.numberOfItems AS numberOfItems,
+        sh.GSISH_EXAMINE_DATE AS postingDate,
+        h.GSPH_VOUCHER_ID AS gspcVoucherId ,
+        dd.differenceItem as differenceItem
+        FROM
+        GAIA_SD_PHYSICAL_HEADER h
+        LEFT JOIN (
+        SELECT
+        c.CLIENT as client,
+        count( c.GSPC_PRO_ID ) AS numberOfItems,
+        c.GSPC_VOUCHER_ID as VOUCHER_ID
+        FROM
+        GAIA_SD_PHYSICAL_COUNTING c
+        WHERE
+        c.CLIENT = #{client}
+        <if test="brId != null and brId != ''">
+            and c.GSPC_BR_ID =#{brId}
+        </if>
+        AND c.GSPC_DATE <![CDATA[>=]]> #{startDate}
+        AND c.GSPC_DATE <![CDATA[<=]]> #{endDate}
+        GROUP BY
+        c.GSPC_VOUCHER_ID
+        ) ss on (ss.client = h.CLIENT and h.GSPH_VOUCHER_ID = ss.VOUCHER_ID)
+        LEFT JOIN (
+        select
+        d.CLIENT as client,
+        d.GSPC_VOUCHER_ID ,
+        count(d.GSPCD_PRO_ID) as differenceItem,
+        round (( cc.GSPC_STOCK_QTY - d.GSPCD_PC_SECOND_QTY ), 2 ) AS checkTheDifference
+        from GAIA_SD_PHYSICAL_COUNT_DIFF d
+        LEFT JOIN GAIA_SD_PHYSICAL_COUNTING cc ON (
+        d.CLIENT = cc.CLIENT
+        AND cc.GSPC_VOUCHER_ID = d.GSPC_VOUCHER_ID
+        AND cc.GSPC_BR_ID = d.GSPCD_BR_ID
+        AND cc.GSPC_DATE = d.GSPCD_DATE
+        AND cc.GSPC_ROW_NO = d.GSPCD_ROW_NO
+        )
+        where  d.CLIENT =  #{client}
+        <if test="brId != null and brId != ''">
+            and d.GSPCD_BR_ID =#{brId}
+        </if>
+        <if test="gspcVoucherId != null and gspcVoucherId != ''">
+            and d.GSPC_VOUCHER_ID =#{gspcVoucherId}
+        </if>
+        and d.GSPCD_DATE <![CDATA[>=]]> #{startDate}
+        and d.GSPCD_DATE <![CDATA[<=]]> #{endDate}
+        and round (( cc.GSPC_STOCK_QTY - d.GSPCD_PC_SECOND_QTY ), 2 )
+        GROUP BY d.GSPC_VOUCHER_ID
+        ) dd on (ss.client = h.CLIENT and h.GSPH_VOUCHER_ID = dd.GSPC_VOUCHER_ID)
+        LEFT JOIN GAIA_SD_INCOME_STATEMENT_H sh ON ( sh.CLIENT = h.CLIENT and h.GSPH_BR_ID = sh.GSISH_BR_ID  AND sh.GSISH_PC_VOUCHER_ID = h.GSPH_VOUCHER_ID )
+
+        LEFT JOIN GAIA_STORE_DATA st ON ( h.CLIENT = st.CLIENT AND h.GSPH_BR_ID = st.STO_CODE )
+        LEFT JOIN GAIA_USER_DATA ud ON ( h.CLIENT = ud.CLIENT AND h.GSPH_CRE_EMP = ud.USER_ID )
+
+        WHERE
+        h.CLIENT = #{client}
+        <if test="brId != null and brId != ''">
+            and h.GSPH_BR_ID =#{brId}
+        </if>
+        AND h.GSPH_DATE <![CDATA[>=]]> #{startDate}
+        AND h.GSPH_DATE <![CDATA[<=]]> #{endDate}
+        and sh.GSISH_IS_TYPE = '1'
+        GROUP BY
+        h.GSPH_VOUCHER_ID
+        ORDER BY
+        h.GSPH_DATE DESC
+    </select>
+
+    <select id="getGoodsNumber" resultType="com.gys.report.entity.DifferenceResultDetailedQueryOutData"
+            parameterType="com.gys.report.entity.DifferenceResultQueryInVo">
+        SELECT
+        ent.GSISH_BR_ID AS brId,
+        st.STO_SHORT_NAME AS brName,
+        cou.GSPC_PRO_ID AS proCode,
+        ent.GSISH_PC_VOUCHER_ID AS inventoryOrderNumber,
+        pb.PRO_NAME AS proName,
+        pb.PRO_SPECS AS proSpecs,
+        pb.PRO_COMMONNAME AS proCommonname,
+        pb.PRO_FACTORY_NAME AS proFactoryName,
+        doc.MAT_DOC_DATE AS gspcExamineDate,
+        IF( prc.PRICE IS NOT NULL,prc.PRICE,pb.PRO_LSJ) AS retailPrice,
+        SUM(round(
+        CASE
+        doc.MAT_DEBIT_CREDIT
+        WHEN 'S' THEN
+        CONVERT ( doc.MAT_ADD_TAX, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_ADD_TAX ), DECIMAL ( 10, 4 ) )
+        END,
+        2
+        )) AS tax,
+        SUM(round(
+        CASE
+        doc.MAT_DEBIT_CREDIT
+        WHEN 'S' THEN
+        CONVERT ( doc.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_QTY ), DECIMAL ( 10, 4 ) )
+        END,
+        2
+        )) AS numberOfDifferences,
+        SUM(round(
+        CASE
+        doc.MAT_DEBIT_CREDIT
+        WHEN 'S' THEN
+        CONVERT ( doc.MAT_ADD_AMT, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_ADD_AMT ), DECIMAL ( 10, 4 ) )
+        END,
+        2
+        )) AS varianceCost,
+        SUM(round(
+        IF( prc.PRICE IS NOT NULL,prc.PRICE,pb.PRO_LSJ) * round(
+        CASE
+        doc.MAT_DEBIT_CREDIT
+        WHEN 'S' THEN
+        CONVERT ( doc.MAT_QTY, DECIMAL ( 10, 4 ) ) ELSE CONVERT ( CONCAT( '-', doc.MAT_QTY ), DECIMAL ( 10, 4 ) )
+        END,
+        2
+        ),
+        2
+        )) AS differentialRetailSales
+        FROM
+        GAIA_SD_INCOME_STATEMENT_H ent
+        LEFT JOIN (
+        select
+        CLIENT,
+        GSPC_BR_ID,
+        GSPC_VOUCHER_ID,
+        GSPC_PRO_ID
+        from
+        GAIA_SD_PHYSICAL_COUNTING
+        GROUP BY CLIENT,GSPC_BR_ID,GSPC_VOUCHER_ID,GSPC_PRO_ID
+        ) cou ON ent.CLIENT = cou.CLIENT
+        AND ent.GSISH_BR_ID = cou.GSPC_BR_ID
+        AND ent.GSISH_PC_VOUCHER_ID = cou.GSPC_VOUCHER_ID
+        LEFT JOIN GAIA_MATERIAL_DOC doc ON cou.CLIENT = doc.CLIENT
+        AND ent.GSISH_VOUCHER_ID = doc.MAT_DN_ID
+        AND cou.GSPC_BR_ID = doc.MAT_SITE_CODE
+        AND cou.GSPC_PRO_ID = doc.MAT_PRO_CODE
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = ent.CLIENT
+        AND pb.PRO_SITE = cou.GSPC_BR_ID
+        AND pb.PRO_SELF_CODE = cou.GSPC_PRO_ID
+        LEFT JOIN GAIA_STORE_DATA st ON st.CLIENT = ent.CLIENT
+        AND st.STO_CODE = ent.GSISH_BR_ID
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        STO_CODE,
+        STO_TAX_CLASS
+        FROM
+        GAIA_STORE_TAX
+        WHERE
+        CLIENT = #{client}
+        <if test="brSite != null and brSite != ''">
+            AND STO_CODE =#{brSite}
+        </if>
+        GROUP BY CLIENT, STO_CODE
+        ) tax ON tax.CLIENT = ent.CLIENT
+        AND tax.STO_CODE = ent.GSISH_BR_ID
+        LEFT JOIN (
+        SELECT
+        GSPP.CLIENT,
+        GSPP.GSPP_PRO_ID,
+        SUBSTRING_INDEX( GROUP_CONCAT( GSPP.GSPP_PRICE_NORMAL ORDER BY GSPP.GSPP_BR_ID ), ',', 1 ) PRICE
+        FROM
+        GAIA_SD_PRODUCT_PRICE GSPP
+        WHERE
+        CLIENT = #{client}
+        GROUP BY
+        GSPP.CLIENT,
+        GSPP.GSPP_PRO_ID
+        ) prc ON prc.CLIENT = ent.CLIENT
+        AND prc.GSPP_PRO_ID = cou.GSPC_PRO_ID
+        WHERE
+        ent.CLIENT = #{client}
+        <if test="brSite != null and brSite != ''">
+            and ent.GSISH_BR_ID =#{brSite}
+        </if>
+        <if test="gspcVoucherId != null and gspcVoucherId != ''">
+            and ent.GSISH_PC_VOUCHER_ID =#{gspcVoucherId}
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+            and  pb.PRO_SELF_CODE in
+            <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND ent.GSISH_DATE <![CDATA[>=]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND ent.GSISH_DATE <![CDATA[<=]]> #{endDate}
+        </if>
+        AND ent.GSISH_IS_TYPE = '1'
+        AND doc.MAT_PRO_CODE IS NOT NULL
+        GROUP BY ent.CLIENT,ent.GSISH_BR_ID,ent.GSISH_PC_VOUCHER_ID,cou.GSPC_PRO_ID,ent.GSISH_DATE
+        ORDER BY numberOfDifferences desc
+    </select>
+</mapper>

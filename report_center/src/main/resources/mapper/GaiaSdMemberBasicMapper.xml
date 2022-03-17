@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdMemberBasicMapper">
+
+    <select id="queryReport" parameterType="com.gys.report.entity.GetMemberCardReportInData"
+            resultType="com.gys.report.entity.GetMemberCardReportOutData">
+        SELECT
+        <!--c.GSMBC_CREATE_DATE as gsshDate,-->
+        c.CLIENT AS client,
+        c.GSMBC_BR_ID AS brId,
+        sd.STO_SHORT_NAME AS brName,
+        c.GSMBC_CREATE_SALER AS gsmbcCreateSaler,
+        d.USER_NAM AS userName,
+        count(*)  as addNum
+        FROM
+        GAIA_SD_MEMBER_BASIC b
+        LEFT JOIN GAIA_SD_MEMBER_CARD c ON ( b.CLIENT = c.CLIENT AND b.GSMB_MEMBER_ID = c.GSMBC_MEMBER_ID )
+        LEFT JOIN GAIA_USER_DATA d ON ( b.CLIENT = d.CLIENT AND c.GSMBC_CREATE_SALER = d.USER_ID )
+        LEFT JOIN GAIA_STORE_DATA sd ON ( c.CLIENT = sd.CLIENT AND c.GSMBC_BR_ID = sd.STO_CODE )
+        WHERE
+        c.CLIENT = #{clientId}
+        <if test="brIdList != null and brIdList.length > 0">
+            AND c.GSMBC_BR_ID in
+            <foreach collection="brIdList" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        and c.GSMBC_STATUS = '0'
+        AND c.GSMBC_CREATE_DATE <![CDATA[>= ]]> #{queryStartDate}
+        AND c.GSMBC_CREATE_DATE <![CDATA[<= ]]> #{queryEndDate}
+        <if test="querySyNum != null and querySyNum != ''">
+            and c.GSMBC_CREATE_SALER  = #{querySyNum}
+        </if>
+        GROUP BY
+        <!--c.GSMBC_CREATE_DATE,-->
+        c.GSMBC_BR_ID,
+        c.GSMBC_CREATE_SALER
+        ORDER BY
+        c.GSMBC_CREATE_DATE DESC,c.GSMBC_BR_ID ASC;
+    </select>
+
+    <!--会员消费汇总查询-->
+    <select id="selectMemberList" resultType="java.util.LinkedHashMap" parameterType="com.gys.report.entity.MemberSalesInData">
+        select
+        h.CLIENT AS client,
+        CONCAT_WS( '-', st.STO_CODE, IFNULL( st.STO_SHORT_NAME, st.STO_NAME ) ) AS cardStore,
+        h.GSSH_HYK_NO AS hykNo,
+        ma.GSMB_NAME AS hykName,
+        ma.GSMB_MOBILE AS mobile,
+        CASE WHEN ma.GSMB_SEX = '0' THEN		'女' 		WHEN ma.GSMB_SEX = '1' THEN		'男' ELSE '' 	END AS sex,
+        datediff( ( SELECT DATE_SUB( #{endDate}, INTERVAL - 1 DAY ) ), #{startDate})  AS totalSelledDays,
+        COUNT(DISTINCT h.GSSH_DATE) selledDays,
+        IFNULL(CONVERT ( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ), DECIMAL ( 19, 2 ) ), 0.00 ) AS gssdnormalAmt,
+        IFNULL(CONVERT ( SUM( d.GSSD_AMT ), DECIMAL ( 19, 2 ) ), 0.00 ) AS ssAmount,
+        IFNULL(CONVERT ( SUM( ( CASE IFNULL( h.GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ), DECIMAL ( 19, 2 ) ),0.00) AS allCostAmt,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT - ( CASE IFNULL( h.GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ),DECIMAL ( 19, 2 )),0.00) AS grossProfitAmt,
+        CONCAT(CONVERT (SUM( d.GSSD_AMT - ( CASE IFNULL( h.GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ) / SUM( d.GSSD_AMT ) * 100,DECIMAL ( 10, 2)),'%') AS grossProfitRate,
+        COUNT(DISTINCT h.GSSH_BILL_NO) tradedTime,
+        IFNULL(CONVERT ( SUM( d.GSSD_AMT ) / COUNT(DISTINCT h.GSSH_BILL_NO), DECIMAL ( 19, 2 ) ), 0.00 ) AS dailyPayAmt,
+        IFNULL(CONVERT (SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ),DECIMAL ( 19, 2 )),0.00) AS discountAmt,
+        CONVERT (( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ) ) / SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) * 100,DECIMAL ( 10, 2 )) AS discountRate,
+        IFNULL(CONVERT (( SELECT datediff( ( SELECT DATE_SUB( #{endDate}, INTERVAL - 1 DAY ) ), #{startDate}) ) / COUNT(DISTINCT h.GSSH_BILL_NO),DECIMAL ( 19, 2 )),0.00) AS dailyPayCount,
+        IFNULL(SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN 1 ELSE 0 END), 0 ) AS proCount,
+        IFNULL(CONVERT(IFNULL(SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN 1 ELSE 0 END), 0 ) / COUNT(DISTINCT h.GSSH_BILL_NO),DECIMAL ( 19, 2)),'0.00') AS proAvgCount,
+        IFNULL(CONVERT ( sum( d.GSSD_AMT ) / SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN d.GSSD_QTY ELSE 0 END ) , DECIMAL ( 19, 2 ) ), 0.00 ) AS billAvgPrice,
+        SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN d.GSSD_QTY ELSE 0 END ) AS count
+        FROM
+        GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON d.CLIENT = h.CLIENT AND d.GSSD_BR_ID = h.GSSH_BR_ID AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+        LEFT JOIN GAIA_USER_DATA u ON d.CLIENT = u.CLIENT and d.GSSD_SALER_ID = u.USER_ID
+        LEFT JOIN GAIA_SD_MEMBER_CARD mi ON h.CLIENT = mi.CLIENT 	AND h.GSSH_HYK_NO = mi.GSMBC_CARD_ID
+        LEFT JOIN GAIA_SD_MEMBER_BASIC ma ON mi.CLIENT = ma.CLIENT 	AND ma.GSMB_MEMBER_ID = mi.GSMBC_MEMBER_ID
+        LEFT JOIN GAIA_STORE_DATA st ON mi.CLIENT = st.CLIENT 	AND mi.GSMBC_BR_ID = st.STO_CODE
+        LEFT JOIN GAIA_PRODUCT_BUSINESS bs ON d.CLIENT = bs.CLIENT AND d.GSSD_BR_ID = bs.PRO_SITE AND d.GSSD_PRO_ID = bs.PRO_SELF_CODE
+        LEFT JOIN GAIA_PRODUCT_CLASS pc ON pc.PRO_CLASS_CODE = bs.PRO_CLASS
+        WHERE
+        h.CLIENT = #{client}
+        AND h.GSSH_HIDE_FLAG = '0'
+        AND h.GSSH_HYK_NO IS NOT NULL
+        <if test="hykName != null and hykName != ''">
+            AND (ma.GSMB_NAME like CONCAT('%',#{hykName},'%') or ma.GSMB_PYM like CONCAT('%',#{hykName},'%') )
+        </if>
+        <if test="mobile != null and mobile != ''">
+            AND ma.GSMB_MOBILE = #{mobile}
+        </if>
+        <if test="sex != null and sex != ''">
+            AND ma.GSMB_SEX = #{sex}
+        </if>
+        <if test="hykNo != null and hykNo != ''">
+            AND h.GSSH_HYK_NO = #{hykNo}
+        </if>
+        AND h.GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+        AND h.GSSH_DATE <![CDATA[ <= ]]> #{endDate}
+        GROUP BY
+        h.CLIENT,st.STO_CODE, st.STO_SHORT_NAME, st.STO_NAME,h.GSSH_HYK_NO,ma.GSMB_NAME,ma.GSMB_MOBILE,ma.GSMB_SEX
+    </select>
+
+    <!--会员消费汇总表（按门店）-->
+    <select id="selectMemberStoreList" resultType="java.util.LinkedHashMap" parameterType="com.gys.report.entity.MemberSalesInData">
+        select
+        h.CLIENT AS client,
+        CONCAT_WS( '-', st.STO_CODE, IFNULL( st.STO_SHORT_NAME, st.STO_NAME ) ) AS cardStore,
+        h.GSSH_HYK_NO AS hykNo,
+        ma.GSMB_NAME AS hykName,
+        ma.GSMB_MOBILE AS mobile,
+        CASE WHEN ma.GSMB_SEX = '0' THEN		'女' 		WHEN ma.GSMB_SEX = '1' THEN		'男' ELSE '' 	END AS sex,
+        sd.STO_CODE AS stoCode,
+        IFNULL(sd.STO_SHORT_NAME,sd.STO_NAME) AS saleStore,
+        datediff( ( SELECT DATE_SUB( #{endDate}, INTERVAL - 1 DAY ) ), #{startDate} )  AS totalSelledDays,
+        COUNT(DISTINCT h.GSSH_DATE) selledDays,
+        IFNULL( CONVERT ( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ), DECIMAL ( 19, 2 ) ), 0.00 ) AS gssdnormalAmt,
+        IFNULL( CONVERT ( SUM( d.GSSD_AMT ), DECIMAL ( 19, 2 ) ), 0.00) AS ssAmount,
+        IFNULL(CONVERT ( SUM( ( CASE IFNULL( h.GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ), DECIMAL ( 19, 2 ) ),0 ) AS allCostAmt,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT - ( CASE IFNULL( h.GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ),DECIMAL ( 19, 2 )),0.00) AS grossProfitAmt,
+        CONCAT(CONVERT (SUM( d.GSSD_AMT - ( CASE IFNULL( h.GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ) / SUM( d.GSSD_AMT ) * 100,DECIMAL ( 10, 2 )),'%') AS grossProfitRate,
+        COUNT(DISTINCT h.GSSH_DATE) selledDays,
+        COUNT(DISTINCT h.GSSH_BILL_NO) tradedTime,
+        IFNULL( CONVERT ( SUM( d.GSSD_AMT ) / COUNT(DISTINCT h.GSSH_BILL_NO), DECIMAL ( 19, 2 ) ), 0.00 ) AS dailyPayAmt,
+        IFNULL(CONVERT (SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ),DECIMAL ( 19, 2 )),0.00) AS discountAmt,
+        CONVERT (( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ) ) / SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) * 100,DECIMAL ( 10, 2 )) AS discountRate,
+        IFNULL(CONVERT (( SELECT datediff( ( SELECT DATE_SUB( #{endDate}, INTERVAL - 1 DAY ) ), #{startDate} ) ) / COUNT(DISTINCT h.GSSH_BILL_NO),DECIMAL ( 19, 2 )),0.00) AS dailyPayCount,
+        IFNULL( SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN 1 ELSE 0 END), 0 ) AS proCount,
+        IFNULL( CONVERT ( IFNULL(SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN 1 ELSE 0 END), 0 ) / COUNT(DISTINCT h.GSSH_BILL_NO) , DECIMAL ( 19, 2 ) ), '0.00' ) AS proAvgCount,
+        IFNULL( CONVERT ( sum( d.GSSD_AMT ) / SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN d.GSSD_QTY ELSE 0 END ) , DECIMAL ( 19, 2 ) ), 0.00 ) AS billAvgPrice,
+        SUM(CASE WHEN (pc.PRO_MID_CLASS_CODE NOT IN ( '301', '302' ) and pc.PRO_BIG_CLASS_CODE != '8') THEN d.GSSD_QTY ELSE 0 END ) AS count
+        FROM
+        GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON d.CLIENT = h.CLIENT AND d.GSSD_BR_ID = h.GSSH_BR_ID AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+        LEFT JOIN GAIA_STORE_DATA sd ON sd.CLIENT = d.CLIENT AND sd.STO_CODE = d.GSSD_BR_ID
+        LEFT JOIN GAIA_USER_DATA u ON d.CLIENT = u.CLIENT and d.GSSD_SALER_ID = u.USER_ID
+        LEFT JOIN GAIA_SD_MEMBER_CARD mi ON h.CLIENT = mi.CLIENT 	AND h.GSSH_HYK_NO = mi.GSMBC_CARD_ID
+        LEFT JOIN GAIA_SD_MEMBER_BASIC ma ON mi.CLIENT = ma.CLIENT 	AND ma.GSMB_MEMBER_ID = mi.GSMBC_MEMBER_ID
+        LEFT JOIN GAIA_STORE_DATA st ON mi.CLIENT = st.CLIENT 	AND mi.GSMBC_BR_ID = st.STO_CODE
+        LEFT JOIN GAIA_PRODUCT_BUSINESS bs ON d.CLIENT = bs.CLIENT AND d.GSSD_BR_ID = bs.PRO_SITE AND d.GSSD_PRO_ID = bs.PRO_SELF_CODE
+        LEFT JOIN GAIA_PRODUCT_CLASS pc ON pc.PRO_CLASS_CODE = bs.PRO_CLASS
+        WHERE
+        h.CLIENT = #{client}
+        AND h.GSSH_HIDE_FLAG = '0'
+        AND h.GSSH_HYK_NO IS NOT NULL
+        <if test="hykName != null and hykName != ''">
+            AND (ma.GSMB_NAME like CONCAT('%',#{hykName},'%') or ma.GSMB_PYM like CONCAT('%',#{hykName},'%') )
+        </if>
+        <if test="mobile != null and mobile != ''">
+            AND ma.GSMB_MOBILE = #{mobile}
+        </if>
+        <if test="sex != null and sex != ''">
+            AND ma.GSMB_SEX = #{sex}
+        </if>
+        <if test="hykNo != null and hykNo != ''">
+            AND h.GSSH_HYK_NO = #{hykNo}
+        </if>
+        <if test="stoCode != null and stoCode.length > 0">
+            and sd.STO_CODE in
+            <foreach collection="stoCode" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        AND h.GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+        AND h.GSSH_DATE <![CDATA[ <= ]]> #{endDate}
+        GROUP BY
+        h.CLIENT,st.STO_CODE, st.STO_SHORT_NAME, st.STO_NAME,h.GSSH_HYK_NO,ma.GSMB_NAME,ma.GSMB_MOBILE,ma.GSMB_SEX,sd.STO_CODE
+    </select>
+
+
+<!--会员商品消费明细表-->
+    <select id="selectMemberPro" resultType="java.util.LinkedHashMap" parameterType="com.gys.report.entity.MemberSalesInData">
+        SELECT
+            d.CLIENT AS client,
+            CONCAT_WS('-',st.STO_CODE,IFNULL( st.STO_SHORT_NAME, st.STO_NAME )) AS cardStore,
+            h.GSSH_HYK_NO AS hykNo,
+            ma.GSMB_NAME AS hykName,
+            ma.GSMB_MOBILE AS mobile,
+            CASE
+                WHEN ma.GSMB_SEX = '0' THEN
+                    '女'
+                WHEN ma.GSMB_SEX = '1' THEN
+                    '男'
+                ELSE ''
+            END AS sex,
+            d.GSSD_PRO_ID AS proCode,
+            IFNULL(pb.PRO_COMMONNAME,pb.PRO_NAME) AS productName,
+            sum(d.GSSD_QTY) count,
+            CONVERT ( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ), DECIMAL ( 19, 2 )) AS gssdnormalAmt,
+            CONVERT ( SUM( d.GSSD_AMT ), DECIMAL ( 19, 2 )) AS ssAmount,
+            CONVERT ( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ), DECIMAL ( 19, 2 )) AS discountAmt,
+            CONCAT(CONVERT ((SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT )) / SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY )* 100,DECIMAL ( 10, 2 ) ),'%' ) AS discountRate,
+            IFNULL(CONVERT ( SUM( ( CASE IFNULL( GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX )), DECIMAL ( 19, 2 )),0) AS allCostAmt,
+            IFNULL(CONVERT ( SUM( d.GSSD_AMT - ( CASE IFNULL( GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ), DECIMAL ( 19, 2 )),0) AS grossProfitAmt,
+            CONCAT(CONVERT (SUM( d.GSSD_AMT - ( CASE IFNULL( GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ) / SUM( d.GSSD_AMT )* 100,	DECIMAL ( 10, 2 )),'%') AS grossProfitRate,
+            pc.PRO_BIG_CLASS_NAME AS bigClass,
+            pc.PRO_MID_CLASS_NAME AS midClass,
+            pc.PRO_CLASS_NAME AS smallClass,
+            pb.PRO_SLAE_CLASS AS saleClass,
+            pb.PRO_POSITION AS proPosition,
+            pb.PRO_SCLASS AS proClass,
+            pb.PRO_ZDY1 AS zdy1,
+            pb.PRO_ZDY2 AS zdy2,
+            pb.PRO_ZDY3 AS zdy3,
+            pb.PRO_ZDY4 AS zdy4,
+            pb.PRO_ZDY5 AS zdy5
+        FROM
+            GAIA_SD_SALE_D d
+            LEFT JOIN GAIA_SD_SALE_H h ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+            LEFT JOIN GAIA_USER_DATA u ON d.GSSD_SALER_ID = u.USER_ID AND h.CLIENT = u.CLIENT
+            LEFT JOIN GAIA_SD_MEMBER_CARD mi ON h.CLIENT = mi.CLIENT
+            AND h.GSSH_HYK_NO = mi.GSMBC_CARD_ID
+            LEFT JOIN GAIA_STORE_DATA st ON mi.CLIENT = st.CLIENT and mi.GSMBC_BR_ID = st.STO_CODE
+            LEFT JOIN GAIA_SD_MEMBER_BASIC ma ON h.CLIENT = ma.CLIENT AND ma.GSMB_MEMBER_ID = mi.GSMBC_MEMBER_ID
+            LEFT JOIN GAIA_PRODUCT_BUSINESS pb on pb.CLIENT = d.CLIENT and pb.PRO_SELF_CODE = d.GSSD_PRO_ID and pb.PRO_SITE = d.GSSD_BR_ID
+            LEFT JOIN GAIA_PRODUCT_CLASS pc on pc.PRO_CLASS_CODE = pb.PRO_CLASS
+        WHERE
+            h.CLIENT = #{client}
+            AND h.GSSH_HIDE_FLAG = '0'
+            AND h.GSSH_HYK_NO IS NOT NULL
+            <if test="hykName != null and hykName != ''">
+                AND (ma.GSMB_NAME like CONCAT('%',#{hykName},'%') or ma.GSMB_PYM like CONCAT('%',#{hykName},'%') )
+            </if>
+            <if test="mobile != null and mobile != ''">
+                AND ma.GSMB_MOBILE = #{mobile}
+            </if>
+            <if test="sex != null and sex != ''">
+                AND ma.GSMB_SEX = #{sex}
+            </if>
+            <if test="hykNo != null and hykNo != ''">
+                AND h.GSSH_HYK_NO = #{hykNo}
+            </if>
+            <if test="productCode != null and productCode != ''">
+                and d.GSSD_PRO_ID in
+                <foreach collection="productCode" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="productClass != null and productClass.size > 0">
+                AND pb.PRO_CLASS in
+                <foreach collection="productClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="saleClass != null and saleClass.length > 0">
+                and pb.PRO_SLAE_CLASS in
+                <foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="proPosition != null and proPosition.length > 0">
+                and pb.PRO_POSITION in
+                <foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="proClass != null and proClass.length > 0">
+                and pb.PRO_SCLASS in
+                <foreach collection="proClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy1 != null and zdy1.length > 0">
+                and pb.PRO_ZDY1 in
+                <foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy2 != null and zdy2.length > 0">
+                and pb.PRO_ZDY2 in
+                <foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy3 != null and zdy3.length > 0">
+                and pb.PRO_ZDY3 in
+                <foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy4 != null and zdy4.length > 0">
+                and pb.PRO_ZDY4 in
+                <foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy5 != null and zdy5.length > 0">
+                and pb.PRO_ZDY5 in
+                <foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND h.GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+            AND h.GSSH_DATE <![CDATA[ <= ]]> #{endDate}
+        GROUP BY
+            h.CLIENT,
+            h.GSSH_HYK_NO,
+            d.GSSD_PRO_ID
+
+    </select>
+
+<!--会员商品消费明细表（门店）-->
+    <select id="selectMemberProSto" resultType="java.util.LinkedHashMap" parameterType="com.gys.report.entity.MemberSalesInData">
+        SELECT
+            d.CLIENT AS client,
+            CONCAT(st.STO_CODE,'-',IFNULL( st.STO_SHORT_NAME, st.STO_NAME )) AS cardStore,
+            h.GSSH_HYK_NO AS hykNo,
+            ma.GSMB_NAME AS hykName,
+            ma.GSMB_MOBILE AS mobile,
+            CASE
+                WHEN ma.GSMB_SEX = '0' THEN
+                    '女'
+                WHEN ma.GSMB_SEX = '1' THEN
+                    '男'
+                ELSE ''
+            END AS sex,
+            sd.STO_CODE AS stoCode,
+            IFNULL(sd.STO_SHORT_NAME,sd.STO_NAME) AS saleStore,
+            d.GSSD_PRO_ID AS proCode,
+            IFNULL(pb.PRO_COMMONNAME,pb.PRO_NAME) AS productName,
+            sum(d.GSSD_QTY) count,
+            CONVERT ( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ), DECIMAL ( 19, 2 ) ) AS gssdnormalAmt,
+            CONVERT ( SUM( d.GSSD_AMT ), DECIMAL ( 19, 2 ) ) AS ssAmount,
+            CONVERT ( SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ), DECIMAL ( 19, 2 ) ) AS discountAmt,
+            CONCAT(CONVERT ((SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY ) - SUM( d.GSSD_AMT )) / SUM( abs( d.GSSD_PRC1 ) * d.GSSD_QTY )* 100,DECIMAL ( 10, 2 ) ),'%' ) AS discountRate,
+            IFNULL(CONVERT ( SUM( t.GSSH_BILL_NO_RETURN * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX )), DECIMAL ( 19, 2 )),0) AS allCostAmt,
+            IFNULL(CONVERT ( SUM( d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ), DECIMAL ( 19, 2 )),0) AS grossProfitAmt,
+            CONCAT(CONVERT (SUM( d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ) / SUM( d.GSSD_AMT )* 100,	DECIMAL ( 10, 2 )),'%') AS grossProfitRate,
+            pc.PRO_BIG_CLASS_NAME AS bigClass,
+            pc.PRO_MID_CLASS_NAME AS midClass,
+            pc.PRO_CLASS_NAME AS smallClass,
+            pb.PRO_SLAE_CLASS AS saleClass,
+            pb.PRO_POSITION AS proPosition,
+            pb.PRO_SCLASS AS proClass,
+            pb.PRO_ZDY1 AS zdy1,
+            pb.PRO_ZDY2 AS zdy2,
+            pb.PRO_ZDY3 AS zdy3,
+            pb.PRO_ZDY4 AS zdy4,
+            pb.PRO_ZDY5 AS zdy5
+        FROM
+            GAIA_SD_SALE_D d
+            LEFT JOIN GAIA_SD_SALE_H h ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+            LEFT JOIN GAIA_STORE_DATA sd ON sd.CLIENT = d.CLIENT AND sd.STO_CODE = d.GSSD_BR_ID
+            LEFT JOIN GAIA_USER_DATA u ON d.GSSD_SALER_ID = u.USER_ID AND h.CLIENT = u.CLIENT
+            LEFT JOIN GAIA_SD_MEMBER_CARD mi ON h.CLIENT = mi.CLIENT AND h.GSSH_HYK_NO = mi.GSMBC_CARD_ID
+            LEFT JOIN GAIA_STORE_DATA st ON mi.CLIENT = st.CLIENT and mi.GSMBC_BR_ID = st.STO_CODE
+            LEFT JOIN GAIA_SD_MEMBER_BASIC ma ON h.CLIENT = ma.CLIENT AND ma.GSMB_MEMBER_ID = mi.GSMBC_MEMBER_ID
+            LEFT JOIN GAIA_PRODUCT_BUSINESS  pb on pb.CLIENT = d.CLIENT and pb.PRO_SELF_CODE = d.GSSD_PRO_ID and pb.PRO_SITE = d.GSSD_BR_ID
+            LEFT JOIN GAIA_PRODUCT_CLASS  pc on pc.PRO_CLASS_CODE = pb.PRO_CLASS
+            LEFT JOIN (
+            SELECT
+            ( CASE IFNULL( GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE - 1 END ) GSSH_BILL_NO_RETURN,
+            GSSH_BILL_NO,
+            GSSH_DATE,
+            GSSH_BR_ID
+            FROM
+            GAIA_SD_SALE_H
+            WHERE
+            GSSH_DATE <![CDATA[ <= ]]> #{endDate} AND GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+            AND CLIENT = #{client}
+            ) t ON t.GSSH_BILL_NO = h.GSSH_BILL_NO AND t.GSSH_DATE = h.GSSH_DATE AND t.GSSH_BR_ID = h.GSSH_BR_ID
+        WHERE
+            h.CLIENT = #{client}
+            AND h.GSSH_HIDE_FLAG = '0'
+            AND h.GSSH_HYK_NO IS NOT NULL
+            <foreach collection="stoCode" item="item" open="AND sd.STO_CODE IN (" close=")" separator=",">
+                #{item}
+            </foreach>
+            <if test="hykName != null and hykName != ''">
+                AND (ma.GSMB_NAME like CONCAT('%',#{hykName},'%') or ma.GSMB_PYM like CONCAT('%',#{hykName},'%') )
+            </if>
+            <if test="mobile != null and mobile != ''">
+                AND ma.GSMB_MOBILE = #{mobile}
+            </if>
+            <if test="sex != null and sex != ''">
+                AND ma.GSMB_SEX = #{sex}
+            </if>
+            <if test="hykNo != null and hykNo != ''">
+                AND h.GSSH_HYK_NO = #{hykNo}
+            </if>
+            <if test="productCode != null and productCode != ''">
+                and d.GSSD_PRO_ID in
+                <foreach collection="productCode" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="productClass != null and productClass.size > 0">
+                AND pb.PRO_CLASS in
+                <foreach collection="productClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="saleClass != null and saleClass.length > 0">
+                and pb.PRO_SLAE_CLASS in
+                <foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="proPosition != null and proPosition.length > 0">
+                and pb.PRO_POSITION in
+                <foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="proClass != null and proClass.length > 0">
+                and pb.PRO_SCLASS in
+                <foreach collection="proClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy1 != null and zdy1.length > 0">
+                and pb.PRO_ZDY1 in
+                <foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy2 != null and zdy2.length > 0">
+                and pb.PRO_ZDY2 in
+                <foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy3 != null and zdy3.length > 0">
+                and pb.PRO_ZDY3 in
+                <foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy4 != null and zdy4.length > 0">
+                and pb.PRO_ZDY4 in
+                <foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy5 != null and zdy5.length > 0">
+                and pb.PRO_ZDY5 in
+                <foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND h.GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+            AND h.GSSH_DATE <![CDATA[ <= ]]> #{endDate}
+        GROUP BY
+            h.CLIENT,
+            h.GSSH_HYK_NO,
+            d.GSSD_PRO_ID,
+            sd.STO_CODE
+    </select>
+</mapper>

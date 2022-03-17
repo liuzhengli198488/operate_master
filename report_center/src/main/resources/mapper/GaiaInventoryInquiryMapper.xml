@@ -1,0 +1,2404 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.GaiaInventoryInquiryMapper">
+
+<!--0829-->
+	<select id="inventoryInquiryByRow" resultType="java.util.LinkedHashMap">
+			SELECT
+		a.gssmProId,
+		b.PRO_BARCODE proBarcode,
+		IFNULL( b.PRO_NAME, b.PRO_COMMONNAME ) gssmProName,
+		b.PRO_COMMONNAME proCommonName,
+		b.PRO_FACTORY_NAME factory,
+		b.PRO_PLACE origin,
+		b.PRO_FORM dosageForm,
+		b.PRO_UNIT unit,
+		b.PRO_SPECS format,
+		CONVERT(MAX(a.priceNormal),DECIMAL(16,2)) priceNormal,
+		CONVERT(bi.BAT_PO_PRICE,DECIMAL(16,2)) poPrice,
+		CONVERT(sum( a.qty ),DECIMAL(16,2)) qtySum,
+		<if test="inventoryStore != null and inventoryStore.size() > 0">
+			<foreach collection="inventoryStore" item="item" >
+				CONVERT(sum( CASE WHEN a.gssmBrId =#{item.siteCode} THEN a.qty ELSE 0.00 END ),DECIMAL(16,2)) AS #{item.columnCode},
+			</foreach>
+		</if>
+		b.PRO_REGISTER_NO approvalNum,
+		b.PRO_SLAE_CLASS saleClass,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+	CASE
+			
+			WHEN b.PRO_IF_MED = '1' THEN
+			'是' 
+			WHEN b.PRO_MED_ID IS NOT NULL THEN
+			'是' ELSE '否' 
+		END ifMed,
+		CASE
+			b.PRO_YBLX 
+			WHEN '1' THEN
+			'甲类' 
+			WHEN '2' THEN
+			'乙类' 
+		END yblx,
+		b.PRO_MED_ID medProdctCode,
+		b.PRO_POSITION proPosition,
+		b.PRO_SCLASS prosClass,
+		case b.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		b.PRO_ZDY1 zdy1,
+		b.PRO_ZDY2 zdy2,
+		b.PRO_ZDY3 zdy3,
+		b.PRO_ZDY3 zdy4,
+		b.PRO_ZDY3 zdy5
+	FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) gssBrName,
+		sb.GSSB_PRO_ID gssmProId,
+		ifnull( sum( sb.GSSB_QTY ), 0.00 ) qty,
+		ifnull( sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ sum( ass.MAT_TOTAL_QTY )* sum( sb.GSSB_QTY ), 0.00 ) AS addAmount,
+		null priceNormal,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_STORE_DATA sto ON ( sb.CLIENT = sto.CLIENT AND sb.GSSB_BR_ID = sto.STO_CODE )
+		WHERE
+			sb.CLIENT = #{clientId}
+		<if test="proArr != null and proArr.length > 0">
+			and sb.GSSB_PRO_ID  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+			sb.CLIENT,
+			sb.GSSB_BR_ID,
+			sb.GSSB_PRO_ID UNION ALL
+		SELECT
+			kc.CLIENT clientId,
+			kc.PRO_SITE gssmBrId,
+		CASE WHEN dc.DC_SHORT_NAME = '' THEN dc.DC_NAME ELSE IFNULL( dc.DC_SHORT_NAME, dc.DC_NAME ) END gssBrName,
+		kc.WM_SP_BM gssmProId,
+		ifnull( sum( kc.WM_KCSL ), 0.00 ) qty,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY )* sum( kc.WM_KCSL ), 0 ) AS addAmount,
+		pb.PRO_LSJ priceNormal,
+		'dc' site 
+	FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_BATCH_INFO bi ON ( kc.CLIENT = bi.CLIENT AND kc.WM_SP_BM = bi.BAT_PRO_CODE AND kc.WM_PCH = bi.BAT_BATCH )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_DC_DATA dc ON ( kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE )
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON ( pb.CLIENT = kc.CLIENT AND pb.PRO_SITE = kc.PRO_SITE AND pb.PRO_SELF_CODE = kc.WM_SP_BM )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM 
+		) a
+		LEFT JOIN (
+		SELECT
+		BAT_PRO_CODE,
+		SUBSTRING_INDEX(GROUP_CONCAT(t.BAT_PO_PRICE ORDER BY BAT_CREATE_DATE DESC, BAT_CREATE_TIME DESC),',',1) BAT_PO_PRICE
+		FROM (SELECT *
+		FROM GAIA_BATCH_INFO WHERE CLIENT = #{clientId}) t
+		GROUP BY BAT_PRO_CODE
+		) bi ON bi.BAT_PRO_CODE = a.gssmProId
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE AND a.gssmProId = b.PRO_SELF_CODE )
+		LEFT JOIN (
+		SELECT
+			* 
+		FROM
+			(
+			SELECT
+				PRO_BIG_CLASS_CODE AS classId,
+				PRO_BIG_CLASS_CODE,
+				PRO_BIG_CLASS_NAME,
+				NULL AS PRO_MID_CLASS_CODE,
+				NULL AS PRO_MID_CLASS_NAME,
+				NULL AS PRO_CLASS_CODE,
+				NULL AS PRO_CLASS_NAME 
+			FROM
+				GAIA_PRODUCT_CLASS UNION ALL
+			SELECT
+				PRO_MID_CLASS_CODE AS classId,
+				PRO_BIG_CLASS_CODE,
+				PRO_BIG_CLASS_NAME,
+				PRO_MID_CLASS_CODE,
+				PRO_MID_CLASS_NAME,
+				NULL AS PRO_CLASS_CODE,
+				NULL AS PRO_CLASS_NAME 
+			FROM
+				GAIA_PRODUCT_CLASS UNION ALL
+			SELECT
+				PRO_CLASS_CODE AS classId,
+				PRO_BIG_CLASS_CODE,
+				PRO_BIG_CLASS_NAME,
+				PRO_MID_CLASS_CODE,
+				PRO_MID_CLASS_NAME,
+				PRO_CLASS_CODE,
+				PRO_CLASS_NAME 
+			FROM
+				GAIA_PRODUCT_CLASS 
+			) proClass 
+		GROUP BY
+			classId 
+		) pc ON pc.classId = b.PRO_CLASS 
+	WHERE
+		1 = 1
+		AND not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+		<if test="noZero != null and noZero != '' and noZero == '1'.toString()">
+			AND a.qty != 0
+		</if>
+
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			and b.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="yblx != null and yblx !=''">
+			and b.PRO_YBLX = #{yblx}
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and b.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and b.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and b.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and b.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and b.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and b.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and b.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and b.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and b.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		<if test="proStorageCondition != null and proStorageCondition !=''">
+			and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+		</if>
+		<if test="inventoryStore != null and inventoryStore.size() > 0">
+			and a.gssmBrId in
+			<foreach collection="inventoryStore" item="item" index="index" open="(" separator="," close=")">
+				#{item.siteCode}
+			</foreach>
+		</if>
+	GROUP BY
+		a.gssmProId 
+	ORDER BY
+		a.gssmProId
+	</select>
+	<select id="inventoryInquiryByRowTotal" resultType="java.util.Map">
+		SELECT
+		sum( a.qty ) qtySum,
+		<if test="inventoryStore != null and inventoryStore.size() > 0">
+			<foreach collection="inventoryStore" item="item" separator=",">
+				sum( CASE WHEN a.gssmBrId =#{item.siteCode} THEN a.qty ELSE 0 END ) AS #{item.columnCode}
+			</foreach>
+		</if>
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) gssBrName,
+		sb.GSSB_PRO_ID gssmProId,
+		ifnull( sum( sb.GSSB_QTY ), 0.00 ) qty,
+		ifnull( sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ sum( ass.MAT_TOTAL_QTY )* sum( sb.GSSB_QTY ), 0.00 ) AS addAmount,
+		null priceNormal,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_STORE_DATA sto ON ( sb.CLIENT = sto.CLIENT AND sb.GSSB_BR_ID = sto.STO_CODE )
+		WHERE
+		sb.CLIENT = #{clientId}
+		 		<if test="proArr != null and proArr.length > 0">
+		 			and sb.GSSB_PRO_ID  in
+					<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+		 				#{item}
+		 			</foreach>
+		 		</if>
+		GROUP BY
+		sb.CLIENT,
+		sb.GSSB_BR_ID,
+		sb.GSSB_PRO_ID UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		CASE WHEN dc.DC_SHORT_NAME = '' THEN dc.DC_NAME ELSE IFNULL( dc.DC_SHORT_NAME, dc.DC_NAME ) END gssBrName,
+		kc.WM_SP_BM gssmProId,
+		ifnull( sum( kc.WM_KCSL ), 0.00 ) qty,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ sum( ass.MAT_TOTAL_QTY )* sum( kc.WM_KCSL ), 0 ) AS addAmount,
+		pb.PRO_LSJ priceNormal,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_BATCH_INFO bi ON ( kc.CLIENT = bi.CLIENT AND kc.WM_SP_BM = bi.BAT_PRO_CODE AND kc.WM_PCH = bi.BAT_BATCH )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_DC_DATA dc ON ( kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE )
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON ( pb.CLIENT = kc.CLIENT AND pb.PRO_SITE = kc.PRO_SITE AND pb.PRO_SELF_CODE = kc.WM_SP_BM )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM
+		) a
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE AND a.gssmProId = b.PRO_SELF_CODE )
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = b.PRO_CLASS
+		WHERE
+		1 = 1
+		AND not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+		<if test="noZero != null and noZero != '' and noZero == '1'.toString()">
+			AND a.qty != 0
+		</if>
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="yblx != null and yblx !=''">
+			and b.PRO_YBLX = #{yblx}
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and b.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and b.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and b.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and b.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and b.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and b.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and b.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and b.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and b.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		<if test="proStorageCondition != null and proStorageCondition !=''">
+			and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+		</if>
+		<if test="inventoryStore != null and inventoryStore.size() > 0">
+			and a.gssmBrId in
+			<foreach collection="inventoryStore" item="item" index="index" open="(" separator="," close=")">
+				#{item.siteCode}
+			</foreach>
+		</if>
+		ORDER BY
+		a.gssmProId
+	</select>
+
+
+	<select id="inventoryInquiryListByStoreAndDc"
+			resultType="com.gys.report.entity.InventoryInquiryByClientAndSiteOutData">
+		SELECT
+		a.*,
+		IFNULL( b.PRO_NAME, b.PRO_COMMONNAME ) gssmProName,
+		b.PRO_BARCODE proBarcode,
+		b.PRO_COMMONNAME  proCommonName,
+		b.PRO_ZDY1 AS zdy1,
+		b.PRO_ZDY2 AS zdy2,
+		b.PRO_ZDY3 AS zdy3,
+		b.PRO_ZDY4 AS zdy4,
+		b.PRO_ZDY5 AS zdy5,
+		b.PRO_SLAE_CLASS AS saleClass,
+		b.PRO_SCLASS AS prosClass,
+		case b.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		b.PRO_FACTORY_NAME factory,
+		b.PRO_PLACE origin,
+		b.PRO_FORM dosageForm,
+		b.PRO_UNIT unit,
+		b.PRO_SPECS format,
+		b.PRO_REGISTER_NO approvalNum,
+		b.PRO_MED_ID medProdctCode,
+		b.PRO_POSITION proPosition,
+		b.PRO_MED_QTY proMedQty,
+		b.PRO_IF_WHOLESALE isWholeSale,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		b.PRO_MED_ID medProdctCode,
+		CASE
+		WHEN b.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN ifnull( b.PRO_MED_ID, '' ) != '' THEN
+		'是' ELSE '否'
+		END ifMed,
+		case b.PRO_YBLX when '1' then '甲类'  when '2' then '乙类' end yblx,
+		ifnull(a.gsspRetailPrice,b.PRO_LSJ) retailPrice,
+		ifnull(a.gsspRetailSales,b.PRO_LSJ* a.qty) retailSales,
+		phs.GSPHS_PRICE memberPrice,
+		php.GSPHP_PRICE memberDayPrice
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSS_BR_ID gssmBrId,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) gssBrName,
+		sb.GSS_PRO_ID gssmProId,
+		ifnull(sum( sb.GSS_QTY ),0.00) qty,
+		ifnull(  ass.MAT_MOV_PRICE ,0.00)AS matMovPrice,
+		ifnull(  ass.MAT_MOV_PRICE * sum( sb.GSS_QTY ),0.00) AS costAmount,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( sb.GSS_QTY ),0.00) AS matMovRatePrice,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ) ,0.00)AS costRateAmount,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY )*sum( sb.GSS_QTY ), 0.00 ) AS addAmount,
+		pp.GSPP_PRICE_NORMAL gsspRetailPrice,
+		pp.GSPP_PRICE_NORMAL * sum(sb.GSS_QTY) as gsspRetailSales,
+		'store' site,
+		sto.STO_ATTRIBUTE stoAttribute,
+		sto.STO_IF_DTP stoIfDtp,
+		sto.STO_IF_MEDICALCARE stoIfMedical,
+		sto.STO_TAX_CLASS stoTaxClass
+		FROM
+		GAIA_SD_STOCK sb
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_STORE_DATA sto ON ( sb.CLIENT = sto.CLIENT AND sb.GSS_BR_ID = sto.STO_CODE )
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( sb.CLIENT = pp.CLIENT AND sb.GSS_PRO_ID = pp.GSPP_PRO_ID AND sb.GSS_BR_ID = pp.GSPP_BR_ID )
+
+		WHERE
+		sb.CLIENT = #{clientId}
+		<if test="gssmBrId != null and gssmBrId !=''">
+			and sb.GSS_BR_ID = #{gssmBrId}
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and sb.GSS_PRO_ID  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		sb.CLIENT,
+		sb.GSS_BR_ID,
+		sb.GSS_PRO_ID UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		case
+		when dc.DC_SHORT_NAME = '' then dc.DC_NAME
+		else IFNULL( dc.DC_SHORT_NAME, dc.DC_NAME ) end gssBrName,
+		kc.WM_SP_BM gssmProId,
+		ifnull(sum( kc.WM_KCSL ),0.00) qty,
+		ifnull(  ass.MAT_MOV_PRICE,0.00) AS matMovPrice,
+		ifnull(  ass.MAT_MOV_PRICE * sum( kc.WM_KCSL ),0.00) AS costAmount,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( kc.WM_KCSL ),0.00) AS matMovRatePrice,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ),0.00) AS costRateAmount,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT)/sum( ass.MAT_TOTAL_QTY )*sum( kc.WM_KCSL ), 0 ) AS addAmount,
+		null as gsspRetailPrice,
+		null as gsspRetailSales,
+		'dc' site,
+		"" stoAttribute,
+		"" stoIfDtp,
+		"" stoIfMedical,
+		"" stoTaxClass
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_BATCH_INFO bi ON (
+		kc.CLIENT = bi.CLIENT
+		AND kc.WM_SP_BM = bi.BAT_PRO_CODE
+		AND kc.WM_PCH = bi.BAT_BATCH
+		)
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_DC_DATA dc ON ( kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="gssmBrId != null and gssmBrId !=''">
+			and kc.PRO_SITE = #{gssmBrId}
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM
+		) a
+		LEFT JOIN GAIA_SD_PROM_HEAD ph1 ON ph1.client = a.clientId
+		AND ph1.GSPH_BR_ID = a.gssmBrId
+		AND ph1.GSPH_TYPE = 'PROM_HYJ'
+		LEFT JOIN GAIA_SD_PROM_HY_SET phs ON ph1.CLIENT = phs.CLIENT
+		AND ph1.GSPH_VOUCHER_ID = phs.GSPHS_VOUCHER_ID
+		AND phs.GSPHS_PRO_ID = a.gssmProId
+
+		LEFT JOIN GAIA_SD_PROM_HEAD ph2 ON ph2.client = a.clientId
+		AND ph2.GSPH_BR_ID = a.gssmBrId
+		AND ph2.GSPH_TYPE = 'PROM_HYRJ'
+		LEFT JOIN GAIA_SD_PROM_HYR_PRICE php ON ph2.CLIENT = php.CLIENT
+		AND ph2.GSPH_VOUCHER_ID = php.GSPHP_VOUCHER_ID
+		AND php.GSPHP_PRO_ID = a.gssmProId
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON (
+		a.clientId = b.CLIENT
+		AND a.gssmBrId = b.PRO_SITE
+		AND a.gssmProId = b.PRO_SELF_CODE
+		)
+		LEFT JOIN ( SELECT * FROM(
+		SELECT 	PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		) proClass  GROUP BY classId
+		) pc ON pc.classId = b.PRO_CLASS
+
+		where 1=1
+		and not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="yblx != null and yblx !=''">
+			and b.PRO_YBLX = #{yblx}
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			and b.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and b.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and b.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and b.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and b.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and b.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and b.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and b.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and b.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and b.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		<if test="proStorageCondition != null and proStorageCondition !=''">
+			and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+		</if>
+		<include refid="STORE_CLASS_SITE" />
+		ORDER BY a.gssmProId,a.gssmBrId
+	</select>
+	<!--  //按地点查询  -->
+
+	<!-- //按商品搜索的时候 没有商品信息的门店也要带出来 -->
+	<select id="inventoryInquiryListByAllStoreAndDc"
+			resultType="com.gys.report.entity.InventoryInquiryByClientAndSiteOutData">
+		SELECT
+		a.*,
+		a.BAT_SUPPLIER_NAME supplierName,
+		sal.GSS_NAME saleName,
+		IFNULL( b.PRO_NAME, b.PRO_COMMONNAME ) gssmProName,
+		b.PRO_BARCODE proBarcode,
+		b.PRO_COMMONNAME  proCommonName,
+		b.PRO_ZDY1 AS zdy1,
+		b.PRO_ZDY2 AS zdy2,
+		b.PRO_ZDY3 AS zdy3,
+		b.PRO_ZDY4 AS zdy4,
+		b.PRO_ZDY5 AS zdy5,
+		b.PRO_SLAE_CLASS AS saleClass,
+		b.PRO_SCLASS AS prosClass,
+		case b.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		b.PRO_FACTORY_NAME factory,
+		b.PRO_PLACE origin,
+		b.PRO_FORM dosageForm,
+		b.PRO_UNIT unit,
+		b.PRO_SPECS format,
+		b.PRO_REGISTER_NO approvalNum,
+		b.PRO_MED_ID medProdctCode,
+		b.PRO_POSITION proPosition,
+		b.PRO_MED_QTY proMedQty,
+		b.PRO_IF_WHOLESALE isWholeSale,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		b.PRO_MED_ID medProdctCode,
+		CASE
+		WHEN b.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN ifnull( b.PRO_MED_ID, '' ) != '' THEN
+		'是' ELSE '否'
+		END ifMed,
+		case b.PRO_YBLX when '1' then '甲类'  when '2' then '乙类' end yblx,
+		ifnull(a.gsspRetailPrice,b.PRO_LSJ) retailPrice,
+		ifnull(a.gsspRetailSales,b.PRO_LSJ* a.qty) retailSales,
+		phs.GSPHS_PRICE memberPrice,
+		php.GSPHP_PRICE memberDayPrice,
+		ifnull(x.GSSD_QTY,0) daysOfSales30,
+		ifnull(y.GSSD_QTY,0) daysOfSales60,
+		ifnull(z.GSSD_QTY,0) daysOfSales90
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) gssBrName,
+		sb.GSSB_PRO_ID gssmProId,
+		ifnull( sum( sb.GSSB_QTY ), 0.00 ) qty,
+		ifnull( ass.MAT_MOV_PRICE, 0.00 ) AS matMovPrice,
+		ifnull( ass.MAT_MOV_PRICE * sum( sb.GSSB_QTY ), 0.00 ) AS costAmount,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( sb.GSSB_QTY ), 0.00 ) AS matMovRatePrice,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ), 0.00 ) AS costRateAmount,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY )*sum( sb.GSSB_QTY ), 0.00 ) AS addAmount,
+		bi.BAT_CREATE_DATE inDate,
+		DATEDIFF(date_format(sb.GSSB_VAILD_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		pp.GSPP_PRICE_NORMAL gsspRetailPrice,
+		pp.GSPP_PRICE_NORMAL * sum(sb.GSSB_QTY) as gsspRetailSales,
+		'store' site,
+		sto.STO_ATTRIBUTE stoAttribute,
+		sto.STO_IF_DTP stoIfDtp,
+		sto.STO_IF_MEDICALCARE stoIfMedical,
+		sto.STO_TAX_CLASS stoTaxClass
+		,sto.STO_DC_CODE dcCode
+		,bi.BAT_SUPPLIER_CODE supplierCode
+		,bi.BAT_SUPPLIER_NAME BAT_SUPPLIER_NAME
+		,bi.BAT_SUPPLIER_SALESMAN saleCode
+		,sb.GSSB_VAILD_DATE validUntil
+		,sb.GSSB_BATCH_NO gssmBatchNo
+		,bi.BAT_PO_PRICE poPrice
+		,bi.BAT_PRODUCT_DATE productDate
+		FROM GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( sb.CLIENT = pp.CLIENT AND sb.GSSB_PRO_ID = pp.GSPP_PRO_ID AND sb.GSSB_BR_ID = pp.GSPP_BR_ID )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_STORE_DATA sto ON ( sb.CLIENT = sto.CLIENT AND sb.GSSB_BR_ID = sto.STO_CODE )
+		LEFT JOIN GAIA_BATCH_INFO bi ON ( sb.CLIENT = bi.CLIENT AND sb.GSSB_PRO_ID = bi.BAT_PRO_CODE AND sb.GSSB_BATCH = bi.BAT_BATCH)
+
+		WHERE
+		sb.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and sb.GSSB_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="supplierCode != null and supplierCode != ''">
+			and bi.BAT_SUPPLIER_CODE   = #{supplierCode}
+		</if>
+
+		<if test="proArr != null and proArr.length > 0">
+			and sb.GSSB_PRO_ID in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test='isSales != null and isSales != 0'>
+			<if test="saleCodes != null and saleCodes.size > 0">
+				and bi.BAT_SUPPLIER_SALESMAN in
+				<foreach collection="saleCodes" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+		</if>
+		GROUP BY
+		sb.CLIENT,
+		sb.GSSB_BR_ID,
+		sb.GSSB_PRO_ID
+		<if test="supplierCode != null and supplierCode != ''">
+			,bi.BAT_SUPPLIER_CODE
+		</if>
+		<if test="type != null and type != 0">
+			,sb.GSSB_BATCH_NO
+		</if>
+		<if test="isSales != null and isSales != 0">
+			,bi.BAT_SUPPLIER_SALESMAN
+		</if>
+
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		case when dc.DC_SHORT_NAME = '' then dc.DC_NAME	else IFNULL( dc.DC_SHORT_NAME, dc.DC_NAME ) end gssBrName,
+		kc.WM_SP_BM gssmProId,
+		ifnull(sum( kc.WM_KCSL ),0.00) qty,
+		ifnull(  ass.MAT_MOV_PRICE,0.00) AS matMovPrice,
+		ifnull(  ass.MAT_MOV_PRICE * sum( kc.WM_KCSL ),0.00) AS costAmount,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( kc.WM_KCSL ),0.00) AS matMovRatePrice,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ),0.00) AS costRateAmount,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/sum( ass.MAT_TOTAL_QTY )*sum( kc.WM_KCSL ), 0.00 ) AS addAmount,
+		bi.BAT_CREATE_DATE inDate,
+		DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		null as gsspRetailPrice,
+		null as gsspRetailSales,
+		'dc' site,
+		"" stoAttribute,
+		"" stoIfDtp,
+		"" stoIfMedical,
+		"" stoTaxClass
+		,kc.PRO_SITE dcCode
+		,bi.BAT_SUPPLIER_CODE supplierCode
+		,bi.BAT_SUPPLIER_NAME BAT_SUPPLIER_NAME
+		,bi.BAT_SUPPLIER_SALESMAN saleCode
+		,bi.BAT_EXPIRY_DATE validUntil
+		,bi.BAT_BATCH_NO gssmBatchNo
+		,bi.BAT_PO_PRICE poPrice
+		,bi.BAT_PRODUCT_DATE productDate
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_BATCH_INFO bi ON (kc.CLIENT = bi.CLIENT AND kc.PRO_SITE = bi.BAT_SITE_CODE AND kc.WM_SP_BM = bi.BAT_PRO_CODE	AND kc.WM_PCH = bi.BAT_BATCH)
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_DC_DATA dc ON ( kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and kc.PRO_SITE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="supplierCode != null and supplierCode != ''">
+			and bi.BAT_SUPPLIER_CODE   = #{supplierCode}
+		</if>
+
+		<if test='isSales != null and isSales != 0'>
+			<if test="saleCodes != null and saleCodes.size > 0">
+				and bi.BAT_SUPPLIER_SALESMAN in
+				<foreach collection="saleCodes" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+		</if>
+		GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM
+		<if test="supplierCode != null and supplierCode != ''">
+			,bi.BAT_SUPPLIER_CODE
+		</if>
+		<if test="type != null and type != 0">
+			,kc.WM_PCH
+		</if>
+		<if test="isSales != null and isSales != 0">
+			,bi.BAT_SUPPLIER_SALESMAN
+		</if>
+		) a
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON (a.clientId = sup.CLIENT AND a.gssmBrId = sup.SUP_SITE  AND a.supplierCode = sup.SUP_SELF_CODE )
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup2 ON ( a.clientId = sup2.CLIENT AND a.dcCode = sup2.SUP_SITE AND a.supplierCode = sup2.SUP_SELF_CODE )
+		LEFT JOIN GAIA_SUPPLIER_SALESMAN sal ON ( a.clientId = sal.CLIENT AND a.gssmBrId = sal.SUP_SITE AND sal.SUP_SELF_CODE = a.supplierCode AND a.saleCode = sal.GSS_CODE )
+		LEFT JOIN GAIA_SD_PROM_HEAD ph1 ON ph1.client = a.clientId	AND ph1.GSPH_BR_ID = a.gssmBrId	AND ph1.GSPH_TYPE = 'PROM_HYJ'
+		LEFT JOIN GAIA_SD_PROM_HY_SET phs ON ph1.CLIENT = phs.CLIENT AND ph1.GSPH_VOUCHER_ID = phs.GSPHS_VOUCHER_ID	AND phs.GSPHS_PRO_ID = a.gssmProId
+		LEFT JOIN GAIA_SD_PROM_HEAD ph2 ON ph2.client = a.clientId	AND ph2.GSPH_BR_ID = a.gssmBrId	AND ph2.GSPH_TYPE = 'PROM_HYRJ'
+		LEFT JOIN GAIA_SD_PROM_HYR_PRICE php ON ph2.CLIENT = php.CLIENT	AND ph2.GSPH_VOUCHER_ID = php.GSPHP_VOUCHER_ID	AND php.GSPHP_PRO_ID = a.gssmProId
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON (a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE	AND a.gssmProId = b.PRO_SELF_CODE)
+		LEFT JOIN (
+		    SELECT * FROM(
+				SELECT 	PRO_BIG_CLASS_CODE AS classId,
+				PRO_BIG_CLASS_CODE,
+				PRO_BIG_CLASS_NAME,
+				NULL AS PRO_MID_CLASS_CODE,
+				NULL AS PRO_MID_CLASS_NAME,
+				NULL AS PRO_CLASS_CODE,
+				NULL AS PRO_CLASS_NAME
+				FROM GAIA_PRODUCT_CLASS
+				UNION ALL
+				SELECT  PRO_MID_CLASS_CODE AS classId,
+				PRO_BIG_CLASS_CODE,
+				PRO_BIG_CLASS_NAME,
+				PRO_MID_CLASS_CODE,
+				PRO_MID_CLASS_NAME,
+				NULL AS PRO_CLASS_CODE,
+				NULL AS PRO_CLASS_NAME
+				FROM GAIA_PRODUCT_CLASS
+				UNION ALL
+				SELECT  PRO_CLASS_CODE AS classId,
+				PRO_BIG_CLASS_CODE,
+				PRO_BIG_CLASS_NAME,
+				PRO_MID_CLASS_CODE,
+				PRO_MID_CLASS_NAME,
+				PRO_CLASS_CODE,
+				PRO_CLASS_NAME
+				FROM GAIA_PRODUCT_CLASS
+			) proClass  GROUP BY classId
+		) pc ON pc.classId = b.PRO_CLASS
+		LEFT JOIN (
+		SELECT
+		ssd1.CLIENT,
+		ssd1.GSSD_BR_ID,
+		sum(ssd1.GSSD_QTY) GSSD_QTY,
+		ssd1.GSSD_PRO_ID
+		FROM GAIA_SD_SALE_D ssd1
+		LEFT JOIN GAIA_SD_SALE_H b ON ssd1.CLIENT = b.CLIENT and ssd1.GSSD_BILL_NO = b.GSSH_BILL_NO and ssd1.GSSD_BR_ID = b.GSSH_BR_ID
+		WHERE b.GSSH_HIDE_FLAG = '0' and  ssd1.CLIENT = #{clientId}
+		<if test="proArr != null and proArr.length > 0">
+			and ssd1.GSSD_PRO_ID  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and ssd1.GSSD_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		AND ssd1.GSSD_DATE &gt;= replace(date_sub(curdate(),interval 30 day),'-','') group by ssd1.GSSD_BR_ID,ssd1.GSSD_PRO_ID) x
+		on x.CLIENT = a.clientId and x.GSSD_BR_ID = a.gssmBrId and x.GSSD_PRO_ID = a.gssmProId
+		left join (
+		SELECT
+		ssd2.CLIENT,
+		ssd2.GSSD_BR_ID,
+		sum(ssd2.GSSD_QTY) GSSD_QTY,
+		ssd2.GSSD_PRO_ID
+		FROM GAIA_SD_SALE_D ssd2
+		LEFT JOIN GAIA_SD_SALE_H b ON ssd2.CLIENT = b.CLIENT and ssd2.GSSD_BILL_NO = b.GSSH_BILL_NO and ssd2.GSSD_BR_ID = b.GSSH_BR_ID
+		WHERE b.GSSH_HIDE_FLAG = '0' and  ssd2.CLIENT = #{clientId}
+		<if test="proArr != null and proArr.length > 0">
+			and ssd2.GSSD_PRO_ID  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and ssd2.GSSD_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		AND ssd2.GSSD_DATE &gt;= replace(date_sub(curdate(),interval 60 day),'-','' ) group by ssd2.GSSD_BR_ID,ssd2.GSSD_PRO_ID) y
+		on y.CLIENT = a.clientId and y.GSSD_BR_ID = a.gssmBrId and y.GSSD_PRO_ID = a.gssmProId
+		left join (
+		SELECT
+		ssd3.CLIENT,
+		ssd3.GSSD_BR_ID,
+		sum(ssd3.GSSD_QTY) GSSD_QTY,
+		ssd3.GSSD_PRO_ID
+		FROM GAIA_SD_SALE_D ssd3
+		LEFT JOIN GAIA_SD_SALE_H b ON ssd3.CLIENT = b.CLIENT and ssd3.GSSD_BILL_NO = b.GSSH_BILL_NO and ssd3.GSSD_BR_ID = b.GSSH_BR_ID
+		WHERE b.GSSH_HIDE_FLAG = '0' and  ssd3.CLIENT = #{clientId}
+		<if test="proArr != null and proArr.length > 0">
+			and ssd3.GSSD_PRO_ID  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and ssd3.GSSD_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		AND ssd3.GSSD_DATE &gt;= replace(date_sub(curdate(),interval 90 day),'-','' ) group by ssd3.GSSD_BR_ID,ssd3.GSSD_PRO_ID
+		) z on z.CLIENT = a.clientId and z.GSSD_BR_ID = a.gssmBrId and z.GSSD_PRO_ID = a.gssmProId
+		where 1=1
+		and not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="yblx != null and yblx !=''">
+			and b.PRO_YBLX = #{yblx}
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="expiryData != null and expiryData !=''">
+			and a.expiryData &lt;=#{expiryData}
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			and b.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and b.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and b.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and b.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and b.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and b.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and b.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and b.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and b.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and b.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		<if test="proStorageCondition != null and proStorageCondition !=''">
+			and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+		</if>
+		<include refid="STORE_CLASS_SITE" />
+		ORDER BY
+		<if test="proArr != null and proArr.length > 0">
+			<if test="type != null and type != 1">
+				a.qty,
+			</if>
+		</if>
+		a.gssmProId,a.gssmBrId
+	</select>
+
+	<!--  //按批号查询各个地点下的库存-->
+	<select id="inventoryInquiryListByStoreAndDcAndBatchNo"
+			resultType="com.gys.report.entity.InventoryInquiryByClientAndSiteOutData">
+		SELECT
+		a.*,
+		IFNULL(sup.SUP_NAME,sup2.SUP_NAME) supplierName,
+		IFNULL( b.PRO_NAME, b.PRO_COMMONNAME ) gssmProName,
+		b.PRO_COMMONNAME  proCommonName,
+		b.PRO_BARCODE proBarcode,
+		b.PRO_ZDY1 AS zdy1,
+		b.PRO_ZDY2 AS zdy2,
+		b.PRO_ZDY3 AS zdy3,
+		b.PRO_ZDY4 AS zdy4,
+		b.PRO_ZDY5 AS zdy5,
+		b.PRO_SLAE_CLASS AS saleClass,
+		b.PRO_SCLASS AS prosClass,
+		case b.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		b.PRO_FACTORY_NAME factory,
+		b.PRO_PLACE origin,
+		b.PRO_FORM dosageForm,
+		b.PRO_UNIT unit,
+		b.PRO_SPECS format,
+		b.PRO_REGISTER_NO approvalNum,
+		b.PRO_POSITION proPosition,
+		b.PRO_MED_QTY proMedQty,
+		b.PRO_IF_WHOLESALE isWholeSale,
+		case b.PRO_YBLX when '1' then '甲类'  when '2' then '乙类' end yblx,
+		CASE
+		WHEN b.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN ifnull( b.PRO_MED_ID, '' ) != '' THEN
+		'是' ELSE '否'
+		END ifMed,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		b.PRO_MED_ID medProdctCode,
+		ifnull(a.gsspRetailPrice,b.PRO_LSJ) retailPrice,
+		ifnull(a.gsspRetailSales,b.PRO_LSJ* a.qty) retailSales,
+		phs.GSPHS_PRICE memberPrice,
+		php.GSPHP_PRICE memberDayPrice
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) gssBrName,
+		sb.GSSB_PRO_ID gssmProId,
+		sb.GSSB_BATCH_NO gssmBatchNo,
+		sb.GSSB_VAILD_DATE validUntil,
+		ifnull(sum( sb.GSSB_QTY ),0) qty,
+		ifnull(ass.MAT_MOV_PRICE,0) AS matMovPrice,
+		ifnull(ass.MAT_MOV_PRICE * sum( sb.GSSB_QTY ),0) AS costAmount,
+		ifnull(bi.BAT_PO_PRICE,bi2.BAT_PO_PRICE) AS matMovRatePrice,
+		ifnull(bi.BAT_PO_PRICE,bi2.BAT_PO_PRICE) * sum( sb.GSSB_QTY ) AS costRateAmount,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY )*sum( sb.GSSB_QTY ), 0.00 ) AS addAmount,
+		ifnull(bi.BAT_CREATE_DATE,bi.BAT_CREATE_DATE) inDate,
+		DATEDIFF(date_format(sb.GSSB_VAILD_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		pp.GSPP_PRICE_NORMAL gsspRetailPrice,
+		pp.GSPP_PRICE_NORMAL * sum(sb.GSSB_QTY) as gsspRetailSales,
+		ifnull(bi.BAT_SUPPLIER_CODE,bi2.BAT_SUPPLIER_CODE) supplierCode,
+		sd.STO_DC_CODE dcCode,
+		'store' site,
+		sto.STO_ATTRIBUTE stoAttribute,
+		sto.STO_IF_DTP stoIfDtp,
+		sto.STO_IF_MEDICALCARE stoIfMedical,
+		sto.STO_TAX_CLASS stoTaxClass
+		FROM
+		GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( sb.CLIENT = pp.CLIENT AND sb.GSSB_PRO_ID = pp.GSPP_PRO_ID AND sb.GSSB_BR_ID = pp.GSPP_BR_ID )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_STORE_DATA sto ON ( sb.CLIENT = sto.CLIENT AND sb.GSSB_BR_ID = sto.STO_CODE )
+		LEFT JOIN GAIA_BATCH_INFO bi ON ( sb.CLIENT = bi.CLIENT AND sb.GSSB_PRO_ID = bi.BAT_PRO_CODE AND sb.GSSB_BATCH = bi.BAT_BATCH)
+		LEFT JOIN GAIA_STORE_DATA sd ON (sd.CLIENT = sb.CLIENT AND sd.STO_CODE=sb.GSSB_BR_ID)
+		LEFT JOIN GAIA_BATCH_INFO bi2 ON (sb.CLIENT = bi2.CLIENT AND sb.GSSB_PRO_ID = bi2.BAT_PRO_CODE AND sb.GSSB_BATCH = bi2.BAT_BATCH)
+
+		WHERE
+		sb.CLIENT = #{clientId}
+		<if test="expiryData != null and expiryData !=''">
+			AND DATEDIFF(sb.GSSB_VAILD_DATE,now()) <![CDATA[ <= ]]> #{expiryData}
+		</if>
+		and sb.GSSB_QTY > 0
+		<if test="siteArr != null and siteArr.length > 0">
+			and sb.GSSB_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and sb.GSSB_PRO_ID  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		sb.CLIENT,
+		sb.GSSB_BR_ID,
+		sb.GSSB_PRO_ID,
+		sb.GSSB_BATCH
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		case
+		when dc.DC_SHORT_NAME = '' then dc.DC_NAME
+		else IFNULL( dc.DC_SHORT_NAME, dc.DC_NAME ) end gssBrName,
+		kc.WM_SP_BM gssmProId,
+		bi.BAT_BATCH_NO gssmBatchNo,
+		bi.BAT_EXPIRY_DATE validUntil,
+		ifnull(sum( kc.WM_KCSL ),0) qty,
+		ifnull(ass.MAT_MOV_PRICE,0) AS matMovPrice,
+		ifnull(ass.MAT_MOV_PRICE * sum( kc.WM_KCSL ) ,0)AS costAmount,
+		bi.BAT_PO_PRICE,
+		bi.BAT_PO_PRICE * sum( kc.WM_KCSL ) AS costRateAmount,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/sum( ass.MAT_TOTAL_QTY )*sum( kc.WM_KCSL ), 0 ) AS addAmount,
+		bi.BAT_CREATE_DATE inDate,
+		DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		null as gsspRetailPrice,
+		null as gsspRetailSales,
+		bi.BAT_SUPPLIER_CODE supplierCode,
+		kc.PRO_SITE dcCode,
+		'dc' site,
+		"" stoAttribute,
+		"" stoIfDtp,
+		"" stoIfMedical,
+		"" stoTaxClass
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( kc.CLIENT = pp.CLIENT AND kc.PRO_SITE = pp.GSPP_BR_ID AND kc.WM_SP_BM = pp.GSPP_PRO_ID )
+		LEFT JOIN GAIA_BATCH_INFO bi ON (
+		kc.CLIENT = bi.CLIENT
+		AND kc.WM_SP_BM = bi.BAT_PRO_CODE
+		AND kc.WM_PCH = bi.BAT_BATCH
+		)
+		LEFT JOIN GAIA_DC_DATA dc ON ( kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="expiryData != null and expiryData !=''">
+			AND DATEDIFF(bi.BAT_EXPIRY_DATE,now()) <![CDATA[ <= ]]> #{expiryData}
+		</if>
+		and kc.WM_KCSL > 0
+		<if test="siteArr != null and siteArr.length > 0">
+			and kc.PRO_SITE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM,
+		kc.WM_PCH
+		) a
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON (a.clientId = sup.CLIENT AND a.gssmBrId = sup.SUP_SITE AND a.supplierCode = sup.SUP_SELF_CODE )
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup2 ON ( a.clientId = sup2.CLIENT AND a.dcCode = sup2.SUP_SITE AND a.supplierCode = sup2.SUP_SELF_CODE )
+		LEFT JOIN GAIA_SD_PROM_HEAD ph1 ON ph1.client = a.clientId
+		AND ph1.GSPH_BR_ID = a.gssmBrId
+		AND ph1.GSPH_TYPE = 'PROM_HYJ'
+		LEFT JOIN GAIA_SD_PROM_HY_SET phs ON ph1.CLIENT = phs.CLIENT
+		AND ph1.GSPH_VOUCHER_ID = phs.GSPHS_VOUCHER_ID
+		AND phs.GSPHS_PRO_ID = a.gssmProId
+
+		LEFT JOIN GAIA_SD_PROM_HEAD ph2 ON ph2.client = a.clientId
+		AND ph2.GSPH_BR_ID = a.gssmBrId
+		AND ph2.GSPH_TYPE = 'PROM_HYRJ'
+		LEFT JOIN GAIA_SD_PROM_HYR_PRICE php ON ph2.CLIENT = php.CLIENT
+		AND ph2.GSPH_VOUCHER_ID = php.GSPHP_VOUCHER_ID
+		AND php.GSPHP_PRO_ID = a.gssmProId
+
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE AND a.gssmProId = b.PRO_SELF_CODE )
+		LEFT JOIN ( SELECT * FROM(
+		SELECT 	PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		) proClass  GROUP BY classId
+		) pc ON pc.classId = b.PRO_CLASS
+		where a.qty &gt; 0
+		and not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="yblx != null and yblx !=''">
+			and b.PRO_YBLX = #{yblx}
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="supplierCode != null and supplierCode !=''">
+			and a.supplierCode = #{supplierCode}
+		</if>
+		<if test="expiryData != null and expiryData !=''">
+			and a.expiryData &lt;=#{expiryData}
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			and b.PRO_CLASS in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and b.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and b.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and b.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and b.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and b.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and b.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and b.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and b.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and b.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		<if test="proStorageCondition != null and proStorageCondition !=''">
+			and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+		</if>
+		<include refid="STORE_CLASS_SITE" />
+		ORDER BY a.gssmProId,a.gssmBrId
+	</select>
+
+	<sql id="STORE_CLASS_SITE" >
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+			<if test="stoGssgTypes!=null and stoGssgTypes.size">
+				EXISTS (
+				SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE a.clientId = gssg.CLIENT AND a.gssmBrId = gssg.GSSG_BR_ID
+				AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+				<foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+					(#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+				</foreach>
+				)
+			</if>
+			<if test="stoAttributes!=null and stoAttributes.size">
+				OR a.stoAttribute IN
+				<foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+					#{stoAttribute}
+				</foreach>
+			</if>
+			<if test="stoAttribute==''" >
+				OR a.stoAttribute IS NOT NULL AND a.stoAttribute != ''
+			</if>
+			<if test="stoIfMedicals!=null and stoIfMedicals.size">
+				OR a.stoIfMedical IN
+				<foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+					#{stoIfMedical}
+				</foreach>
+			</if>
+			<if test="stoIfMedical==''" >
+				OR a.stoIfMedical IS NOT NULL AND a.stoIfMedical != ''
+			</if>
+			<if test="stoTaxClasss!=null and stoTaxClasss.size">
+				OR a.stoTaxClass IN
+				<foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+					#{stoTaxClass}
+				</foreach>
+			</if>
+			<if test="stoTaxClass==''" >
+				OR a.stoTaxClass IS NOT NULL AND a.stoTaxClass != ''
+			</if>
+			<if test="stoIfDtps!=null and stoIfDtps.size">
+				OR a.stoIfDtp IN
+				<foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+					#{stoIfDtp}
+				</foreach>
+			</if>
+			<if test="stoIfDtp==''" >
+				OR a.stoIfDtp IS NOT NULL AND a.stoIfDtp != ''
+			</if>
+		</trim>
+	</sql>
+
+	<!-- 商品实时库存查询 按批号 0829 -->
+	<select id="inventoryInquiryListByClientAndSiteAndBatchNo"
+			resultType="com.gys.report.entity.InventoryInquiryByClientAndBatchNoOutData">
+		SELECT
+		a.*,
+		a.BAT_SUPPLIER_NAME supplierName,
+		ifnull(sum( CASE site WHEN 'store' THEN qty END ),0) AS storeQty,
+		ifnull(sum( CASE site WHEN 'dc' THEN qty END ) ,0) AS dcQty,
+		ifnull(sum( CASE site WHEN 'store' THEN costAmount END ),0)  AS storeCostAmount,
+		ifnull(sum( CASE site WHEN 'dc' THEN costAmount END ),0)  AS dcCostAmount,
+		ifnull(sum( CASE site WHEN 'store' THEN costRateAmount END ),0)  AS storeCostRateAmount,
+		ifnull(sum( CASE site WHEN 'dc' THEN costRateAmount END ),0)  AS dcCostRateAmount,
+		IFNULL( b.PRO_NAME, b.PRO_COMMONNAME ) gssmProName,
+		b.PRO_COMMONNAME  proCommonName,
+		b.PRO_DEPICT proDepict,
+		b.PRO_ZDY1 zdy1,
+		b.PRO_ZDY2 zdy2,
+		b.PRO_ZDY3 zdy3,
+		b.PRO_ZDY4 zdy4,
+		b.PRO_ZDY5 zdy5,
+		b.PRO_SLAE_CLASS AS saleClass,
+		b.PRO_SCLASS AS prosClass,
+		case b.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		b.PRO_FACTORY_NAME factory,
+		b.PRO_FACTORY_CODE factoryCode,
+		b.PRO_PLACE origin,
+		b.PRO_FORM dosageForm,
+		b.PRO_UNIT unit,
+		b.PRO_SPECS format,
+		b.PRO_REGISTER_NO approvalNum,
+		b.PRO_POSITION proPosition,
+		b.PRO_MED_QTY proMedQty,
+		b.PRO_IF_WHOLESALE isWholeSale,
+		CASE
+		WHEN b.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN ifnull( b.PRO_MED_ID, '' ) != '' THEN
+		'是' ELSE '否'
+		END ifMed,
+		case b.PRO_YBLX when '1' then '甲类'  when '2' then '乙类' end yblx,
+		b.PRO_MED_ID medProdctCode,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		sum(a.qty) qtySum,
+		ifnull(sum( CASE site WHEN 'store' THEN costAmount END ),0) + ifnull(sum( CASE site WHEN 'dc' THEN costAmount END ),0) AS costSum,
+		ifnull(sum( CASE site WHEN 'store' THEN costRateAmount END ),0)  + ifnull(sum( CASE site WHEN 'dc' THEN costRateAmount END ),0) AS costRateSum
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		sb.GSSB_PRO_ID gssmProId,
+		sb.GSSB_BATCH_NO gssmBatchNo,
+		bi.BAT_BATCH gssmBatch,
+		ifnull(bi.BAT_SUPPLIER_CODE,bi2.BAT_SUPPLIER_CODE) supplierCode,
+		ifnull(bi.BAT_SUPPLIER_NAME,bi2.BAT_SUPPLIER_NAME) BAT_SUPPLIER_NAME,
+		sb.GSSB_VAILD_DATE validUntil,
+		sum( sb.GSSB_QTY ) qty,
+		sum(ass.MAT_ADD_AMT) AS costAmount,
+		sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/sum(ass.MAT_TOTAL_QTY)*sum( sb.GSSB_QTY )  AS costRateAmount,
+		DATEDIFF(date_format(sb.GSSB_VAILD_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		sd.STO_DC_CODE dcCode,
+		'store' site
+		,bi.BAT_PRODUCT_DATE productDate
+		FROM
+		GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( sb.CLIENT = b.CLIENT AND sb.GSSB_BR_ID = b.PRO_SITE AND sb.GSSB_PRO_ID = b.PRO_SELF_CODE )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_BATCH_INFO bi ON (sb.CLIENT = bi.CLIENT AND sb.GSSB_PRO_ID = bi.BAT_PRO_CODE AND sb.GSSB_BATCH = bi.BAT_BATCH)
+		LEFT JOIN GAIA_BATCH_INFO bi2 ON (sb.CLIENT = bi2.CLIENT AND sb.GSSB_PRO_ID = bi2.BAT_PRO_CODE AND sb.GSSB_BATCH = bi2.BAT_BATCH)
+		LEFT JOIN GAIA_STORE_DATA sd ON (sd.CLIENT = sb.CLIENT AND sd.STO_CODE=sb.GSSB_BR_ID)
+		WHERE
+		sb.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and sb.GSSB_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and sb.GSSB_PRO_ID  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		sb.CLIENT,
+		sb.GSSB_BR_ID,
+		sb.GSSB_PRO_ID,
+		sb.GSSB_BATCH_NO UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		kc.WM_SP_BM gssmProId,
+		bi.BAT_BATCH_NO gssmBatchNo,
+		bi.BAT_BATCH gssmBatch,
+		bi.BAT_SUPPLIER_CODE supplierCode,
+		bi.BAT_SUPPLIER_NAME BAT_SUPPLIER_NAME,
+		bi.BAT_EXPIRY_DATE validUntil,
+		sum( kc.WM_KCSL ) qty,
+		sum(ass.MAT_ADD_AMT) AS costAmount,
+		sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/sum(ass.MAT_TOTAL_QTY)*sum( kc.WM_KCSL )  AS costRateAmount,
+		DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		null dcCode,
+		'dc' site
+		,bi.BAT_PRODUCT_DATE productDate
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( kc.CLIENT = pp.CLIENT AND kc.PRO_SITE = pp.GSPP_BR_ID AND kc.WM_SP_BM = pp.GSPP_PRO_ID )
+		LEFT JOIN GAIA_BATCH_INFO bi ON (
+		kc.CLIENT = bi.CLIENT
+		AND kc.PRO_SITE = bi.BAT_SITE_CODE
+		AND kc.WM_SP_BM = bi.BAT_PRO_CODE
+		AND kc.WM_PCH = bi.BAT_BATCH
+		)
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and kc.PRO_SITE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM,
+		kc.WM_PCH
+		) a
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = a.clientId AND sto.STO_CODE = a.gssmBrId
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON (a.clientId = sup.CLIENT AND a.gssmBrId = sup.SUP_SITE AND a.supplierCode = sup.SUP_SELF_CODE )
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup2 ON ( a.clientId = sup2.CLIENT AND a.dcCode = sup2.SUP_SITE AND a.supplierCode = sup2.SUP_SELF_CODE )
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE AND a.gssmProId = b.PRO_SELF_CODE )
+		LEFT JOIN ( SELECT * FROM(
+		SELECT 	PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		) proClass  GROUP BY classId
+		) pc ON pc.classId = b.PRO_CLASS
+		<where>
+			not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+			<if test="proClass != null and proClass != ''">
+				AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+			</if>
+			<if test="yblx != null and yblx !=''">
+				and b.PRO_YBLX = #{yblx}
+			</if>
+			<if test="medProdctStatus != null and medProdctStatus != ''">
+				<if test="medProdctStatus == '1'.toString() ">
+					AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+				</if>
+				<if test="medProdctStatus == '0'.toString() ">
+					AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+				</if>
+			</if>
+			<if test="supplierCode != null and supplierCode !=''">
+				and a.supplierCode = #{supplierCode}
+			</if>
+			<if test="expiryDay != null and expiryDay !=''">
+				and a.expiryData &lt;= #{expiryDay}
+			</if>
+			<if test="factory != null and factory != ''">
+				AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+			</if>
+			<if test="classArrs != null and classArrs.size > 0">
+				and b.PRO_CLASS  in
+				<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy1 != null and zdy1.length > 0">
+				and b.PRO_ZDY1 in
+				<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy2 != null and zdy2.length > 0">
+				and b.PRO_ZDY2 in
+				<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy3 != null and zdy3.length > 0">
+				and b.PRO_ZDY3 in
+				<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy4 != null and zdy4.length > 0">
+				and b.PRO_ZDY4 in
+				<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy5 != null and zdy5.length > 0">
+				and b.PRO_ZDY5 in
+				<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="saleClass != null and saleClass.length > 0">
+				and b.PRO_SLAE_CLASS in
+				<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="proPosition != null and proPosition.length > 0">
+				and b.PRO_POSITION in
+				<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="prosClass != null and prosClass.length > 0">
+				and b.PRO_SCLASS in
+				<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="purchase != null and purchase != ''">
+				and b.PRO_NO_PURCHASE = #{purchase}
+			</if>
+			<if test="proStorageCondition != null and proStorageCondition !=''">
+				and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+			</if>
+			<include refid="STORE_CLASS_PRODUCT" />
+		</where>
+		GROUP BY
+		a.clientId,
+		a.gssmProId,
+		a.gssmBatchNo
+		ORDER BY
+		a.gssmProId
+	</select>
+
+	<sql id="STORE_CLASS_PRODUCT" >
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+			<if test="stoGssgTypes!=null and stoGssgTypes.size">
+				EXISTS (
+				SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE sto.CLIENT = gssg.CLIENT AND sto.STO_CODE = gssg.GSSG_BR_ID
+				AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+				<foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+					(#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+				</foreach>
+				)
+			</if>
+			<if test="stoAttributes!=null and stoAttributes.size">
+				OR sto.STO_ATTRIBUTE IN
+				<foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+					#{stoAttribute}
+				</foreach>
+			</if>
+			<if test="stoAttribute==''" >
+				OR sto.STO_ATTRIBUTE IS NOT NULL AND sto.STO_ATTRIBUTE != ''
+			</if>
+			<if test="stoIfMedicals!=null and stoIfMedicals.size">
+				OR sto.STO_IF_MEDICALCARE IN
+				<foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+					#{stoIfMedical}
+				</foreach>
+			</if>
+			<if test="stoIfMedical==''" >
+				OR sto.STO_IF_MEDICALCARE IS NOT NULL AND sto.STO_IF_MEDICALCARE != ''
+			</if>
+			<if test="stoTaxClasss!=null and stoTaxClasss.size">
+				OR sto.STO_TAX_CLASS IN
+				<foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+					#{stoTaxClass}
+				</foreach>
+			</if>
+			<if test="stoTaxClass==''" >
+				OR sto.STO_TAX_CLASS IS NOT NULL AND sto.STO_TAX_CLASS != ''
+			</if>
+			<if test="stoIfDtps!=null and stoIfDtps.size">
+				OR sto.STO_IF_DTP IN
+				<foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+					#{stoIfDtp}
+				</foreach>
+			</if>
+			<if test="stoIfDtp==''" >
+				OR sto.STO_IF_DTP IS NOT NULL AND sto.STO_IF_DTP != ''
+			</if>
+		</trim>
+	</sql>
+	<!-- 商品实时库存查询  0829-->
+	<select id="inventoryInquiryListByClient"
+			resultType="com.gys.report.entity.InventoryInquiryByClientAndBatchNoOutData">
+		SELECT
+		clientId,
+		gssmProId,
+		IFNULL(b.PRO_NAME,b.PRO_COMMONNAME) gssmProName,
+		b.PRO_COMMONNAME  proCommonName,
+        b.PRO_DEPICT proDepict,
+		b.PRO_ZDY1 zdy1,
+		b.PRO_ZDY2 zdy2,
+		b.PRO_ZDY3 zdy3,
+		b.PRO_ZDY4 zdy4,
+		b.PRO_ZDY5 zdy5,
+		b.PRO_SLAE_CLASS AS saleClass,
+		b.PRO_SCLASS AS prosClass,
+		case b.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		ifnull(sum(case site when 'store' then  qty  end),0) as storeQty,
+		ifnull(sum(case site when 'dc' then  qty  end),0)  as dcQty,
+		ifnull(sum(case site when 'store' then  costAmount  end),0)  as storeCostAmount,
+		ifnull(sum(case site when 'dc' then  costAmount  end),0)  as dcCostAmount,
+		ifnull(sum(case site when 'store' then  costRateAmount  end),0)  as storeCostRateAmount,
+		ifnull(sum(case site when 'dc' then  costRateAmount  end),0)  as dcCostRateAmount,
+		b.PRO_FACTORY_NAME factory,
+		b.PRO_PLACE origin,
+		b.PRO_FORM dosageForm,
+		b.PRO_UNIT unit,
+		b.PRO_SPECS format,
+		b.PRO_REGISTER_NO approvalNum,
+		b.PRO_MED_ID medProdctCode,
+		b.PRO_POSITION proPosition,
+		b.PRO_MED_QTY proMedQty,
+		b.PRO_IF_WHOLESALE isWholeSale,
+		CASE
+		WHEN b.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN ifnull( b.PRO_MED_ID, '' ) != '' THEN
+		'是' ELSE '否'
+		END ifMed,
+		case b.PRO_YBLX when '1' then '甲类'  when '2' then '乙类' end yblx,
+		sum(a.qty) qtySum,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		ifnull(sum(CASE site WHEN 'store' THEN costAmount END ),0) + ifnull(sum( CASE site WHEN 'dc' THEN costAmount END ),0) AS costSum,
+		ifnull(sum(CASE site WHEN 'store' THEN costRateAmount END ),0)  + ifnull(sum( CASE site WHEN 'dc' THEN costRateAmount END ),0) AS costRateSum
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		sb.GSSB_PRO_ID gssmProId,
+		sum(sb.GSSB_QTY ) qty,
+		sum(ass.MAT_ADD_AMT) AS costAmount,
+		sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/sum(ass.MAT_TOTAL_QTY)*sum( sb.GSSB_QTY ) AS costRateAmount,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( sb.CLIENT = pp.CLIENT AND sb.GSSB_PRO_ID = pp.GSPP_PRO_ID AND sb.GSSB_BR_ID = pp.GSPP_BR_ID )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		WHERE
+		sb.CLIENT =#{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and sb.GSSB_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		<if test="proArr != null and proArr.length > 0">
+			and  sb.GSSB_PRO_ID in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		sb.CLIENT,
+		sb.GSSB_BR_ID,
+		sb.GSSB_PRO_ID
+
+		UNION ALL
+
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		kc.WM_SP_BM gssmProId,
+		sum( kc.WM_KCSL ) qty,
+		sum(ass.MAT_TOTAL_AMT) AS costAmount,
+		sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/sum(ass.MAT_TOTAL_QTY)*sum( kc.WM_KCSL )  AS costRateAmount,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_BATCH_INFO bi ON (
+		kc.CLIENT = bi.CLIENT
+		AND kc.WM_SP_BM = bi.BAT_PRO_CODE
+		AND kc.WM_PCH = bi.BAT_BATCH
+		)
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		WHERE
+		kc.CLIENT =#{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and kc.PRO_SITE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM
+		) a
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = a.clientId AND sto.STO_CODE = a.gssmBrId
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE AND a.gssmProId = b.PRO_SELF_CODE )
+		LEFT JOIN ( SELECT * FROM(
+		SELECT 	PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		) proClass  GROUP BY classId
+		) pc ON pc.classId = b.PRO_CLASS
+		<where>
+			not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+			<if test="proClass != null and proClass != ''">
+				AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+			</if>
+			<if test="yblx != null and yblx !=''">
+				and b.PRO_YBLX = #{yblx}
+			</if>
+			<if test="medProdctStatus != null and medProdctStatus != ''">
+				<if test="medProdctStatus == '1'.toString() ">
+					AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+				</if>
+				<if test="medProdctStatus == '0'.toString() ">
+					AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+				</if>
+			</if>
+			<if test="factory != null and factory != ''">
+				AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+			</if>
+			<if test="classArrs != null and classArrs.size > 0">
+				and b.PRO_CLASS  in
+				<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy1 != null and zdy1.length > 0">
+				and b.PRO_ZDY1 in
+				<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy2 != null and zdy2.length > 0">
+				and b.PRO_ZDY2 in
+				<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy3 != null and zdy3.length > 0">
+				and b.PRO_ZDY3 in
+				<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy4 != null and zdy4.length > 0">
+				and b.PRO_ZDY4 in
+				<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="zdy5 != null and zdy5.length > 0">
+				and b.PRO_ZDY5 in
+				<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="saleClass != null and saleClass.length > 0">
+				and b.PRO_SLAE_CLASS in
+				<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="proPosition != null and proPosition.length > 0">
+				and b.PRO_POSITION in
+				<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="prosClass != null and prosClass.length > 0">
+				and b.PRO_SCLASS in
+				<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="purchase != null and purchase != ''">
+				and b.PRO_NO_PURCHASE = #{purchase}
+			</if>
+			<if test="proStorageCondition != null and proStorageCondition !=''">
+				and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+			</if>
+		    <include refid="STORE_CLASS_PRODUCT"></include>
+		</where>
+		GROUP BY
+		a.clientId,
+		a.gssmProId
+		ORDER BY
+		a.gssmProId
+	</select>
+	<select id="querySalesInfo" resultType="com.gys.report.entity.InventoryInquiryByClientAndSiteOutData"  parameterType="com.gys.entity.data.InventoryInquiry.InventoryInquiryInData">
+		SELECT  GSS_CODE saleCode,GSS_NAME saleName FROM GAIA_SUPPLIER_SALESMAN where CLIENT = #{clientId} group by GSS_CODE
+	</select>
+	<select id="inventoryInquiryListByAllStoreAndDcNew"
+			resultType="com.gys.report.entity.InventoryInquiryByClientAndSiteOutData">
+		SELECT
+		a.*,
+		a.BAT_SUPPLIER_NAME supplierName,
+		sal.GSS_NAME saleName,
+		IFNULL( b.PRO_NAME, b.PRO_COMMONNAME ) gssmProName,
+		b.PRO_BARCODE proBarcode,
+		b.PRO_COMMONNAME  proCommonName,
+		b.PRO_ZDY1 AS zdy1,
+		b.PRO_ZDY2 AS zdy2,
+		b.PRO_ZDY3 AS zdy3,
+		b.PRO_ZDY4 AS zdy4,
+		b.PRO_ZDY5 AS zdy5,
+		b.PRO_SLAE_CLASS AS saleClass,
+		b.PRO_SCLASS AS prosClass,
+		case b.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		b.PRO_FACTORY_NAME factory,
+		b.PRO_PLACE origin,
+		b.PRO_FORM dosageForm,
+		b.PRO_UNIT unit,
+		b.PRO_SPECS format,
+		b.PRO_REGISTER_NO approvalNum,
+		b.PRO_MED_ID medProdctCode,
+		b.PRO_POSITION proPosition,
+		b.PRO_MED_QTY proMedQty,
+		b.PRO_IF_WHOLESALE isWholeSale,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		b.PRO_MED_ID medProdctCode,
+		CASE
+		WHEN b.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN ifnull( b.PRO_MED_ID, '' ) != '' THEN
+		'是' ELSE '否'
+		END ifMed,
+		case b.PRO_YBLX when '1' then '甲类'  when '2' then '乙类' end yblx,
+		ifnull(a.gsspRetailPrice,b.PRO_LSJ) retailPrice,
+		ifnull(a.gsspRetailSales,b.PRO_LSJ* a.qty) retailSales,
+		phs.GSPHS_PRICE memberPrice,
+		php.GSPHP_PRICE memberDayPrice,
+		ifnull(z.GSSD_QTY_30,0) daysOfSales30,
+		ifnull(z.GSSD_QTY_60,0) daysOfSales60,
+		ifnull(z.GSSD_QTY_90,0) daysOfSales90
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) gssBrName,
+		sb.GSSB_PRO_ID gssmProId,
+		ifnull( sum( sb.GSSB_QTY ), 0.00 ) qty,
+		ifnull( ass.MAT_MOV_PRICE, 0.00 ) AS matMovPrice,
+		ifnull( ass.MAT_MOV_PRICE * sum( sb.GSSB_QTY ), 0.00 ) AS costAmount,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( sb.GSSB_QTY ), 0.00 ) AS matMovRatePrice,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ), 0.00 ) AS costRateAmount,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull(sum(ass.MAT_ADD_AMT+ass.MAT_ADD_TAX)/sum( ass.MAT_TOTAL_QTY )*sum( sb.GSSB_QTY ), 0.00 ) AS addAmount,
+		bi.BAT_CREATE_DATE inDate,
+		DATEDIFF(date_format(sb.GSSB_VAILD_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		pp.GSPP_PRICE_NORMAL gsspRetailPrice,
+		pp.GSPP_PRICE_NORMAL * sum(sb.GSSB_QTY) as gsspRetailSales,
+		'store' site,
+		sto.STO_ATTRIBUTE stoAttribute,
+		sto.STO_IF_DTP stoIfDtp,
+		sto.STO_IF_MEDICALCARE stoIfMedical,
+		sto.STO_TAX_CLASS stoTaxClass
+		,sto.STO_DC_CODE dcCode
+		,bi.BAT_SUPPLIER_CODE supplierCode
+		,bi.BAT_SUPPLIER_NAME BAT_SUPPLIER_NAME
+		,bi.BAT_SUPPLIER_SALESMAN saleCode
+		,sb.GSSB_VAILD_DATE validUntil
+		,sb.GSSB_BATCH_NO gssmBatchNo
+		,bi.BAT_PO_PRICE poPrice
+		,bi.BAT_PRODUCT_DATE productDate
+		FROM GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( sb.CLIENT = pp.CLIENT AND sb.GSSB_PRO_ID = pp.GSPP_PRO_ID AND sb.GSSB_BR_ID = pp.GSPP_BR_ID )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_STORE_DATA sto ON ( sb.CLIENT = sto.CLIENT AND sb.GSSB_BR_ID = sto.STO_CODE )
+		LEFT JOIN GAIA_BATCH_INFO bi ON ( sb.CLIENT = bi.CLIENT AND sb.GSSB_PRO_ID = bi.BAT_PRO_CODE AND sb.GSSB_BATCH = bi.BAT_BATCH)
+
+		WHERE
+		sb.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and sb.GSSB_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="supplierCode != null and supplierCode != ''">
+			and bi.BAT_SUPPLIER_CODE   = #{supplierCode}
+		</if>
+
+		<if test="proArr != null and proArr.length > 0">
+			and sb.GSSB_PRO_ID in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test='isSales != null and isSales != 0'>
+			<if test="saleCodes != null and saleCodes.size > 0">
+				and bi.BAT_SUPPLIER_SALESMAN in
+				<foreach collection="saleCodes" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+		</if>
+		GROUP BY
+		sb.CLIENT,
+		sb.GSSB_BR_ID,
+		sb.GSSB_PRO_ID
+		<if test="supplierCode != null and supplierCode != ''">
+			,bi.BAT_SUPPLIER_CODE
+		</if>
+		<if test="type != null and type != 0">
+			,sb.GSSB_BATCH_NO
+		</if>
+		<if test="isSales != null and isSales != 0">
+			,bi.BAT_SUPPLIER_SALESMAN
+		</if>
+
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		case when dc.DC_SHORT_NAME = '' then dc.DC_NAME	else IFNULL( dc.DC_SHORT_NAME, dc.DC_NAME ) end gssBrName,
+		kc.WM_SP_BM gssmProId,
+		ifnull(sum( kc.WM_KCSL ),0.00) qty,
+		ifnull(  ass.MAT_MOV_PRICE,0.00) AS matMovPrice,
+		ifnull(  ass.MAT_MOV_PRICE * sum( kc.WM_KCSL ),0.00) AS costAmount,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( kc.WM_KCSL ),0.00) AS matMovRatePrice,
+		ifnull(( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ),0.00) AS costRateAmount,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY ), 0.00 ) AS addPrice,
+		ifnull( sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/sum( ass.MAT_TOTAL_QTY )*sum( kc.WM_KCSL ), 0.00 ) AS addAmount,
+		bi.BAT_CREATE_DATE inDate,
+		DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryData,
+		null as gsspRetailPrice,
+		null as gsspRetailSales,
+		'dc' site,
+		"" stoAttribute,
+		"" stoIfDtp,
+		"" stoIfMedical,
+		"" stoTaxClass
+		,kc.PRO_SITE dcCode
+		,bi.BAT_SUPPLIER_CODE supplierCode
+		,bi.BAT_SUPPLIER_NAME BAT_SUPPLIER_NAME
+		,bi.BAT_SUPPLIER_SALESMAN saleCode
+		,bi.BAT_EXPIRY_DATE validUntil
+		,bi.BAT_BATCH_NO gssmBatchNo
+		,bi.BAT_PO_PRICE poPrice
+		,bi.BAT_PRODUCT_DATE productDate
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_BATCH_INFO bi ON (kc.CLIENT = bi.CLIENT AND kc.PRO_SITE = bi.BAT_SITE_CODE AND kc.WM_SP_BM = bi.BAT_PRO_CODE	AND kc.WM_PCH = bi.BAT_BATCH)
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_DC_DATA dc ON ( kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and kc.PRO_SITE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and kc.WM_SP_BM  in
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="supplierCode != null and supplierCode != ''">
+			and bi.BAT_SUPPLIER_CODE   = #{supplierCode}
+		</if>
+
+		<if test='isSales != null and isSales != 0'>
+			<if test="saleCodes != null and saleCodes.size > 0">
+				and bi.BAT_SUPPLIER_SALESMAN in
+				<foreach collection="saleCodes" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+		</if>
+		GROUP BY
+		kc.CLIENT,
+		kc.PRO_SITE,
+		kc.WM_SP_BM
+		<if test="supplierCode != null and supplierCode != ''">
+			,bi.BAT_SUPPLIER_CODE
+		</if>
+		<if test="type != null and type != 0">
+			,kc.WM_PCH
+		</if>
+		<if test="isSales != null and isSales != 0">
+			,bi.BAT_SUPPLIER_SALESMAN
+		</if>
+		) a
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON (a.clientId = sup.CLIENT AND a.gssmBrId = sup.SUP_SITE  AND a.supplierCode = sup.SUP_SELF_CODE )
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup2 ON ( a.clientId = sup2.CLIENT AND a.dcCode = sup2.SUP_SITE AND a.supplierCode = sup2.SUP_SELF_CODE )
+		LEFT JOIN GAIA_SUPPLIER_SALESMAN sal ON ( a.clientId = sal.CLIENT AND a.gssmBrId = sal.SUP_SITE AND sal.SUP_SELF_CODE = a.supplierCode AND a.saleCode = sal.GSS_CODE )
+		LEFT JOIN GAIA_SD_PROM_HEAD ph1 ON ph1.client = a.clientId	AND ph1.GSPH_BR_ID = a.gssmBrId	AND ph1.GSPH_TYPE = 'PROM_HYJ'
+		LEFT JOIN GAIA_SD_PROM_HY_SET phs ON ph1.CLIENT = phs.CLIENT AND ph1.GSPH_VOUCHER_ID = phs.GSPHS_VOUCHER_ID	AND phs.GSPHS_PRO_ID = a.gssmProId
+		LEFT JOIN GAIA_SD_PROM_HEAD ph2 ON ph2.client = a.clientId	AND ph2.GSPH_BR_ID = a.gssmBrId	AND ph2.GSPH_TYPE = 'PROM_HYRJ'
+		LEFT JOIN GAIA_SD_PROM_HYR_PRICE php ON ph2.CLIENT = php.CLIENT	AND ph2.GSPH_VOUCHER_ID = php.GSPHP_VOUCHER_ID	AND php.GSPHP_PRO_ID = a.gssmProId
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON (a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE	AND a.gssmProId = b.PRO_SELF_CODE)
+		LEFT JOIN (
+		SELECT * FROM (
+		SELECT 	PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		) proClass  GROUP BY classId
+		) pc ON pc.classId = b.PRO_CLASS
+		LEFT JOIN (
+			SELECT
+			ssd3.CLIENT,
+			ssd3.GSSD_BR_ID,
+			sum( ssd3.GSSD_QTY_30 ) GSSD_QTY_30,
+			sum( ssd3.GSSD_QTY_60 ) GSSD_QTY_60,
+			sum( ssd3.GSSD_QTY_90 ) GSSD_QTY_90,
+			ssd3.GSSD_PRO_ID  FROM
+			(
+			SELECT
+			ssd.CLIENT,
+			ssd.GSSD_BR_ID,
+			CASE WHEN ssd.GSSD_DATE >= REPLACE ( date_sub( curdate(), INTERVAL 30 DAY ), '-', '' )  THEN
+			sum( ssd.GSSD_QTY )
+			ELSE sum( 0 ) END AS GSSD_QTY_30,
+			CASE WHEN ssd.GSSD_DATE >= REPLACE ( date_sub( curdate(), INTERVAL 60 DAY ), '-', '' )  THEN
+			sum( ssd.GSSD_QTY )
+			ELSE sum( 0 ) END AS GSSD_QTY_60,
+			CASE WHEN ssd.GSSD_DATE >= REPLACE ( date_sub( curdate(), INTERVAL 90 DAY ), '-', '' )  THEN
+			sum( ssd.GSSD_QTY )
+			ELSE sum( 0 ) END AS GSSD_QTY_90,
+			ssd.GSSD_PRO_ID
+			FROM
+			GAIA_SD_SALE_D ssd
+			LEFT JOIN GAIA_SD_SALE_H b ON ssd.CLIENT = b.CLIENT
+			AND ssd.GSSD_BILL_NO = b.GSSH_BILL_NO
+			AND ssd.GSSD_BR_ID = b.GSSH_BR_ID
+			WHERE
+			b.GSSH_HIDE_FLAG = '0'
+			AND ssd.CLIENT = #{clientId}
+			<if test="proArr != null and proArr.length > 0">
+				and ssd.GSSD_PRO_ID  in
+				<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="siteArr != null and siteArr.length > 0">
+				and ssd.GSSD_BR_ID  in
+				<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			AND ssd.GSSD_DATE >= REPLACE ( date_sub( curdate(), INTERVAL 90 DAY ), '-', '' )
+			GROUP BY
+			ssd.GSSD_BR_ID,
+			ssd.GSSD_PRO_ID,
+			ssd.GSSD_DATE
+			) ssd3
+			GROUP BY
+			ssd3.GSSD_BR_ID,
+			ssd3.GSSD_PRO_ID
+			ORDER BY
+			ssd3.GSSD_BR_ID,
+			ssd3.GSSD_PRO_ID
+		) z on z.CLIENT = a.clientId and z.GSSD_BR_ID = a.gssmBrId and z.GSSD_PRO_ID = a.gssmProId
+		where 1=1
+		and not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = b.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="yblx != null and yblx !=''">
+			and b.PRO_YBLX = #{yblx}
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( b.PRO_IF_MED = #{medProdctStatus} OR ifnull(b.PRO_MED_ID,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (b.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(b.PRO_MED_ID,'') = '' AND ifnull(b.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="expiryData != null and expiryData !=''">
+			and a.expiryData &lt;=#{expiryData}
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (b.PRO_FACTORY_CODE LIKE '%${factory}%' OR b.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			and b.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and b.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and b.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and b.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and b.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and b.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and b.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and b.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and b.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and b.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		<if test="proStorageCondition != null and proStorageCondition !=''">
+			and b.PRO_STORAGE_CONDITION = #{proStorageCondition}
+		</if>
+		<include refid="STORE_CLASS_SITE" />
+		ORDER BY
+		<if test="proArr != null and proArr.length > 0">
+			<if test="type != null and type != 1">
+				a.qty,
+			</if>
+		</if>
+		a.gssmProId,a.gssmBrId
+	</select>
+</mapper>

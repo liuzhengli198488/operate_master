@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.MaterialMonitorMapper">
+    <delete id="clearMonitorMaterialDoc">
+        DELETE FROM GAIA_MONITOR_MATERIAL_DOC
+    </delete>
+
+    <delete id="clearMonitorMaterialLog">
+        DELETE FROM GAIA_MONITOR_MATERIAL_LOG
+    </delete>
+
+    <delete id="clearMonitorProductXnp">
+        DELETE FROM GAIA_MONITOR_PRODUCT_XNP
+    </delete>
+
+    <delete id="clearMonitorServiceData">
+        DELETE FROM GAIA_MONITOR_SERVICE_DATA
+    </delete>
+
+    <delete id="clearMonitorMaterialDiff" parameterType="String">
+        DELETE FROM GAIA_MONITOR_MATERIAL_DIFF where CHECK_DATE=#{batchDate}
+    </delete>
+
+    <insert id="insertMonitorMaterialDoc" parameterType="String">
+        -- 获取物料凭证数据
+        insert into GAIA_MONITOR_MATERIAL_DOC
+
+        SELECT
+        DOC.CLIENT,
+        DOC.MAT_SITE_CODE AS SITE,
+        DOC.MAT_DN_ID AS CODE,
+        IFNULL( DOC.MAT_DN_LINENO, '' ) AS LINE,
+        DOC.MAT_PRO_CODE AS PRO,
+        IFNULL(SUM(CASE WHEN MAT_DEBIT_CREDIT = 'H' THEN - DOC.MAT_QTY ELSE DOC.MAT_QTY END) ,0) AS MAT_QTY,
+        IFNULL(SUM(CASE WHEN MAT_DEBIT_CREDIT = 'H' THEN - DOC.MAT_ADD_AMT + DOC.MAT_ADD_TAX ELSE DOC.MAT_ADD_AMT + DOC.MAT_ADD_TAX END),0) AS MAT_AMT
+        FROM
+        GAIA_MATERIAL_DOC AS DOC
+        INNER JOIN GAIA_STORE_DATA AS S ON ( DOC.CLIENT, DOC.MAT_SITE_CODE ) = ( S.CLIENT, S.STO_CODE )
+        WHERE
+        DOC.CLIENT = #{client} AND DOC.MAT_DOC_DATE BETWEEN #{startDate} AND #{endDate}
+        GROUP BY CLIENT,SITE,CODE,PRO
+        UNION ALL
+        SELECT
+        DOC.CLIENT,
+        DOC.MAT_SITE_CODE AS SITE,
+        DOC.MAT_DN_ID AS CODE,
+        IFNULL( DOC.MAT_DN_LINENO, '' ) AS LINE,
+        DOC.MAT_PRO_CODE AS PRO,
+        IFNULL(SUM(CASE WHEN MAT_DEBIT_CREDIT = 'H' THEN - DOC.MAT_QTY ELSE DOC.MAT_QTY END) ,0) AS MAT_QTY,
+        IFNULL(SUM(CASE WHEN MAT_DEBIT_CREDIT = 'H' THEN - DOC.MAT_MOV_AMT + DOC.MAT_RATE_MOV ELSE DOC.MAT_MOV_AMT + DOC.MAT_RATE_MOV END),0) AS MAT_AMT
+        FROM
+        GAIA_MATERIAL_DOC AS DOC
+        INNER JOIN GAIA_DC_DATA AS DC ON ( DOC.CLIENT, DOC.MAT_SITE_CODE ) = ( DC.CLIENT, DC.DC_CODE )
+        WHERE
+        DOC.CLIENT = #{client} AND DOC.MAT_DOC_DATE BETWEEN #{startDate} AND #{endDate}
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorMaterialLog" parameterType="String">
+        -- 获取物料凭证LOG数据
+        insert into GAIA_MONITOR_MATERIAL_LOG
+
+        SELECT DISTINCT
+            CLIENT,
+            MAT_SITE_CODE AS SITE,
+            MAT_DN_ID AS CODE,
+            1 AS STATUS
+        FROM
+            GAIA_MATERIAL_DOC_LOG
+        WHERE
+            CLIENT = #{client} AND MAT_POST_DATE BETWEEN #{startDate} AND #{endDate}
+    </insert>
+
+    <insert id="insertMonitorProductXnp" parameterType="String">
+        -- 获取非虚拟商品数据
+        insert into GAIA_MONITOR_PRODUCT_XNP
+
+        SELECT
+            CLIENT,
+            PRO_SITE AS SITE,
+            PRO_SELF_CODE AS PRO
+        FROM
+            GAIA_PRODUCT_BUSINESS
+        WHERE
+            CLIENT = #{client} AND PRO_XNP = '1'
+    </insert>
+
+    <insert id="insertMonitorMaterialDiff" parameterType="String">
+        -- 数据对比结果
+        insert into GAIA_MONITOR_MATERIAL_DIFF
+
+        SELECT
+        a.CLIENT,
+        #{batchDate} AS CHECK_DATE,
+        a.SITE,
+        a.`CODE`,
+        a.PRO,
+        a.DATE,
+        IFNULL(a.TOTAL_QTY,0),
+        IFNULL(b.MAT_QTY,0),
+        IFNULL(a.TOTAL_AMT,0),
+        IFNULL(b.MAT_AMT,0),
+        a.SERV_TYPE,
+        ( -- 错误类型0没有物料凭证LOG/1生成物料凭证失败/2数量不匹配/3漏单
+            CASE
+            WHEN d.STATUS IS NULL THEN '0'
+            WHEN b.MAT_QTY IS NOT NULL AND b.MAT_QTY <![CDATA[ <> ]]> 0 THEN '2'
+            WHEN NOT EXISTS (SELECT 1 from GAIA_MONITOR_MATERIAL_DOC e WHERE a.CLIENT = e.CLIENT AND a.SITE = e.SITE AND a.CODE = e.CODE) THEN '1'
+            ELSE '3'
+            END
+        ) AS ERROR_TYPE,
+	    CURRENT_TIMESTAMP () AS CREATE_TIME
+        FROM
+        GAIA_MONITOR_SERVICE_DATA a
+        LEFT JOIN GAIA_MONITOR_MATERIAL_DOC b ON a.CLIENT = b.CLIENT AND a.SITE = b.SITE AND a.CODE = b.CODE AND a.PRO = b.PRO
+        LEFT JOIN GAIA_MONITOR_MATERIAL_LOG d ON a.CLIENT = d.CLIENT AND a.SITE = d.SITE AND a.CODE = d.CODE
+        -- 排除虚拟品
+        WHERE a.CLIENT = #{client}
+	    AND NOT EXISTS (SELECT 1 FROM GAIA_MONITOR_PRODUCT_XNP c where a.CLIENT = c.CLIENT AND a.SITE = c.SITE AND a.PRO = c.PRO)
+        AND IFNULL(a.TOTAL_QTY,0) <![CDATA[ <> ]]> IFNULL(b.MAT_QTY,0)
+    </insert>
+
+    <insert id="insertMonitorServiceData_GD" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            D.CLIENT,
+            D.SITE,
+            D.CODE,
+            'GD' AS SERV_TYPE,
+            D.LINE,
+            D.PRO,
+            SUM(D.TOTAL_QTY) AS TOTAL_QTY,
+            SUM(D.TOTAL_AMT) AS TOTAL_AMT,
+            '' AS DATE
+        FROM
+            (
+        SELECT CLIENT, PRO_SITE AS SITE, WM_TGYSDH AS CODE, PO_LINE_NO AS LINE, WM_SP_BM AS PRO, -WM_GZSL AS TOTAL_QTY, -WM_GZSL * WM_CKJ AS TOTAL_AMT, WM_XGRQ AS DATE
+            FROM GAIA_WMS_TUIGONG_M
+            WHERE CLIENT = #{client} AND WM_XGRQ BETWEEN #{startDate} AND #{endDate} AND WM_GZSL != 0
+        ) AS D
+        INNER JOIN (
+        SELECT PRO_SITE AS SITE, WM_TGYSDH AS CODE
+            FROM GAIA_WMS_TUIGONG_Z
+            WHERE CLIENT = #{client} AND WM_XGRQ BETWEEN #{startDate} AND #{endDate} AND WM_SFGZ = 0
+        ) AS H
+            ON (D.SITE, D.CODE) = (H.SITE, H.CODE)
+            GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_XDPDND" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            CLIENT,
+            SITE,
+            CODE,
+            'XD|PD|ND' AS SERV_TYPE,
+            LINE,
+            PRO,
+            SUM(TOTAL_QTY) AS TOTAL_QTY,
+            SUM(TOTAL_AMT) AS TOTAL_AMT,
+            '' AS DATE
+        FROM
+            (
+                SELECT M.CLIENT, M.SITE, Z.CODE, M.LINE, M.PRO, M.TOTAL_QTY, M.TOTAL_AMT, Z.DATE
+                FROM (
+                        SELECT CLIENT, PRO_SITE AS SITE, WM_PSDH AS CODE, PO_LINE_NO AS LINE, WM_SP_BM AS PRO, -WM_GZSL AS TOTAL_QTY, -WM_GZSL * WM_CKJ AS TOTAL_AMT
+                        FROM GAIA_WMS_DIAOBO_M
+                        WHERE CLIENT = #{client} AND WM_SPZT IN (0, 2) AND WM_GZSL != 0
+                ) AS M
+                INNER JOIN (
+                        SELECT PRO_SITE AS SITE, WM_PSDH AS CODE, WM_XGRQ AS DATE
+                        FROM GAIA_WMS_DIAOBO_Z
+                        WHERE CLIENT = #{client} AND WM_XGRQ BETWEEN #{startDate} AND #{endDate}
+                ) AS Z
+                ON (M.SITE, M.CODE) = (Z.SITE, Z.CODE)
+        ) AS TOTAL
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_CDdc" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            CLIENT,
+            PRO_SITE AS SITE,
+            WM_LYDH AS CODE,
+            'CD_DC' AS SERV_TYPE,
+	        0 AS LINE,
+            WM_SP_BM AS PRO,
+            SUM(WM_SJSL) AS TOTAL_QTY,
+            SUM(WM_DHJ * WM_SJSL) AS TOTAL_AMT,
+            '' AS DATE
+        FROM GAIA_WMS_SHANGJIA
+        WHERE CLIENT = #{client} AND WM_YSRQ BETWEEN #{startDate} AND #{endDate} AND WM_SJSL != 0 AND TYPE = 1
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_CDsd" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            D.CLIENT,
+            D.SITE,
+            D.AID AS CODE,
+            'CD_SD' AS SERV_TYPE,
+            0 AS LINE,
+            D.PRO,
+            SUM(D.TOTAL_QTY),
+            SUM(D.TOTAL_QTY * A.PRICE) AS TOTAL_AMT,
+            '' AS DATE
+        FROM
+            (
+        SELECT E.CLIENT, E.SITE, E.PRO, E.TOTAL_QTY, E.DATE, E.AID, E.BATCH
+            FROM (
+                SELECT ED.CLIENT, ED.SITE, EH.AID, ED.PRO, ED.TOTAL_QTY, ED.DATE, ED.BATCH
+                FROM (
+                    SELECT CLIENT, GSED_BR_ID AS SITE, GSED_VOUCHER_ID, GSED_PRO_ID AS PRO, GSED_RECIPIENT_QTY AS TOTAL_QTY, GSED_DATE AS DATE, GSED_BATCH_NO AS BATCH
+                    FROM GAIA_SD_EXAMINE_D
+                    WHERE CLIENT = #{client} AND GSED_DATE BETWEEN #{startDate} AND #{endDate} AND GSED_RECIPIENT_QTY != 0
+                ) AS ED
+                INNER JOIN (
+                    SELECT GSEH_VOUCHER_ID, GSEH_VOUCHER_ACCEPT_ID AS AID
+                    FROM GAIA_SD_EXAMINE_H
+                    WHERE CLIENT = #{client} AND GSEH_DATE BETWEEN #{startDate} AND #{endDate} AND GSEH_TYPE = '收货单' AND GSEH_VOUCHER_ACCEPT_ID LIKE 'CS%'
+                ) AS EH ON EH.GSEH_VOUCHER_ID = ED.GSED_VOUCHER_ID
+            ) AS E
+            LEFT JOIN (
+                SELECT GSAH_BR_ID AS SITE, GSAH_VOUCHER_ID AS AID, GSAH_PS_VOUCHER_ID AS CODE
+                FROM GAIA_SD_ACCEPT_H
+                WHERE CLIENT = #{client}
+        ) AS AH ON (E.SITE, E.AID) = (AH.SITE, AH.AID)
+        ) AS D
+        LEFT JOIN (
+        SELECT GSAD_BR_ID, GSAD_VOUCHER_ID, GSAD_PRO_ID, GSAD_BATCH_NO, GSAD_ACCEPT_PRICE AS PRICE
+        FROM GAIA_SD_ACCEPT_D
+        WHERE CLIENT = #{client}
+        GROUP BY GSAD_PRO_ID, GSAD_BATCH_NO
+        ) AS A ON (D.SITE, D.AID, D.PRO, D.BATCH) = (A.GSAD_BR_ID, A.GSAD_VOUCHER_ID, A.GSAD_PRO_ID, A.GSAD_BATCH_NO)
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_EDTDMD" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            CLIENT,
+            PRO_SITE AS SITE,
+            WM_TKDH AS CODE,
+            'ED|TD|MD' AS SERV_TYPE,
+            WM_DDXH AS LINE,
+            WM_SP_BM AS PRO,
+            SUM(WM_SHSL) AS TOTAL_QTY,
+            SUM(WM_SHSL * WM_DHJ) AS TOTAL_AMT,
+            '' AS DATE
+        FROM GAIA_WMS_TKYS
+            WHERE CLIENT = #{client} AND WM_YSRQ BETWEEN #{startDate} AND #{endDate} AND WM_SHSL != 0
+                GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_ZD" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            CLIENT,
+            PRO_SITE AS SITE,
+            WM_ZYDH AS CODE,
+            '' AS LINE,
+            'ZD' AS SERV_TYPE,
+            WM_SP_BM AS PRO,
+            SUM(- WM_GZSL) AS TOTAL_QTY,
+            SUM(- WM_GZSL * WM_CKJ) AS TOTAL_AMT,
+            '' AS DATE
+        FROM
+            GAIA_WMS_ZIYONG_M
+            WHERE CLIENT = #{client} AND WM_XGRQ BETWEEN #{startDate} AND #{endDate} AND WM_GZSL != 0
+                GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_ZDsd" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            H.CLIENT,
+            D.GSISD_BR_ID AS SITE,
+            D.GSISD_VOUCHER_ID AS CODE,
+            'ZD_SD' AS SERV_TYPE,
+            D.GSISD_SERIAL AS LINE,
+            D.GSISD_PRO_ID AS PRO,
+            SUM(- D.GSISD_IS_QTY) AS TOTAL_QTY,
+            SUM(0) AS TOTAL_AMT,
+            '' AS DATE
+        FROM (
+        SELECT CLIENT, GSISH_VOUCHER_ID, GSISH_EXAMINE_DATE AS DATE
+            FROM GAIA_SD_INCOME_STATEMENT_H
+            WHERE CLIENT = #{client} AND GSISH_EXAMINE_DATE BETWEEN #{startDate} AND #{endDate} AND GSISH_IS_TYPE = '3' AND GSISH_STATUS = '2'
+        ) AS H
+        INNER JOIN (
+        SELECT GSISD_BR_ID, GSISD_VOUCHER_ID, GSISD_SERIAL, GSISD_PRO_ID, GSISD_IS_QTY
+            FROM GAIA_SD_INCOME_STATEMENT_D
+            WHERE CLIENT = #{client} AND GSISD_IS_QTY != 0
+            ) AS D ON H.GSISH_VOUCHER_ID = D.GSISD_VOUCHER_ID
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_BDdc" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            CLIENT,
+            PRO_SITE AS SITE,
+            WM_BSDH AS CODE,
+            'BD_DC' AS SERV_TYPE,
+            0 AS LINE,
+            WM_SP_BM AS PRO,
+            SUM(- WM_GZSL) AS TOTAL_QTY,
+            SUM(- WM_GZSL * WM_CKJ) AS TOTAL_AMT,
+            '' AS DATE
+        FROM
+            GAIA_WMS_BAOSUN_M
+        WHERE CLIENT = #{client} AND WM_XGRQ BETWEEN #{startDate} AND #{endDate} AND WM_GZSL != 0
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_BDsd" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            H.CLIENT,
+            D.GSISD_BR_ID AS SITE,
+            H.GSISH_PC_VOUCHER_ID AS CODE,
+            'BD_SD' AS SERV_TYPE,
+            D.GSISD_SERIAL AS LINE,
+            D.GSISD_PRO_ID AS PRO,
+            SUM(- D.GSISD_IS_QTY) AS TOTAL_QTY,
+            SUM(0) AS TOTAL_AMT,
+            '' AS DATE
+        FROM
+            (
+        SELECT CLIENT, GSISH_VOUCHER_ID, GSISH_EXAMINE_DATE AS DATE, GSISH_PC_VOUCHER_ID
+            FROM GAIA_SD_INCOME_STATEMENT_H
+            WHERE CLIENT = #{client} AND GSISH_EXAMINE_DATE BETWEEN #{startDate} AND #{endDate} AND GSISH_IS_TYPE = '5' AND GSISH_STATUS = '2'
+        ) AS H
+        INNER JOIN (
+        SELECT GSISD_BR_ID, GSISD_VOUCHER_ID, GSISD_SERIAL, GSISD_PRO_ID, GSISD_IS_QTY
+            FROM GAIA_SD_INCOME_STATEMENT_D
+        WHERE CLIENT = #{client} AND GSISD_IS_QTY != 0
+        ) AS D ON H.GSISH_VOUCHER_ID = D.GSISD_VOUCHER_ID
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_LS" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            D.CLIENT,
+            D.SITE,
+            D.CODE,
+            'LS' AS SERV_TYPE,
+            D.LINE,
+            D.PRO,
+            SUM(D.TOTAL_QTY),
+            SUM(D.TOTAL_AMT),
+            '' AS DATE
+        FROM
+            (
+        SELECT CLIENT, GSSD_BR_ID AS SITE, GSSD_BILL_NO AS CODE, GSSD_SERIAL AS LINE, GSSD_PRO_ID AS PRO, -GSSD_QTY AS TOTAL_QTY, -GSSD_ADD_AMT-GSSD_ADD_TAX AS TOTAL_AMT, GSSD_DATE AS DATE
+            FROM GAIA_SD_SALE_D
+            WHERE CLIENT = #{client} AND GSSD_DATE BETWEEN #{startDate} AND #{endDate} AND GSSD_QTY != 0 AND GSSD_BILL_NO LIKE 'SD%'
+        ) AS D
+        INNER JOIN(
+        SELECT GSSH_BR_ID AS SITE, GSSH_BILL_NO AS CODE
+            FROM GAIA_SD_SALE_H
+            WHERE CLIENT = #{client} AND GSSH_DATE BETWEEN #{startDate} AND #{endDate} AND GSSH_BILL_NO LIKE 'SD%' AND GSSH_HIDE_FLAG = 0
+        ) AS H ON (D.SITE, D.CODE) = (H.SITE, H.CODE)
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_SYdc" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            CLIENT,
+            SITE,
+            CODE,
+            'SY_DC' AS SERV_TYPE,
+            LINE,
+            PRO,
+            SUM(TOTAL_QTY),
+            SUM(TOTAL_AMT),
+            '' AS DATE
+        FROM
+            (
+        SELECT M.CLIENT, M.SITE, Z.CODE, M.LINE, M.PRO, M.TOTAL_QTY, M.TOTAL_AMT, Z.DATE
+            FROM (
+                SELECT CLIENT, PRO_SITE AS SITE, WM_SYDH AS CODE, 0 AS LINE, WM_SP_BM AS PRO, IF(WM_LYDH = '', WM_KCSL, -WM_KCSL) AS TOTAL_QTY, 0 AS TOTAL_AMT
+                FROM GAIA_WMS_SUNYI_M
+                WHERE CLIENT = #{client} AND WM_KCSL != 0
+            ) AS M
+            INNER JOIN (
+                SELECT PRO_SITE AS SITE, WM_SYDH AS CODE, WM_CJRQ AS DATE
+                FROM GAIA_WMS_SUNYI_Z
+                WHERE CLIENT = #{client} AND WM_CJRQ BETWEEN #{startDate} AND #{endDate} AND WM_SFSP = 0 AND WM_SFTG = 0
+            ) AS Z
+            ON (M.SITE, M.CODE) = (Z.SITE, Z.CODE)
+        ) AS TOTAL
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <insert id="insertMonitorServiceData_SYsd" parameterType="String">
+        insert into GAIA_MONITOR_SERVICE_DATA
+
+        SELECT
+            H.CLIENT,
+            D.GSISD_BR_ID AS SITE,
+            H.GSISH_VOUCHER_ID AS CODE,
+            'SY_SD' AS SERV_TYPE,
+            D.GSISD_SERIAL AS LINE,
+            D.GSISD_PRO_ID AS PRO,
+            SUM(IF ( H.GSISH_IS_TYPE = '4', - D.GSISD_IS_QTY, D.GSISD_IS_QTY )) AS TOTAL_QTY,
+            SUM(0) AS TOTAL_AMT,
+            '' AS DATE
+        FROM (
+        SELECT CLIENT, GSISH_VOUCHER_ID, GSISH_EXAMINE_DATE AS DATE, GSISH_IS_TYPE
+        FROM GAIA_SD_INCOME_STATEMENT_H
+            WHERE CLIENT = #{client} AND GSISH_EXAMINE_DATE BETWEEN #{startDate} AND #{endDate} AND GSISH_IS_TYPE != '3' AND GSISH_IS_TYPE != '5' AND GSISH_STATUS = '2'
+        ) AS H
+        INNER JOIN (
+        SELECT GSISD_BR_ID, GSISD_VOUCHER_ID, GSISD_SERIAL, GSISD_PRO_ID, GSISD_IS_QTY
+            FROM GAIA_SD_INCOME_STATEMENT_D
+            WHERE CLIENT = #{client} AND GSISD_IS_QTY != 0
+            ) AS D ON H.GSISH_VOUCHER_ID = D.GSISD_VOUCHER_ID
+        GROUP BY CLIENT,SITE,CODE,PRO
+    </insert>
+
+    <select id="queryMailInfo" resultType="java.util.Map" parameterType="java.lang.String">
+        -- 邮件表格统计
+        with
+        aa as (
+        select
+            b.NAME as name,
+            sum(IF(a.ERROR_TYPE='0',1,0)) as notInvoked,
+            sum(IF(a.ERROR_TYPE='1',1,0)) as callFailed,
+            sum(IF(a.ERROR_TYPE='2',1,0)) as dataDiscrepancy,
+            sum(IF(a.ERROR_TYPE='3',1,0)) as incompleteDocuments,
+            sum(IF(isnull(a.ERROR_TYPE),0,1)) as total,
+            b.SORT as sort
+        from GAIA_DICTIONARY b
+        left join GAIA_MONITOR_MATERIAL_DIFF a on b.CODE=a.SERV_TYPE and a.CHECK_DATE=#{batchDate}
+        where b.TYPE='MaterialMonitorServType'
+        group by b.NAME)
+        select
+            aa.name,
+            CONVERT(IF(aa.notInvoked=0,'',aa.notInvoked),CHAR) as notInvoked,
+            CONVERT(IF(aa.callFailed=0,'',aa.callFailed),CHAR) as callFailed,
+            CONVERT(IF(aa.dataDiscrepancy=0,'',aa.dataDiscrepancy),CHAR) as dataDiscrepancy,
+            CONVERT(IF(aa.incompleteDocuments=0,'',aa.incompleteDocuments),CHAR) as incompleteDocuments,
+            CONVERT(aa.total,CHAR) as total,
+            aa.sort
+            from aa
+        union all
+        select
+            '总计' as name,
+            CONVERT(sum(IF(a.ERROR_TYPE='0',1,0)),CHAR) as notInvoked,
+            CONVERT(sum(IF(a.ERROR_TYPE='1',1,0)),CHAR) as callFailed,
+            CONVERT(sum(IF(a.ERROR_TYPE='2',1,0)),CHAR) as dataDiscrepancy,
+            CONVERT(sum(IF(a.ERROR_TYPE='3',1,0)),CHAR) as incompleteDocuments,
+            CONVERT(sum(IF(isnull(a.ERROR_TYPE),0,1)),CHAR) as total,
+            999 as sort
+        from GAIA_MONITOR_MATERIAL_DIFF a
+        where a.CHECK_DATE=#{batchDate}
+        order by sort
+    </select>
+
+    <select id="countMaterailDiff" resultType="int" parameterType="java.lang.String">
+        -- 差异数据量查询
+        SELECT COUNT(*) FROM GAIA_MONITOR_MATERIAL_DIFF WHERE CHECK_DATE = #{batchDate}
+    </select>
+
+    <select id="queryAllClients" resultType="string" >
+        select a.CLIENT from GAIA_FRANCHISEE a where a.FRANC_STATUS='0' and a.CLIENT!='10000003' order by a.CLIENT
+    </select>
+
+    <select id="queryMails" resultType="string" >
+      SELECT CODE FROM GAIA_DICTIONARY WHERE TYPE='MaterialMonitorMail' ORDER BY SORT
+    </select>
+
+</mapper>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.GaiaGlobalDataMapper">
+
+    <select id="globalType" resultType="java.lang.String">
+        select GLOBAL_TYPE from GAIA_GLOBAL_DATA WHERE  CLIENT =#{client} and GLOBAL_ID = '1' and GLOBAL_SITE = #{stoCode}
+    </select>
+    <select id="globalTypeReport" resultType="java.lang.String">
+        select GLOBAL_TYPE from GAIA_GLOBAL_DATA where CLIENT = #{client} and GLOBAL_SITE = #{stoCode} and GLOBAL_ID = #{globalId}
+    </select>
+    <select id="getPersonnelData" resultType="com.gys.common.data.EmployeesData$Employees">
+        SELECT d.GSSD_DATE dateTime,
+               d.GSSD_SALER_ID,
+                count( DISTINCT(d.GSSD_DATE) ) 'daysSales',
+                round(ifnull(sum(d.GSSD_AMT),0),2) 'actualAmount',
+                round(ifnull(sum(d.GSSD_AMT),0) - (ifnull(sum(d.GSSD_ADD_TAX),0)+ifnull(sum(d.GSSD_ADD_AMT),0)),2) 'grossProfitAmount',
+                if(sum(d.GSSD_AMT) = 0,'0.00',convert((round(ifnull(sum(d.GSSD_AMT),0) - (ifnull(sum(d.GSSD_ADD_TAX),0)+ifnull(sum(d.GSSD_ADD_AMT),0)),2) / ifnull(sum(d.GSSD_AMT),0))*100,decimal(19,2))) as 'grossMarginRate',
+                count(DISTINCT ( d.GSSD_BILL_NO )) as 'tradeCount',
+                if(count(DISTINCT ( d.GSSD_BILL_NO )) = 0,0,convert(sum(d.GSSD_AMT) / count(DISTINCT ( d.GSSD_BILL_NO )),decimal(19,2))) as 'customerPrice'
+                FROM `GAIA_SD_SALE_D` d
+                <where>
+                    and d.CLIENT = #{client}
+                    <if test="userId!=null and userId!=''">
+                        and d.GSSD_SALER_ID = #{userId}
+                    </if>
+                    <if test="startTime!=null and startTime!=''">
+                        and d.GSSD_DATE &gt;= #{startTime}
+                    </if>
+                    <if test="endTime!=null and endTime!=''">
+                        and d.GSSD_DATE &lt;= #{endTime}
+                    </if>
+                </where>
+                group by CLIENT,GSSD_SALER_ID,d.GSSD_DATE
+    </select>
+    <select id="getDaysSales" resultType="java.lang.Integer">
+        select count(DISTINCT(d.GSSD_DATE)) from GAIA_SD_SALE_D d
+        <where>
+            d.CLIENT = #{client}
+            and d.GSSD_SALER_ID = #{userId}
+            <if test="date!=null and date!=''">
+                and d.GSSD_DATE like concat(#{date},'%')
+            </if>
+            and d.GSSD_AMT >=0
+            and d.GSSD_QTY>=0
+        </where>
+    </select>
+    <select id="getDayCard" resultType="java.util.Map">
+        select card.GSMBC_CREATE_DATE as dates , count(card.GSMBC_CARD_ID)  as cardCount from GAIA_SD_MEMBER_CARD card
+        <where>
+            and card.CLIENT =#{client}
+            and card.GSMBC_CREATE_SALER = #{userId}
+            <if test="startTime!=null and startTime!=''">
+                and card.GSMBC_CREATE_DATE &gt;= #{startTime}
+            </if>
+            <if test="endTime!=null and endTime!=''">
+                and card.GSMBC_CREATE_DATE &lt;= #{startTime}
+            </if>
+        </where>
+        group by card.GSMBC_CREATE_DATE
+    </select>
+
+    <select id="getCostAmtShowConfig"  resultType="java.util.Map">
+        select GLOBAL_SITE stoCode, IF(GLOBAL_TYPE IS NULL OR GLOBAL_TYPE = '', 1, GLOBAL_TYPE) type from GAIA_GLOBAL_DATA where CLIENT = #{client} and GLOBAL_ID = '1'
+    </select>
+
+</mapper>

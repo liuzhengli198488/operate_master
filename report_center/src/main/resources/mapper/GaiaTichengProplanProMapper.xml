@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengProplanProMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengProplanPro">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="PID" jdbcType="BIGINT" property="pid" />
+    <result column="PLAN_PRODUCT_WAY" jdbcType="VARCHAR" property="planProductWay" />
+    <result column="PRO_CODE" jdbcType="VARCHAR" property="proCode" />
+    <result column="PRO_NAME" jdbcType="VARCHAR" property="proName" />
+    <result column="PRO_SPECS" jdbcType="VARCHAR" property="proSpecs" />
+    <result column="PRO_FACTORY_NAME" jdbcType="VARCHAR" property="proFactoryName" />
+    <result column="PRO_COST_PRICE" jdbcType="DECIMAL" property="proCostPrice" />
+    <result column="PRO_PRICE_NORMAL" jdbcType="DECIMAL" property="proPriceNormal" />
+    <result column="TICHENG_AMT" jdbcType="DECIMAL" property="tichengAmt" />
+    <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    ID, CLIENT, PID, PLAN_PRODUCT_WAY, PRO_CODE, PRO_NAME, PRO_SPECS, PRO_FACTORY_NAME, 
+    PRO_COST_PRICE, PRO_PRICE_NORMAL, TICHENG_AMT, DELETE_FLAG, LAST_UPDATE_TIME
+  </sql>
+	<select id="selectPro" resultType="java.util.Map">
+      SELECT
+          PRO_CODE proId,
+          TICHENG_AMT tcPrice
+      FROM
+          GAIA_TICHENG_PROPLAN_PRO
+      WHERE
+          PID = #{id}
+          and CLIENT =#{client}
+          and DELETE_FLAG = '0'
+	    </select>
+    <select id="selectProV3" resultType="com.gys.entity.GaiaTichengProplanProV3">
+        SELECT
+            PRO_CODE proCode,
+            TICHENG_LEVEL tichengLevel,
+            SALE_QTY saleQty,
+            TICHENG_RATE tichengRate,
+            TICHENG_AMT tichengAmt,
+            SALE_QTY2 saleQty2,
+            TICHENG_RATE2 tichengRate2,
+            TICHENG_AMT2 tichengAmt2,
+            SALE_QTY3 saleQty3,
+            TICHENG_RATE3 tichengRate3,
+            TICHENG_AMT3 tichengAmt3,
+            PLIANT_PERCENTAGE_TYPE planPercentageType
+        FROM
+            GAIA_TICHENG_PROPLAN_PRO_N
+        WHERE
+            PID = #{id}
+          and CLIENT =#{client}
+          and DELETE_FLAG = '0'
+    </select>
+</mapper>

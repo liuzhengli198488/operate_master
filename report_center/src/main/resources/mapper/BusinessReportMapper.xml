@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.BusinessReportMapper">
+
+    <select id="getSalesQtyAndSalesDay" resultType="com.gys.entity.data.businessReport.BusinessReportResponse" parameterType="com.gys.entity.data.businessReport.BusinessReportRequest">
+        SELECT count( 1 ) salesDay, b.stoQty
+        FROM
+        ( SELECT CLIENT,GSSH_DATE, GSSH_BR_ID FROM GAIA_SD_SALE_H
+            WHERE GSSH_HIDE_FLAG = '0' AND CLIENT =#{client} AND DATE_FORMAT( GSSH_DATE, '%Y%m' )= #{date}
+            <if test="stoCode != null and stoCode !=''">
+                and GSSH_BR_ID = #{stoCode}
+            </if>
+            GROUP BY GSSH_DATE, GSSH_BR_ID )t
+        LEFT JOIN ( SELECT count( 1 )stoQty ,CLIENT
+            FROM GAIA_STORE_DATA WHERE CLIENT = #{client}
+            <if test="stoCode != null and stoCode !=''">
+               and STO_CODE = #{stoCode}
+            </if> )b on t.CLIENT = b.CLIENT
+
+    </select>
+
+    <select id="getAmtAndGrossAndGrossRate" resultType="com.gys.entity.data.businessReport.OverallSales" parameterType="string">
+        SELECT count(DISTINCT h.GSSH_BILL_NO) transactionQty,
+               ifnull(CONVERT (SUM(d.GSSD_AMT ),DECIMAL ( 19, 4 )),0)/10000 as salesAmt,
+               IFNULL(CONVERT (SUM( d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX)),DECIMAL ( 19, 4 )),0 )/10000 AS gross,
+               IFNULL(CONVERT (SUM( d.GSSD_AMT - ( t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+d.GSSD_ADD_TAX) ) )
+               / SUM( d.GSSD_AMT ) ,DECIMAL ( 19, 4 )),0) AS gRate,
+              ifnull(CONVERT (e.salesDay,DECIMAL ( 19, 4 )),0) salesDay
+        FROM GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT
+                  AND d.GSSD_BILL_NO = h.GSSH_BILL_NO AND h.GSSH_DATE = d.GSSD_DATE
+        LEFT JOIN GAIA_STORE_DATA c ON c.CLIENT = h.CLIENT AND c.STO_CODE = h.GSSH_BR_ID
+        LEFT JOIN (SELECT (CASE IFNULL(GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE -1 END) GSSH_BILL_NO_RETURN,
+                          GSSH_BILL_NO,GSSH_DATE,GSSH_BR_ID
+                    FROM GAIA_SD_SALE_H
+                   WHERE DATE_FORMAT(GSSH_DATE,'%Y%m')= #{date}
+                     AND CLIENT =  #{client}
+                     <if test="stoCode != null and stoCode !=''">
+                        and   GSSH_BR_ID = #{stoCode}
+                     </if>
+            ) t ON t.GSSH_BILL_NO = h.GSSH_BILL_NO
+                     AND t.GSSH_DATE = h.GSSH_DATE AND t.GSSH_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN(SELECT count( 1 ) salesDay, b.stoQty,DATE_FORMAT( GSSH_DATE, '%Y%m' )date
+        FROM
+        ( SELECT CLIENT,GSSH_DATE, GSSH_BR_ID FROM GAIA_SD_SALE_H
+        WHERE GSSH_HIDE_FLAG = '0' AND CLIENT =#{client} AND DATE_FORMAT( GSSH_DATE, '%Y%m' )= #{date}
+        <if test="stoCode != null and stoCode !=''">
+            and GSSH_BR_ID = #{stoCode}
+        </if>
+        GROUP BY GSSH_DATE, GSSH_BR_ID )t
+        LEFT JOIN ( SELECT count( 1 )stoQty ,CLIENT
+        FROM GAIA_STORE_DATA WHERE CLIENT = #{client}
+        <if test="stoCode != null and stoCode !=''">
+            and STO_CODE = #{stoCode}
+        </if> )b on t.CLIENT = b.CLIENT)e on e.date = DATE_FORMAT(h.GSSH_DATE, '%Y%m')
+        WHERE h.GSSH_HIDE_FLAG = '0' AND h.CLIENT =  #{client}
+              <if test="stoCode != null and stoCode !=''">
+                and h.GSSH_BR_ID = #{stoCode}
+              </if>
+        and DATE_FORMAT(h.GSSH_DATE,'%Y%m')=  #{date}
+        GROUP BY h.CLIENT
+    </select>
+
+    <select id="getVIPInfo" resultType="com.gys.entity.data.businessReport.VIPInfo" parameterType="string">
+        SELECT ifnull(count(DISTINCT h.GSSH_BILL_NO),0) as transactionQty,
+        ifnull(CONVERT (SUM(d.GSSD_AMT ),DECIMAL ( 19, 4 )),0)/10000 as salesAmt
+        FROM GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT
+        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO AND h.GSSH_DATE = d.GSSD_DATE
+        LEFT JOIN GAIA_STORE_DATA c ON c.CLIENT = h.CLIENT AND c.STO_CODE = h.GSSH_BR_ID
+        LEFT JOIN (SELECT (CASE IFNULL(GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE -1 END) GSSH_BILL_NO_RETURN,
+        GSSH_BILL_NO,GSSH_DATE,GSSH_BR_ID
+        FROM GAIA_SD_SALE_H
+        WHERE DATE_FORMAT(GSSH_DATE,'%Y%m')= #{date}
+        AND CLIENT =  #{client}
+        <if test="stoCode != null and stoCode !=''">
+            and   GSSH_BR_ID = #{stoCode}
+        </if>
+        ) t ON t.GSSH_BILL_NO = h.GSSH_BILL_NO
+        AND t.GSSH_DATE = h.GSSH_DATE AND t.GSSH_BR_ID = h.GSSH_BR_ID
+        WHERE h.GSSH_HIDE_FLAG = '0' AND h.CLIENT =  #{client}
+        <if test="stoCode != null and stoCode !=''">
+            and h.GSSH_BR_ID = #{stoCode}
+        </if>
+        and h.GSSH_HYK_NO is not null
+        and DATE_FORMAT(h.GSSH_DATE,'%Y%m')=  #{date}
+        GROUP BY h.CLIENT
+    </select>
+
+    <select id="getMedicalSalesInfo" resultType="com.gys.entity.data.businessReport.MedicalInsuranceSales" parameterType="string">
+        select ifnull(sum(GSSPM_AMT),0)/10000 salesAmt ,count(CLIENT) transactionQty
+        from GAIA_SD_SALE_PAY_MSG
+        where GSSPM_ID ='4000' and GSSPM_TYPE ='1'
+            and CLIENT =#{client} and DATE_FORMAT(GSSPM_DATE,'%Y%m')= #{date}
+        <if test="stoCode != null and stoCode !=''">
+            and GSSPM_BR_ID = #{stoCode}
+        </if>
+        GROUP BY CLIENT;
+    </select>
+
+    <select id="listMonthSalesInfo" resultType="com.gys.entity.data.businessReport.MonthData" parameterType="string">
+        select DATE_FORMAT(h.GSSH_DATE, '%Y%m') date,
+               count(DISTINCT h.GSSH_BILL_NO) transactionQty,
+               ifnull(CONVERT (SUM(d.GSSD_AMT ),DECIMAL ( 19, 4 )),0)/10000 as salesAmt,
+               IFNULL(CONVERT (SUM( d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX)),DECIMAL ( 19, 4 )),0 )/10000 AS gross,
+               IFNULL(CONVERT (SUM( d.GSSD_AMT - ( t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+d.GSSD_ADD_TAX) ) )
+                                   / SUM( d.GSSD_AMT ) ,DECIMAL ( 19, 4 )),0) AS gRate,
+               ifnull(CONVERT (e.salesDay,DECIMAL ( 19, 4 )),0) salesDay
+        from GAIA_SD_SALE_H h
+                 LEFT JOIN GAIA_SD_SALE_D d ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO = h.GSSH_BILL_NO AND h.GSSH_DATE = d.GSSD_DATE
+                 LEFT JOIN GAIA_STORE_DATA c ON c.CLIENT = h.CLIENT AND c.STO_CODE = h.GSSH_BR_ID
+                 LEFT JOIN (SELECT (CASE IFNULL(GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE -1 END) GSSH_BILL_NO_RETURN,
+                                   GSSH_BILL_NO,GSSH_DATE,GSSH_BR_ID
+                            FROM GAIA_SD_SALE_H
+                            WHERE DATE_FORMAT(GSSH_DATE,'%Y')=#{date}
+                              AND CLIENT =  #{client}
+                            <if test="stoCode != null and stoCode !=''">
+                                and  GSSH_BR_ID = #{stoCode}
+                            </if>
+        ) t ON t.GSSH_BILL_NO = h.GSSH_BILL_NO AND t.GSSH_DATE = h.GSSH_DATE AND t.GSSH_BR_ID = h.GSSH_BR_ID
+                 LEFT JOIN(SELECT count( 1 ) salesDay,DATE_FORMAT( GSSH_DATE, '%Y%m' ) GSSH_DATE
+                 FROM
+                 ( SELECT CLIENT,GSSH_DATE, GSSH_BR_ID FROM GAIA_SD_SALE_H
+                 WHERE GSSH_HIDE_FLAG = '0' AND CLIENT =#{client} AND DATE_FORMAT( GSSH_DATE, '%Y' )= #{date}
+                 <if test="stoCode != null and stoCode !=''">
+                     and   GSSH_BR_ID = #{stoCode}
+                 </if>
+                 GROUP BY GSSH_DATE, GSSH_BR_ID )t GROUP BY DATE_FORMAT( GSSH_DATE, '%Y%m' ))e on e.GSSH_DATE = DATE_FORMAT(h.GSSH_DATE, '%Y%m')
+        where DATE_FORMAT(h.GSSH_DATE,'%Y') =#{date} and h.GSSH_HIDE_FLAG = '0' AND h.CLIENT = #{client}
+        <if test="stoCode != null and stoCode !=''">
+            and   h.GSSH_BR_ID = #{stoCode}
+        </if>
+        GROUP BY h.CLIENT,DATE_FORMAT(h.GSSH_DATE, '%Y%m')
+        ORDER BY DATE_FORMAT(h.GSSH_DATE, '%Y%m')
+    </select>
+
+    <select id="listVipSalesInfo" resultType="com.gys.entity.data.businessReport.MonthData" parameterType="string">
+        select  ifnull(CONVERT (SUM(d.GSSD_AMT ),DECIMAL ( 19, 4 )),0)/10000 as salesAmt,
+        count(DISTINCT h.GSSH_BILL_NO) transactionQty,
+        ifnull(CONVERT (SUM(d.GSSD_AMT )/hjAmt,DECIMAL ( 19, 4 )),0) as vipRate,
+        ifnull(CONVERT (count(DISTINCT h.GSSH_BILL_NO)/hjQty,DECIMAL ( 19, 4 )),0) as transactionQtyRate,
+        DATE_FORMAT(h.GSSH_DATE,'%Y%m') date
+        from  GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO = h.GSSH_BILL_NO AND h.GSSH_DATE = d.GSSD_DATE
+        LEFT JOIN (SELECT  SUM( ds.GSSD_AMT )  hjAmt,DATE_FORMAT(hs.GSSH_DATE,'%Y%m')date,count(DISTINCT hs.GSSH_BILL_NO) hjQty
+        FROM GAIA_SD_SALE_H hs
+        LEFT JOIN GAIA_SD_SALE_D ds ON ds.GSSD_BR_ID = hs.GSSH_BR_ID AND ds.CLIENT = hs.CLIENT AND ds.GSSD_BILL_NO =
+        hs.GSSH_BILL_NO AND hs.GSSH_DATE = ds.GSSD_DATE
+        WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND  DATE_FORMAT(hs.GSSH_DATE,'%Y')=#{date}
+        <if test="stoCode != null and stoCode !=''">
+            and   hs.GSSH_BR_ID = #{stoCode}
+        </if>
+        GROUP BY DATE_FORMAT(hs.GSSH_DATE,'%Y%m') )t1 on t1.date=DATE_FORMAT(h.GSSH_DATE,'%Y%m')
+        where DATE_FORMAT(h.GSSH_DATE,'%Y') = #{date} and h.GSSH_HIDE_FLAG = '0'
+        AND h.CLIENT =  #{client}
+        <if test="stoCode != null and stoCode !=''">
+            and   h.GSSH_BR_ID = #{stoCode}
+        </if>
+        AND h.GSSH_HYK_NO is not null
+        GROUP BY DATE_FORMAT(h.GSSH_DATE,'%Y%m')
+        ORDER BY DATE_FORMAT(h.GSSH_DATE,'%Y%m')
+    </select>
+
+    <select id="listMedicalSalesInfo" resultType="com.gys.entity.data.businessReport.MonthData" parameterType="string">
+        select ifnull(sum(a.GSSPM_AMT),0)/10000 salesAmt ,count(a.CLIENT) transactionQty,
+               DATE_FORMAT(a.GSSPM_DATE,'%Y%m') date,
+               ifnull(CONVERT (SUM(a.GSSPM_AMT )/hjAmt,DECIMAL ( 19, 4 )),0) as medicalRate,
+               ifnull(CONVERT(count(a.CLIENT)/hjQty,DECIMAL ( 19, 4 )),0) as transactionQtyRate
+        from GAIA_SD_SALE_PAY_MSG a
+            LEFT JOIN (SELECT  SUM( ds.GSSD_AMT )  hjAmt,DATE_FORMAT(hs.GSSH_DATE,'%Y%m')date,count(DISTINCT hs.GSSH_BILL_NO) hjQty
+            FROM GAIA_SD_SALE_H hs
+            LEFT JOIN GAIA_SD_SALE_D ds ON ds.GSSD_BR_ID = hs.GSSH_BR_ID AND ds.CLIENT = hs.CLIENT AND ds.GSSD_BILL_NO =
+            hs.GSSH_BILL_NO AND hs.GSSH_DATE = ds.GSSD_DATE
+            WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND  DATE_FORMAT(hs.GSSH_DATE,'%Y')=#{date}
+            <if test="stoCode != null and stoCode !=''">
+                and   hs.GSSH_BR_ID = #{stoCode}
+            </if>
+            GROUP BY DATE_FORMAT(hs.GSSH_DATE,'%Y%m') )t1 on t1.date=DATE_FORMAT(a.GSSPM_DATE,'%Y%m')
+        where DATE_FORMAT(a.GSSPM_DATE,'%Y')= #{date} and GSSPM_ID ='4000' and GSSPM_TYPE ='1'
+          and CLIENT =#{client}
+            <if test="stoCode != null and stoCode !=''">
+                and   a.GSSPM_BR_ID = #{stoCode}
+            </if>
+        GROUP BY DATE_FORMAT(a.GSSPM_DATE,'%Y%m')
+    </select>
+
+    <select id="listSalesDay" resultType="com.gys.entity.data.businessReport.MonthData" parameterType="string">
+        SELECT count( 1 ) salesDay,DATE_FORMAT( GSSH_DATE, '%Y-%m' ) date
+        FROM
+        ( SELECT CLIENT,GSSH_DATE, GSSH_BR_ID FROM GAIA_SD_SALE_H
+        WHERE GSSH_HIDE_FLAG = '0' AND CLIENT =#{client} AND DATE_FORMAT( GSSH_DATE, '%Y' )= #{date}
+        <if test="stoCode != null and stoCode !=''">
+            and   GSSH_BR_ID = #{stoCode}
+        </if>
+        GROUP BY GSSH_DATE, GSSH_BR_ID )t GROUP BY DATE_FORMAT( GSSH_DATE, '%Y%m' )
+    </select>
+
+    <select id="getMaxWeek" resultType="hashmap" parameterType="com.gys.entity.data.businessReport.WeeklySalesReportInfo">
+        select max(GCD_WEEK) w,GCD_YEAR y from GAIA_CAL_DT where GCD_YEAR = #{y}
+    </select>
+
+    <select id="getStartTimeAndEndTime" resultType="hashmap">
+        select DATE_FORMAT(max(GCD_DATE),'%Y-%m-%d')  endDate,DATE_FORMAT(min(GCD_DATE),'%Y-%m-%d') startDate from GAIA_CAL_DT where
+        GCD_YEAR in
+        <foreach collection="yearList" item="item" index="index" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        <if test="weekList != null and weekList.size() > 0">
+            and GCD_WEEK in
+            <foreach collection="weekList" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="monthList != null and monthList.size() > 0">
+            and GCD_MONTH in
+            <foreach collection="monthList" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="listBigCode" resultType="hashmap" parameterType="com.gys.entity.data.businessReport.BusinessReportRequest">
+        select PRO_COMP_BIG_CODE proCompBigCode, PRO_COMP_BIG_NAME proCompBigName
+        <if test="proCompBigCode != null and proCompBigCode != ''">
+            ,PRO_COMP_MID_CODE proCompMidCode,PRO_COMP_MID_NAME proCompMidName
+        </if>
+        <if test="proCompMidCode != null and proCompMidCode != ''">
+            ,PRO_COMP_LIT_CODE proCompLitCode,PRO_COMP_LIT_NAME proCompLitName
+        </if>
+        <if test="proCompLitCode != null and proCompLitCode != ''">
+            ,PRO_COMP_CODE proCompCode,PRO_COMP_NAME proCompName
+        </if>
+        from GAIA_PRODUCT_COMPONENT_CLASS
+        where 1=1
+        <if test="proCompBigCode != null and proCompBigCode != ''">
+            and PRO_COMP_BIG_CODE = #{proCompBigCode}
+        </if>
+        <if test="proCompMidCode != null and proCompMidCode != ''">
+            and PRO_COMP_MID_CODE = #{proCompMidCode}
+        </if>
+        <if test="proCompLitCode != null and proCompLitCode != ''">
+            and PRO_COMP_LIT_CODE = #{proCompLitCode}
+        </if>
+        <if test="proCompCode != null and proCompCode != ''">
+            and PRO_COMP_CODE = #{proCompCode}
+        </if>
+        group by PRO_COMP_BIG_CODE, PRO_COMP_BIG_NAME
+        <if test="proCompBigCode != null and proCompBigCode != ''">
+            ,PRO_COMP_MID_CODE ,PRO_COMP_MID_NAME
+        </if>
+        <if test="proCompMidCode != null and proCompMidCode != ''">
+            ,PRO_COMP_LIT_CODE ,PRO_COMP_LIT_NAME
+        </if>
+        <if test="proCompLitCode != null and proCompLitCode != ''">
+            ,PRO_COMP_CODE ,PRO_COMP_NAME
+        </if>
+        order by PRO_COMP_BIG_CODE
+        <if test="proCompBigCode != null and proCompBigCode != ''">
+            ,PRO_COMP_MID_CODE
+        </if>
+        <if test="proCompMidCode != null and proCompMidCode != ''">
+            ,PRO_COMP_LIT_CODE
+        </if>
+        <if test="proCompLitCode != null and proCompLitCode != ''">
+            ,PRO_COMP_CODE
+        </if>
+    </select>
+
+    <select id="listClientOrStores" resultType="hashmap" parameterType="com.gys.entity.data.businessReport.BusinessReportRequest">
+        select a.CLIENT ,a.FRANC_NAME francName
+        <if test="clientList != null and clientList.size() > 0">
+            ,concat(a.CLIENT,'-',b.STO_CODE) stoCode,b.STO_NAME stoName
+        </if>
+        from GAIA_FRANCHISEE a
+        LEFT JOIN GAIA_STORE_DATA b on a.CLIENT = b.CLIENT
+        LEFT JOIN GAIA_SD_STORES_GROUP c on a.CLIENT = c.CLIENT and b.STO_CODE = c.GSSG_BR_ID
+        where 1=1
+        <if test="clientList != null and clientList.size() > 0">
+            and a.CLIENT in
+            <foreach collection="clientList" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+            <if test="stoAttributeList != null and stoAttributeList.size() > 0">
+                and b.STO_ATTRIBUTE in
+                <foreach collection="stoAttributeList" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="gsstVersionList != null and gsstVersionList.size() > 0">
+                and c.GSSG_ID in
+                <foreach collection="gsstVersionList" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </if>
+        <if test="francTypeFlag != null and francTypeFlag != '' ">
+            and (
+            <if test="francType1 != null and francType1 != ''">
+                a.FRANC_TYPE1  = #{francType1}
+                <if test="francType2 != null and francType2 != ''">
+                    or a.FRANC_TYPE2 = #{francType2}
+                    <if test="francType3 != null and francType3 != ''">
+                        or a.FRANC_TYPE3 = #{francType3}
+                    </if>
+                </if>
+                <if test="francType3 != null and francType3 != ''">
+                    or a.FRANC_TYPE3 = #{francType3}
+                </if>
+            </if>
+            <if test="francType1 == null">
+                <if test="francType2 != null and francType2 != ''">
+                    a.FRANC_TYPE2 = #{francType2}
+                    <if test="francType3 != null and francType3 != ''">
+                        or a.FRANC_TYPE3 = #{francType3}
+                    </if>
+                </if>
+                <if test="francType2 == null">
+                    <if test="francType3 != null and francType3 != ''">
+                        a.FRANC_TYPE3 = #{francType3}
+                    </if>
+                </if>
+            </if>
+            )
+        </if>
+        group by a.CLIENT ,a.FRANC_NAME
+        <if test="clientList != null and clientList.size() > 0">
+            ,b.STO_CODE,b.STO_NAME
+        </if>
+        order by a.CLIENT
+        <if test="clientList != null and clientList.size() > 0">
+            ,b.STO_CODE
+        </if>
+    </select>
+    <select id="getClassList" resultType="com.gys.entity.data.businessReport.GoodsClassResponseDTO">
+        SELECT
+            PRO_COMP_BIG_CODE proCompBigCode,
+            PRO_COMP_BIG_NAME proCompBigName,
+            PRO_COMP_MID_CODE proCompMidCode,
+            PRO_COMP_MID_NAME proCompMidName,
+            PRO_COMP_LIT_CODE proCompLitCode,
+            PRO_COMP_LIT_NAME proCompLitName,
+            PRO_COMP_CODE proCompCode,
+            PRO_COMP_NAME proCompName
+        FROM
+            GAIA_PRODUCT_COMPONENT_CLASS
+    </select>
+
+    <select id="listStoreType" resultType="hashmap">
+        select GSSG_ID code ,GSSG_ID_NAME name from GAIA_SD_STORES_GROUP_SET where GSSG_TYPE = 'DX0001' GROUP BY GSSG_ID ,GSSG_ID_NAME
+    </select>
+    <select id="selectProductBasicList" resultType="com.gys.entity.data.ProductBasicInfo" parameterType="java.util.List">
+        SELECT a.PRO_CODE proCode,a.PRO_DEPICT proDepict,a.PRO_SPECS proSpecs,a.PRO_UNIT proUnit,a.PRO_FACTORY_NAME factoryName,a.PRO_CLASS proClass,a.PRO_CLASS_NAME proClassName,
+               b.PRO_BIG_CLASS_CODE proBigClass,b.PRO_BIG_CLASS_NAME proBigClassName,PRO_MID_CLASS_CODE proMidClass,PRO_MID_CLASS_NAME proMidClassName,
+               a.PRO_COMPCLASS proCompClass,a.PRO_COMPCLASS_NAME proCompClassName,c.PRO_COMP_BIG_CODE proBigCompClass,c.PRO_COMP_BIG_NAME proBigCompClassName,
+               c.PRO_COMP_MID_CODE proMidCompClass,c.PRO_COMP_MID_NAME proMidCompClassName
+        FROM GAIA_PRODUCT_BASIC a
+        LEFT JOIN GAIA_PRODUCT_CLASS b ON a.PRO_CLASS = b.PRO_CLASS_CODE
+        LEFT JOIN GAIA_PRODUCT_COMPONENT_CLASS c ON c.PRO_COMP_CODE = a.PRO_COMPCLASS
+        WHERE PRO_CODE IN
+        <foreach collection="list" item="item" index="index" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+    <select id="listWeek" resultType="hashmap" parameterType="com.gys.entity.data.businessReport.BusinessReportRequest">
+        select CONCAT('第',GCD_WEEK,'周') name,GCD_WEEK code from GAIA_CAL_DT where GCD_YEAR =#{year} GROUP BY GCD_WEEK
+    </select>
+
+    <select id="getNowWeekNum" resultType="hashmap">
+        select CONCAT('第',GCD_WEEK,'周') name,GCD_WEEK code from GAIA_CAL_DT where GCD_DATE = DATE_FORMAT(now(),'%Y%m%d')
+    </select>
+    <select id="getPlanData" resultType="com.gys.entity.data.businessReport.OverallSalesPlanData">
+        select
+        w.CLIENT as client,
+        w.STASK_TASK_ID as staskTaskId,
+        w.STASK_TASK_NAME as staskTaskName,
+        w.STASK_START_DATE as staskStartDate,
+        w.STASK_END_DATE as staskEndDate,
+        DAY (LAST_DAY(( CONCAT( w.MONTH_PLAN, '01' )))) as monthDays,
+        sn.stoQty as stoQty,
+        ROUND(SUM(n.A_SALE_AMT * DAY (LAST_DAY(( CONCAT( w.MONTH_PLAN, '01' ))))),2) as planDailyPayAmt,
+        ROUND(SUM(n.A_SALE_GROSS * DAY (LAST_DAY(( CONCAT( w.MONTH_PLAN, '01' ))))),2) as planGrossProfit,
+        ROUND(SUM(n.A_SALE_GROSS)/SUM(n.A_SALE_AMT)*100,2) as planGrossMargin,
+        SUM(n.A_MCARD_QTY) * DAY (LAST_DAY(( CONCAT( w.MONTH_PLAN, '01' )))) as membershipCard,
+        IFNULL(u.USER_NAM,'药德')as userName,
+        w.STASK_CRE_DATE as creationDate,
+        w.STASK_SPLAN_STA as planStatus
+        from
+        GAIA_SALETASK_HPLAN_NEW w
+        LEFT JOIN GAIA_SALETASK_PLAN_STO n on n.CLIENT = w.CLIENT and n.MONTH_PLAN = w.MONTH_PLAN and n.STASK_TASK_ID = w.STASK_TASK_ID and n.MONTH_PLAN = w.MONTH_PLAN AND n.STASK_TYPE != '1'
+        LEFT JOIN GAIA_USER_DATA u on u.USER_ID =  w.STASK_CRE_ID and u.CLIENT = w.CLIENT
+        left join (select count(STO_CODE) stoQty,CLIENT,STASK_TASK_ID from GAIA_SALETASK_PLAN_STO WHERE STASK_TYPE != '1' group by CLIENT,STASK_TASK_ID) sn on sn.CLIENT = w.CLIENT AND sn.STASK_TASK_ID = w.STASK_TASK_ID
+        where  w.CLIENT = #{client} and ( w.STASK_TYPE != '1' OR w.STASK_TYPE IS NULL )
+        <if test="date != null and date != ''">
+            AND w.STASK_START_DATE like concat(#{date},'%')
+        </if>
+        <if test="stoCode !=null and stoCode != ''">
+            AND n.STO_CODE = #{stoCode}
+        </if>
+        AND w.STASK_SPLAN_STA = 'A'
+        group by w.CLIENT,w.STASK_TASK_ID,w.MONTH_PLAN;
+    </select>
+</mapper>

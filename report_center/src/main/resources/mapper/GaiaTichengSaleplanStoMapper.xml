@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengSaleplanStoMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengSaleplanSto">
+        <id column="ID" jdbcType="BIGINT" property="id"/>
+        <result column="CLIENT" jdbcType="VARCHAR" property="client"/>
+        <result column="STO_CODE" jdbcType="VARCHAR" property="stoCode"/>
+        <result column="PID" jdbcType="BIGINT" property="pid"/>
+        <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag"/>
+        <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        ID, CLIENT, STO_CODE, PID, DELETE_FLAG, LAST_UPDATE_TIME
+    </sql>
+
+    <select id="selectSto" resultType="java.lang.String">
+        SELECT STO_CODE
+        FROM `GAIA_TICHENG_SALEPLAN_STO`
+        WHERE PID = #{id}
+          AND DELETE_FLAG = '0'
+    </select>
+
+    <select id="selectStoreByPlanIdAndClient" resultType="com.gys.common.data.StoreSimpleInfoWithPlan">
+        SELECT
+            DISTINCT
+            gsd.STO_CODE stoCode,
+            IF(gsd.STO_SHORT_NAME IS NULL OR gsd.STO_SHORT_NAME = '', gsd.STO_NAME, gsd.STO_SHORT_NAME) stoShortName
+        FROM `GAIA_TICHENG_SALEPLAN_STO` gtss
+        INNER JOIN GAIA_STORE_DATA gsd ON gtss.CLIENT = gsd.CLIENT AND gtss.STO_CODE = gsd.STO_CODE
+        WHERE gtss.CLIENT = #{client}
+        <if test="planId!=null">
+            AND gtss.PID = #{planId}
+        </if>
+        AND gtss.DELETE_FLAG = '0'
+    </select>
+
+</mapper>

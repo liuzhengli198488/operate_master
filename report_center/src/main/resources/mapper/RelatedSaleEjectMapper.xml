@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.RelatedSaleEjectMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.gys.report.entity.RelatedSaleEject">
+        <id column="ID" property="id" />
+        <result column="CLIENT" property="client" />
+        <result column="SITE_CODE" property="siteCode" />
+        <result column="PRO_CODE" property="proCode" />
+        <result column="RELATED_SALE_FLAG" property="relatedSaleFlag" />
+        <result column="CREATE_DATE" property="createDate" />
+        <result column="CREATE_TIME" property="createTime" />
+        <result column="CREATE_BY" property="createBy" />
+    </resultMap>
+
+
+    <select id="selectTclGroupByUserId" resultType="com.gys.report.entity.RelatedSaleEjectRes">
+        SELECT s.CLIENT AS client,s.SITE_CODE AS siteCode,s.CREATE_BY AS createBy,s.unitCount AS unitCount,t.inputCount AS inputCount FROM (SELECT
+            rse.CLIENT,
+            rse.SITE_CODE,
+            rse.CREATE_BY ,
+            count(rse.PRO_CODE) AS inputCount
+        FROM
+            GAIA_SD_RELATED_SALE_EJECT rse
+            LEFT JOIN GAIA_PRODUCT_BUSINESS pb
+            ON rse.CLIENT = pb.CLIENT
+            AND rse.SITE_CODE = pb.PRO_SITE
+            AND rse.PRO_CODE = pb.PRO_SELF_CODE
+        WHERE
+            rse.CLIENT = #{client}
+             <!-- AND rse.SITE_CODE = #{siteCode} -->
+            AND rse.CREATE_DATE <![CDATA[>=]]> #{queryStartDate}
+            AND rse.CREATE_DATE <![CDATA[<=]]> #{queryEndDate}
+            AND pb.PRO_CLASS NOT IN (
+                SELECT
+                PRO_CLASS_CODE
+                FROM
+                GAIA_PRODUCT_CLASS pcpc
+                WHERE
+                pcpc.PRO_CLASS_CODE LIKE '301%'
+                OR pcpc.PRO_CLASS_CODE LIKE '302%'
+                OR pcpc.PRO_CLASS_CODE LIKE '8%'
+            )
+            <if test="queryUserId != null and queryUserId !=''">
+                AND rse.CREATE_BY = #{queryUserId}
+            </if>
+            GROUP BY rse.CLIENT,rse.SITE_CODE,rse.CREATE_BY) t LEFT JOIN
+        (SELECT
+          rse.CLIENT,
+            rse.SITE_CODE,
+            rse.CREATE_BY ,
+            count(rse.PRO_CODE) AS unitCount
+        FROM
+            GAIA_SD_RELATED_SALE_EJECT rse
+            LEFT JOIN GAIA_PRODUCT_BUSINESS pb
+            ON rse.CLIENT = pb.CLIENT
+            AND rse.SITE_CODE = pb.PRO_SITE
+            AND rse.PRO_CODE = pb.PRO_SELF_CODE
+        WHERE
+            rse.CLIENT = #{client}
+            <!-- AND rse.SITE_CODE = #{siteCode}-->
+            AND rse.CREATE_DATE <![CDATA[>=]]> #{queryStartDate}
+            AND rse.CREATE_DATE <![CDATA[<=]]> #{queryEndDate}
+            AND pb.PRO_CLASS NOT IN (
+                SELECT
+                PRO_CLASS_CODE
+                FROM
+                GAIA_PRODUCT_CLASS pcpc
+                WHERE
+                pcpc.PRO_CLASS_CODE LIKE '301%'
+                OR pcpc.PRO_CLASS_CODE LIKE '302%'
+                OR pcpc.PRO_CLASS_CODE LIKE '8%'
+            )
+            <if test="queryUserId != null and queryUserId !=''">
+                AND rse.CREATE_BY = #{queryUserId}
+            </if>
+            AND rse.RELATED_SALE_FLAG = '1'
+            GROUP BY rse.CLIENT,rse.SITE_CODE,rse.CREATE_BY) s
+            ON t.CLIENT = s.CLIENT AND t.SITE_CODE = s.SITE_CODE AND t.CREATE_BY = s.CREATE_BY
+
+    </select>
+</mapper>

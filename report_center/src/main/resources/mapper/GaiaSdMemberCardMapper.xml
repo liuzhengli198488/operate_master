@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdMemberCardMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdMemberCard">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSMBC_MEMBER_ID" jdbcType="VARCHAR" property="gsmbcMemberId" />
+    <id column="GSMBC_ORG_ID" jdbcType="VARCHAR" property="gsmbcOrgId" />
+    <result column="GSMBC_CARD_ID" jdbcType="VARCHAR" property="gsmbcCardId" />
+    <result column="GSMBC_BR_ID" jdbcType="VARCHAR" property="gsmbcBrId" />
+    <result column="GSMBC_CHANNEL" jdbcType="VARCHAR" property="gsmbcChannel" />
+    <result column="GSMBC_CLASS_ID" jdbcType="VARCHAR" property="gsmbcClassId" />
+    <result column="GSMBC_INTEGRAL" jdbcType="VARCHAR" property="gsmbcIntegral" />
+    <result column="GSMBC_INTEGRAL_LASTDATE" jdbcType="VARCHAR" property="gsmbcIntegralLastdate" />
+    <result column="GSMBC_ZERO_DATE" jdbcType="VARCHAR" property="gsmbcZeroDate" />
+    <result column="GSMBC_CREATE_DATE" jdbcType="VARCHAR" property="gsmbcCreateDate" />
+    <result column="GSMBC_TYPE" jdbcType="VARCHAR" property="gsmbcType" />
+    <result column="GSMBC_OPEN_ID" jdbcType="VARCHAR" property="gsmbcOpenId" />
+    <result column="GSMBC_STATUS" jdbcType="VARCHAR" property="gsmbcStatus" />
+    <result column="GSMBC_CREATE_SALER" jdbcType="VARCHAR" property="gsmbcCreateSaler" />
+    <result column="GSMBC_OPEN_CARD" jdbcType="VARCHAR" property="gsmbcOpenCard" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, GSMBC_MEMBER_ID, GSMBC_ORG_ID, GSMBC_CARD_ID, GSMBC_BR_ID, GSMBC_CHANNEL, 
+    GSMBC_CLASS_ID, GSMBC_INTEGRAL, GSMBC_INTEGRAL_LASTDATE, GSMBC_ZERO_DATE, GSMBC_CREATE_DATE, 
+    GSMBC_TYPE, GSMBC_OPEN_ID, GSMBC_STATUS, GSMBC_CREATE_SALER, GSMBC_OPEN_CARD
+  </sql>
+    <select id="getActivateMemberCard" resultType="com.gys.entity.data.member.ActivateMemberCardOutput">
+      SELECT
+      sto.STO_CODE stoCode,
+      IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) stoName,
+      convert(count( card.GSMBC_MEMBER_ID ), decimal(16,2)) qty
+      FROM
+      GAIA_STORE_DATA sto
+      LEFT JOIN GAIA_SD_MEMBER_CARD card ON sto.CLIENT = card.CLIENT
+      AND sto.STO_CODE = card.GSMBC_BR_ID
+      AND card.GSMBC_STATE = '0'
+      AND ( card.GSMBC_JH_DATE BETWEEN #{startDate} AND #{endDate} )
+      WHERE
+      sto.CLIENT = #{client}
+      <if test="stoArr != null and stoArr.length > 0">
+        AND sto.STO_CODE IN
+        <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      GROUP BY
+      sto.CLIENT,
+      sto.STO_CODE
+      ORDER BY
+      qty DESC,
+      stoCode
+    </select>
+    <select id="getActivateMemberCardTotal" resultType="com.gys.entity.data.member.ActivateMemberCardTotal">
+    select convert(sum(tab.qty), decimal(16,2)) qty,
+      convert(sum(stoCode),decimal(16,2) ) stoName
+           from  (
+      SELECT
+      count(sto.STO_CODE) stoCode,
+      count(card.GSMBC_MEMBER_ID ) qty
+
+      FROM
+      GAIA_STORE_DATA sto
+      LEFT JOIN GAIA_SD_MEMBER_CARD card ON sto.CLIENT = card.CLIENT
+      AND sto.STO_CODE = card.GSMBC_BR_ID
+      AND card.GSMBC_STATE = '0'
+      AND ( card.GSMBC_JH_DATE BETWEEN #{startDate} AND #{endDate} )
+      WHERE
+      sto.CLIENT = #{client}
+      <if test="stoArr != null and stoArr.length > 0">
+        AND sto.STO_CODE IN
+        <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      GROUP BY
+      sto.CLIENT,
+      sto.STO_CODE
+      ) tab
+    </select>
+</mapper>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaProductBasicMapper">
+  <select id="queryProductBasicById" resultType="com.gys.entity.GaiaProductBasic">
+    SELECT PRO_CODE proCode,PRO_COMMONNAME proCommonname,PRO_NAME proName,
+           PRO_SPECS proSpecs,PRO_FACTORY_NAME proFactoryName,PRO_COMPCLASS proCompclass,
+           PRO_COMPCLASS_NAME proCompclassName,PRO_CLASS proClass,PRO_CLASS_NAME proClassName,
+           PRO_REGISTER_CLASS proRegisterClass,PRO_REGISTER_NO proRegisterNo,PRO_UNIT proUnit,
+           PRO_HOLDER proHolder,PRO_INPUT_TAX proInputTax,PRO_OUTPUT_TAX proOutputTax,
+           PRO_PRESCLASS proPresclass,PRO_LIFE proLife,PRO_LIFE_UNIT proLifeUnit,PRO_FORM proForm,
+           PRO_PARTFORM proPartform,PRO_BARCODE proBarcode,PRO_BARCODE2 proBarcode2,PRO_MINDOSE proMindose,
+           PRO_TOTALDOSE proTotaldose,PRO_STORAGE_CONDITION proStorageCondition
+    FROM GAIA_PRODUCT_BASIC
+    WHERE PRO_CODE = #{proCode}
+  </select>
+  <update id="modifyProductBasicById" parameterType="com.gys.entity.GaiaProductBasic">
+    UPDATE GAIA_PRODUCT_BASIC
+    SET PRO_COMMONNAME = #{proCommonname},
+        PRO_SPECS = #{proSpecs},
+        PRO_FACTORY_NAME = #{proFactoryName},
+        PRO_COMPCLASS = #{proCompclass},
+        PRO_COMPCLASS_NAME = #{proCompclassName},
+        PRO_CLASS = #{proClass},
+        PRO_CLASS_NAME = #{proClassName},
+        PRO_REGISTER_CLASS = #{proRegisterClass},
+        PRO_REGISTER_NO = #{proRegisterNo},
+        PRO_UNIT = #{proUnit}
+      <if test="proName != null and proName != ''">
+        ,PRO_NAME = #{proName}
+      </if>
+      <if test="proHolder != null and proHolder != ''">
+        ,PRO_HOLDER = #{proHolder}
+      </if>
+      <if test="proInputTax != null and proInputTax != ''">
+        ,PRO_INPUT_TAX = #{proInputTax}
+      </if>
+      <if test="proOutputTax != null and proOutputTax != ''">
+        ,PRO_OUTPUT_TAX = #{proOutputTax}
+      </if>
+      <if test="proPresclass != null and proPresclass != ''">
+        ,PRO_PRESCLASS = #{proPresclass}
+      </if>
+      <if test="proLife != null and proLife != ''">
+        ,PRO_LIFE = #{proLife}
+      </if>
+      <if test="proLifeUnit != null and proLifeUnit != ''">
+        ,PRO_LIFE_UNIT = #{proLifeUnit}
+      </if>
+      <if test="proForm != null and proForm != ''">
+        ,PRO_FORM = #{proForm}
+      </if>
+      <if test="proBarcode != null and proBarcode != ''">
+        ,PRO_BARCODE = #{proBarcode}
+      </if>
+      <if test="proBarcode2 != null and proBarcode2 != ''">
+        ,PRO_BARCODE2 = #{proBarcode2}
+      </if>
+      <if test="proMindose != null and proMindose != ''">
+        ,PRO_MINDOSE = #{proMindose}
+      </if>
+      <if test="proTotaldose != null and proTotaldose != ''">
+          ,PRO_TOTALDOSE = #{proTotaldose}
+      </if>
+      <if test="proStorageCondition != null and proStorageCondition != ''">
+          ,PRO_STORAGE_CONDITION = #{proStorageCondition}
+      </if>
+      <if test="updateClient != null and updateClient != ''">
+          ,UPDATE_CLIENT = #{updateClient}
+      </if>
+      <if test="updateUser != null and updateUser != ''">
+          ,UPDATE_USER = #{updateUser}
+      </if>
+      <if test="updateTime != null and updateTime != ''">
+          ,UPDATE_TIME = #{updateTime}
+      </if>
+    WHERE PRO_CODE = #{proCode}
+  </update>
+  <select id="selectMaxProcode" resultType="java.lang.String">
+    SELECT MAX(PRO_CODE) + 1 FROM GAIA_PRODUCT_BASIC WHERE PRO_CODE != '99999999'
+  </select>
+</mapper>

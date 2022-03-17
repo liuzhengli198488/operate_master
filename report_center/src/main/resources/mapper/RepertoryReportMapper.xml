@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.RepertoryReportMapper">
+    <select id="selectRepertoryData"  parameterType="com.gys.report.entity.RepertoryReportInData"
+            resultType="com.gys.report.entity.RepertoryReportData">
+        SELECT
+        HZ.CLIENT
+        ,MAX(HZ.bigClassCode) AS 'bigClassCode'
+        ,MAX(HZ.bigClassName) AS 'bigClassName'
+        ,MAX(HZ.midClassCode) AS 'midClassCode'
+        ,MAX(HZ.midClassName) AS 'midClassName'
+        ,MAX(HZ.proClassCode) AS 'proClassCode'
+        ,MAX(HZ.proClassName) AS 'proClassName'
+        ,MAX(HZ.proPosition) AS 'proPosition'
+        ,SUM(HZ.inventoryItem_total) AS 'inventoryItem_total'
+        ,SUM(HZ.costAmount_total) AS 'costAmount_total'
+        ,IF(SUM(IFNULL(CB.XSCBE,0)) &lt;= 0,'不动销',Cast(round(SUM(HZ.costAmount_total)/SUM(IFNULL(CB.XSCBE,0))*30) as CHAR )) AS 'turnoverDays_total'
+        ,SUM(HZ.inventoryItem_dep) AS 'inventoryItem_dep'
+        ,SUM(HZ.costAmount_dep) AS 'costAmount_dep'
+        ,IF(SUM(IFNULL(CB.XSCBE,0)) &lt;= 0,'不动销',Cast(round(SUM(HZ.costAmount_dep)/SUM(IFNULL(CB.XSCBE,0))*30) as CHAR )) AS 'turnoverDays_dep'
+        ,SUM(HZ.inventoryItem_store) AS 'inventoryItem_store'
+        ,SUM(HZ.costAmount_store) AS 'costAmount_store'
+        ,IF(SUM(IFNULL(CB.XSCBE,0)) &lt;= 0,'不动销',Cast(round(SUM(HZ.costAmount_store)/SUM(IFNULL(CB.XSCBE,0))*30) as CHAR )) AS 'turnoverDays_store'
+
+        ,SUM(HZ.inventoryItem_totalExpiry) AS 'inventoryItem_totalExpiry'
+        ,SUM(HZ.costAmount_totalExpiry) AS 'costAmount_totalExpiry'
+        ,IF(SUM(IFNULL(CB.XSCBE,0)) &lt;= 0,'不动销',Cast(round(SUM(HZ.costAmount_totalExpiry)/SUM(IFNULL(CB.XSCBE,0))*30) as CHAR )) AS 'turnoverDays_totalExpiry'
+        ,SUM(HZ.inventoryItem_depExpiry) AS 'inventoryItem_depExpiry'
+        ,SUM(HZ.costAmount_depExpiry) AS 'costAmount_depExpiry'
+        ,IF(SUM(IFNULL(CB.XSCBE,0)) &lt;= 0,'不动销',Cast(round(SUM(HZ.costAmount_depExpiry)/SUM(IFNULL(CB.XSCBE,0))*30) as CHAR )) AS 'turnoverDays_depExpiry'
+        ,SUM(HZ.inventoryItem_storeExpiry) AS 'inventoryItem_storeExpiry'
+        ,SUM(HZ.costAmount_storeExpiry) AS 'costAmount_storeExpiry'
+        ,IF(SUM(IFNULL(CB.XSCBE,0)) &lt;= 0,'不动销',Cast(round(SUM(HZ.costAmount_storeExpiry)/SUM(IFNULL(CB.XSCBE,0))*30) as CHAR )) AS 'turnoverDays_storeExpiry'
+        ,SUM(IFNULL(CB.XSCBE,0)) AS 'costOfRevenues'
+        FROM (
+        SELECT MX.SUMBM,MX.CLIENT
+        ,IFNULL(MAX(MX.PRO_BIG_CLASS_CODE),'9') AS 'bigClassCode'
+        ,IFNULL(MAX(MX.PRO_BIG_CLASS_NAME),'其它') AS 'bigClassName'
+        ,IFNULL(MAX(MX.PRO_MID_CLASS_CODE),'999') AS 'midClassCode'
+        ,IFNULL(MAX(MX.PRO_MID_CLASS_NAME),'其它') AS 'midClassName'
+        ,IFNULL(MAX(MX.PRO_CLASS_CODE),'99999') AS 'proClassCode'
+        ,IFNULL(MAX(MX.PRO_CLASS_NAME),'其它') AS 'proClassName'
+        ,MAX(MX.proPosition) AS 'proPosition'
+        ,IF(SUM(MX.CKSL)&lt;=0 AND SUM(MX.MDSL)&lt;=0,0,1) AS 'inventoryItem_total'
+        ,SUM(IF(MX.CKZKC = 0,(MX.CKSL*(MX.CKZPJ*(1+MX.PRO_INPUT_TAX/100))),(MX.CKSL*(MX.CKZJE+MX.CKZSJ)/MX.CKZKC))
+        +IF(MX.MDZKC =0,(MX.MDSL*(MX.MDZPJ*(1+MX.PRO_INPUT_TAX/100))),(MX.MDSL*(IFNULL(MX.MDZJD,0))/MX.MDZKC))) AS 'costAmount_total'
+
+        ,IF(SUM(MX.CKSL) &lt;= 0,0,1) AS 'inventoryItem_dep'
+        ,SUM(IF(MX.CKZKC = 0,(MX.CKSL*(MX.CKZPJ*(1+MX.PRO_INPUT_TAX/100))),(MX.CKSL*(MX.CKZJE+MX.CKZSJ)/MX.CKZKC))) AS 'costAmount_dep'
+
+        ,IF(SUM(MX.MDSL) &lt;= 0,0,1) AS 'inventoryItem_store'
+        ,SUM(IF(MX.MDZKC=0,(MX.MDSL*(MX.MDZPJ*(1+MX.PRO_INPUT_TAX/100))),(MX.MDSL*(IFNULL(MX.MDZJD,0))/MX.MDZKC))) AS 'costAmount_store'
+
+        ,IF(SUM(MX.CKDQSL)&lt;=0 AND SUM(MX.MDDQSL)&lt;=0,0,1) AS 'inventoryItem_totalExpiry'
+        ,SUM(IF(MX.CKZKC = 0,(MX.CKDQSL*(MX.CKZPJ*(1+MX.PRO_INPUT_TAX/100))),(MX.CKDQSL*(MX.CKZJE+MX.CKZSJ)/MX.CKZKC))
+        +IF(MX.MDZKC=0,MX.MDDQSL*(MX.MDZPJ*(1+MX.PRO_INPUT_TAX/100)),(IFNULL(MX.MDDQSL,0)*MX.MDZJD/MX.MDZKC))) AS 'costAmount_totalExpiry'
+
+        ,IF(SUM(MX.CKDQSL) &lt;= 0,0,1) AS 'inventoryItem_depExpiry'
+        ,SUM(IF(MX.CKZKC = 0,(MX.CKDQSL*(MX.CKZPJ*(1+MX.PRO_INPUT_TAX/100))),(MX.CKDQSL*(MX.CKZJE+MX.CKZSJ)/MX.CKZKC))) AS 'costAmount_depExpiry'
+
+        ,IF(SUM(MX.MDDQSL) &lt;= 0,0,1) AS 'inventoryItem_storeExpiry'
+        ,SUM(IF(MX.MDZKC=0,MX.MDDQSL*(MX.MDZPJ*(1+MX.PRO_INPUT_TAX/100)),(MX.MDDQSL*(IFNULL(MX.MDZJD,0))/MX.MDZKC))) AS 'costAmount_storeExpiry'
+        ,SUM(MX.CKSL) AS 'CKSL'
+        ,SUM(MX.MDSL) AS 'MDSL'
+        FROM (
+        SELECT M.SUMBM,M.CLIENT
+        ,C.PRO_BIG_CLASS_CODE ,C.PRO_BIG_CLASS_NAME
+        ,C.PRO_MID_CLASS_CODE ,C.PRO_MID_CLASS_NAME
+        ,C.PRO_CLASS_CODE ,C.PRO_CLASS_NAME
+        ,IFNULL(B.PRO_POSITION,'')AS proPosition
+        ,CONVERT(REPLACE(IFNULL(T.TAX_CODE_VALUE,'0%'),'%',''),SIGNED) AS PRO_INPUT_TAX
+        ,M.CKSPBM AS CKSPBM
+        ,M.CKSL AS CKSL
+        ,IF(M.FLAG = 1,A.MAT_TOTAL_QTY,0) AS 'CKZKC'
+        ,IF(M.FLAG = 1,A.MAT_TOTAL_AMT,0) AS 'CKZJE'
+        ,IF(M.FLAG = 1,A.MAT_RATE_AMT,0) AS 'CKZSJ'
+        ,IF(M.FLAG = 1, A.MAT_MOV_PRICE,0) AS 'CKZPJ'
+        ,M.MDSPBM AS MDSPBM
+        ,M.MDSL AS MDSL
+        ,IF(M.FLAG = -1,A.MAT_TOTAL_QTY,0) AS 'MDZKC'
+        ,IF(M.FLAG = -1,A.MAT_MOV_PRICE,0) AS 'MDZPJ'
+        ,IF(M.FLAG = -1,A.MAT_ADD_AMT+A.MAT_ADD_TAX,0) AS 'MDZJD'
+        ,IF(TIMESTAMPDIFF(DAY,CURDATE(),P.BAT_EXPIRY_DATE) &gt; 0 AND TIMESTAMPDIFF(DAY,CURDATE(),P.BAT_EXPIRY_DATE) &lt;
+        <choose>
+            <when  test='isCheckedPeriod == 1 and validityPeriod != "" and validityPeriod != null'>
+                #{validityPeriod}
+            </when>
+            <otherwise>
+                0
+            </otherwise>
+        </choose>
+        ,M.CKSL,0) AS 'CKDQSL'
+        ,IFNULL(P1.GSSB_QTY,0) AS 'MDDQSL'
+        FROM (
+        SELECT K.CLIENT,K.WM_SP_BM SUMBM,K.WM_SP_BM AS 'CKSPBM','' AS 'MDSPBM',IFNULL(K.WM_KCSL,0) AS 'CKSL',0 AS 'MDSL',K.WM_PCH AS 'CKPCH',K.PRO_SITE AS 'SITE' ,1 AS 'FLAG'
+        FROM GAIA_WMS_KUCEN K  JOIN GAIA_DC_DATA K1 ON K1.CLIENT = K.CLIENT AND K.PRO_SITE = K1.DC_CODE AND IFNULL(K1.DC_INVENT,'0') != '1'
+        WHERE 1=1
+        <if test="client != null and client != ''">
+            AND K.CLIENT = #{client}
+        </if>
+        UNION ALL
+        SELECT S.CLIENT,S.GSS_PRO_ID SUMBM,'' AS 'CKSPBM',S.GSS_PRO_ID AS 'MDSPBM',0 AS 'CKSL',IFNULL(S.GSS_QTY,0) AS 'MDSL','' AS 'CKPCH',S.GSS_BR_ID AS 'SITE' ,-1 AS 'FLAG'
+        FROM GAIA_SD_STOCK S
+        WHERE 1=1
+        <if test="client != null and client != ''">
+            AND S.CLIENT = #{client}
+        </if>
+        ) M
+        LEFT JOIN GAIA_BATCH_INFO P ON M.FLAG = 1 AND P.BAT_BATCH = M.CKPCH AND P.CLIENT = M.CLIENT  AND P.BAT_PRO_CODE = M.SUMBM AND P.BAT_SITE_CODE = M.SITE
+        LEFT JOIN (SELECT SUM(GSSB_QTY)AS GSSB_QTY,GSSB_BR_ID,GSSB_PRO_ID FROM GAIA_SD_STOCK_BATCH
+        WHERE 1=1
+        <if test="client != null and client != ''">
+            AND CLIENT = #{client}
+        </if>
+        AND TIMESTAMPDIFF(DAY,CURDATE(),GSSB_VAILD_DATE) &gt; 0 AND TIMESTAMPDIFF(DAY,CURDATE(),GSSB_VAILD_DATE) &lt;
+        <choose>
+            <when  test='isCheckedPeriod == 1 and validityPeriod != "" and validityPeriod != null'>
+                #{validityPeriod}
+            </when>
+            <otherwise>
+                0
+            </otherwise>
+        </choose>
+        GROUP BY GSSB_BR_ID,GSSB_PRO_ID)  P1
+        ON M.FLAG = -1 AND P1.GSSB_PRO_ID = M.SUMBM AND P1.GSSB_BR_ID = M.SITE
+        LEFT JOIN GAIA_PRODUCT_BUSINESS B ON M.CLIENT = B.CLIENT AND M.SUMBM = B.PRO_SELF_CODE AND M.SITE = B.PRO_SITE
+        LEFT JOIN GAIA_TAX_CODE T ON B.PRO_INPUT_TAX = T.TAX_CODE
+        LEFT JOIN GAIA_MATERIAL_ASSESS A  ON M.CLIENT = A.CLIENT AND M.SUMBM = A.MAT_PRO_CODE AND M.SITE = A.MAT_ASSESS_SITE
+        LEFT JOIN GAIA_PRODUCT_CLASS C ON C.PRO_CLASS_CODE = B.PRO_CLASS
+        WHERE 1=1
+        <if test="classArrs != null and classArrs.size > 0">
+            and B.PRO_CLASS in
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        ) MX GROUP BY MX.CLIENT,MX.SUMBM
+        ) HZ
+        LEFT JOIN (
+        SELECT S.GSS_PRO_ID SUMBM,SUM(IF(H.GSSH_BILL_NO_RETURN != '',(D.GSSD_ADD_AMT+D.GSSD_ADD_TAX)*-1,(D.GSSD_ADD_AMT+D.GSSD_ADD_TAX))) AS 'XSCBE'
+        FROM GAIA_SD_STOCK S
+        <if test="classArrs != null and classArrs.size > 0">
+            JOIN GAIA_PRODUCT_BUSINESS  B ON S.CLIENT = B.CLIENT AND S.GSS_PRO_ID = B.PRO_SELF_CODE AND S.GSS_BR_ID = B.PRO_SITE AND B.PRO_CLASS IN
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        LEFT JOIN GAIA_SD_SALE_D D ON S.CLIENT = D.CLIENT AND S.GSS_PRO_ID = D.GSSD_PRO_ID AND S.GSS_BR_ID = D.GSSD_BR_ID
+        JOIN GAIA_SD_SALE_H H ON D.CLIENT = H.CLIENT  AND D.GSSD_BR_ID = H.GSSH_BR_ID AND D.GSSD_BILL_NO = H.GSSH_BILL_NO AND H.GSSH_DATE = D.GSSD_DATE AND IFNULL(H.GSSH_HIDE_FLAG,'') != '1'
+
+        WHERE TIMESTAMPDIFF(DAY,D.GSSD_DATE,CURDATE())&lt;=30  AND TIMESTAMPDIFF(DAY,D.GSSD_DATE,CURDATE())&gt;0
+        <if test="client != null and client != ''">
+            AND S.CLIENT = #{client}
+        </if>
+        GROUP BY S.GSS_PRO_ID
+        )CB ON HZ.SUMBM = CB.SUMBM
+        WHERE IF(HZ.CKSL=0 AND HZ.MDSL=0 AND IFNULL(CB.XSCBE,0) =0,0,1)!=0
+        GROUP BY HZ.CLIENT
+        <if test='reportType == "general" '>
+            ,HZ.bigClassCode
+        </if>
+        <if test='reportType == "medium" '>
+            ,HZ.bigClassCode,HZ.midClassCode
+        </if>
+        <if test='reportType == "commodityClassification" '>
+            ,HZ.bigClassCode,HZ.midClassCode,HZ.proClassCode
+        </if>
+
+        <if test='secondDimension == "position" '>
+            ,HZ.proPosition
+        </if>
+
+        ORDER BY HZ.bigClassCode ,HZ.midClassCode ,HZ.proClassCode ,HZ.proPosition
+        LIMIT #{offsetSize},#{pageSize}
+    </select>
+    <select id="selectCount"  parameterType="com.gys.report.entity.RepertoryReportInData"
+            resultType="java.lang.Integer">
+        SELECT IFNULL(COUNT(*),0) FROM (
+        SELECT COUNT(*) FROM (
+        SELECT M.SUMBM,M.CLIENT
+        ,IFNULL(MAX(C.PRO_BIG_CLASS_CODE),'9') AS 'PRO_BIG_CLASS_CODE'
+        ,IFNULL(MAX(C.PRO_MID_CLASS_CODE),'999') AS 'PRO_MID_CLASS_CODE'
+        ,IFNULL(MAX(C.PRO_CLASS_CODE),'99999') AS 'PRO_CLASS_CODE'
+        ,MAX(IFNULL(B.PRO_POSITION,''))AS 'PRO_POSITION'
+        ,SUM(IFNULL(M.ZSL,0)) AS 'ZSL'
+        ,SUM(IFNULL(CB.XSCBE,0)) AS 'XSCBE'
+        FROM (
+        SELECT K.CLIENT,K.WM_SP_BM SUMBM,K.PRO_SITE SITE,IFNULL(K.WM_KCSL,0) AS 'ZSL'
+        FROM GAIA_WMS_KUCEN K JOIN GAIA_DC_DATA K1 ON K1.CLIENT = K.CLIENT AND K.PRO_SITE = K1.DC_CODE AND IFNULL(K1.DC_INVENT,'0') != '1'
+        WHERE 1=1
+        <if test="client != null and client != ''">
+            AND K.CLIENT = #{client}
+        </if>
+        UNION ALL
+        SELECT S.CLIENT,S.GSS_PRO_ID SUMBM,S.GSS_BR_ID SITE,IFNULL(S.GSS_QTY,0) AS 'ZSL'
+        FROM GAIA_SD_STOCK S
+        WHERE 1=1
+        <if test="client != null and client != ''">
+            AND S.CLIENT = #{client}
+        </if>
+        ) M
+        LEFT JOIN GAIA_PRODUCT_BUSINESS B ON M.CLIENT = B.CLIENT AND M.SUMBM = B.PRO_SELF_CODE AND M.SITE = B.PRO_SITE
+        LEFT JOIN GAIA_PRODUCT_CLASS C ON C.PRO_CLASS_CODE = B.PRO_CLASS
+        LEFT JOIN (
+        SELECT S.GSS_PRO_ID SUMBM,SUM(IF(H.GSSH_BILL_NO_RETURN != '',(D.GSSD_ADD_AMT+D.GSSD_ADD_TAX)*-1,(D.GSSD_ADD_AMT+D.GSSD_ADD_TAX))) AS 'XSCBE'
+        FROM GAIA_SD_STOCK S
+        <if test="classArrs != null and classArrs.size > 0">
+            JOIN GAIA_PRODUCT_BUSINESS  B ON S.CLIENT = B.CLIENT AND S.GSS_PRO_ID = B.PRO_SELF_CODE AND S.GSS_BR_ID = B.PRO_SITE AND B.PRO_CLASS IN
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        LEFT JOIN GAIA_SD_SALE_D D ON S.CLIENT = D.CLIENT AND S.GSS_PRO_ID = D.GSSD_PRO_ID AND S.GSS_BR_ID = D.GSSD_BR_ID
+        JOIN GAIA_SD_SALE_H H ON D.CLIENT = H.CLIENT  AND D.GSSD_BR_ID = H.GSSH_BR_ID AND D.GSSD_BILL_NO = H.GSSH_BILL_NO AND H.GSSH_DATE = D.GSSD_DATE AND IFNULL(H.GSSH_HIDE_FLAG,'') != '1'
+
+        WHERE TIMESTAMPDIFF(DAY,D.GSSD_DATE,CURDATE())&lt;=30  AND TIMESTAMPDIFF(DAY,D.GSSD_DATE,CURDATE())>0
+
+        <if test="client != null and client != ''">
+            AND S.CLIENT = #{client}
+        </if>
+
+        GROUP BY S.GSS_PRO_ID
+        )CB ON M.SUMBM = CB.SUMBM
+        WHERE 1=1
+        <if test="classArrs != null and classArrs.size > 0">
+            AND B.PRO_CLASS IN
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        GROUP BY M.CLIENT,M.SUMBM
+        ) MM  WHERE (MM.ZSL +MM.XSCBE)!=0
+        GROUP BY MM.CLIENT
+        <if test='reportType == "general" '>
+            ,MM.PRO_BIG_CLASS_CODE
+        </if>
+        <if test='reportType == "medium" '>
+            ,MM.PRO_BIG_CLASS_CODE,MM.PRO_MID_CLASS_CODE
+        </if>
+        <if test='reportType == "commodityClassification" '>
+            ,MM.PRO_BIG_CLASS_CODE,MM.PRO_MID_CLASS_CODE,MM.PRO_CLASS_CODE
+        </if>
+
+        <if test='secondDimension == "position" '>
+            ,MM.PRO_POSITION
+        </if>
+        ) HEAD
+
+    </select>
+</mapper>

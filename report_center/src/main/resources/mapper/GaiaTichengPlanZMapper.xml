@@ -1,0 +1,1129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengPlanZMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengPlanZ">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="ID" jdbcType="BIGINT" property="id"/>
+        <result column="CLIENT" jdbcType="VARCHAR" property="client"/>
+        <result column="PLAN_CODE" jdbcType="VARCHAR" property="planCode"/>
+        <result column="PLAN_NAME" jdbcType="VARCHAR" property="planName"/>
+        <result column="PLAN_START_DATE" jdbcType="VARCHAR" property="planStartDate"/>
+        <result column="PLAN_END_DATE" jdbcType="VARCHAR" property="planEndDate"/>
+        <result column="PLAN_SUIT_MONTH" jdbcType="VARCHAR" property="planSuitMonth"/>
+        <result column="PLAN_AMT_WAY" jdbcType="VARCHAR" property="planAmtWay"/>
+        <result column="PLAN_RATE_WAY" jdbcType="VARCHAR" property="planRateWay"/>
+        <result column="PLAN_IF_NEGATIVE" jdbcType="VARCHAR" property="planIfNegative"/>
+        <result column="PLAN_PRODUCT_WAY" jdbcType="VARCHAR" property="planProductWay"/>
+        <result column="PLAN_STATUS" jdbcType="VARCHAR" property="planStatus"/>
+        <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag"/>
+        <result column="PLAN_CREATER" jdbcType="VARCHAR" property="planCreater"/>
+        <result column="PLAN_CREATER_ID" jdbcType="VARCHAR" property="planCreaterId"/>
+        <result column="PLAN_CREATE_TIME" jdbcType="VARCHAR" property="planCreateTime"/>
+        <result column="PLAN_UPDATE_ID" jdbcType="VARCHAR" property="planUpdateId"/>
+        <result column="PLAN_UPDATER" jdbcType="VARCHAR" property="planUpdater"/>
+        <result column="PLAN_UPDATE_DATETIME" jdbcType="VARCHAR" property="planUpdateDatetime"/>
+    </resultMap>
+    <select id="selectMonthSalesBySales"
+            resultType="com.gys.entity.data.MonthPushMoney.MonthPushMoneyBySalespersonOutData">
+        SELECT
+        sale.GSSD_BR_ID stoCode,
+        sale.STO_NAME stoName,
+        sale.GSSD_SALER_ID salerId,
+        sale.USER_NAM salerName,
+        COUNT( DISTINCT sale.GSSD_DATE ) days,
+        stoSaleDay.PRO_SALE_CLASS saleClass,
+        SUM( sale.GSSD_AMT ) amt,
+        CASE WHEN sale.PLAN_IF_NEGATIVE = '1' THEN SUM( sale.prices * stoSaleDay.TICHENG_SCALE / 100 )
+        ELSE SUM( IF(sale.grossProfitRate &gt;= 0,sale.prices,0) * stoSaleDay.TICHENG_SCALE / 100 )
+        END deductionWage,
+        CASE WHEN sale.PLAN_IF_NEGATIVE = '1' THEN SUM( sale.prices * stoSaleDay.TICHENG_SCALE )/ SUM( sale.GSSD_AMT )
+        ELSE SUM( IF(sale.grossProfitRate &gt;= 0,sale.prices,0) * stoSaleDay.TICHENG_SCALE )/ SUM( sale.GSSD_AMT )
+        END deductionRate
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_SALER_ID,
+        ud.USER_NAM,
+        saleD.GSSD_BR_ID,
+        IFNULL(sto.STO_SHORT_NAME,sto.STO_NAME) STO_NAME,
+        saleD.GSSD_AMT,
+        saleD.GSSD_DATE,
+        tp.PLAN_IF_NEGATIVE,
+        IF
+        (
+        tpPro.PLAN_PRODUCT_WAY IS NULL OR tpPro.PLAN_PRODUCT_WAY = '1' ,
+        CASE
+
+        WHEN tp.PLAN_AMT_WAY = '0' THEN
+        saleD.GSSD_AMT
+        WHEN tp.PLAN_AMT_WAY = '1' THEN
+        saleD.GSSD_AMT - (
+        IF
+        ( saleD.GSSD_PRO_STATUS = '退货', ( saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX ) *- 1, saleD.GSSD_ADD_AMT +
+        saleD.GSSD_ADD_TAX ))
+        END,
+        0
+        ) prices,
+        ROUND(
+        CASE
+
+        WHEN tp.PLAN_RATE_WAY = '0' THEN
+        (
+        saleD.GSSD_PRC1 * ABS(saleD.GSSD_QTY) - (
+        IF( saleD.GSSD_PRO_STATUS = '退货', (saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX) *-
+        1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX ))
+        ) / ( saleD.GSSD_PRC1 * ABS(saleD.GSSD_QTY))* 100
+        WHEN tp.PLAN_RATE_WAY = '1' THEN
+        (
+        saleD.GSSD_AMT - (
+        IF
+        ( saleD.GSSD_PRO_STATUS = '退货', (saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX) *-
+        1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX))
+        )/ saleD.GSSD_AMT * 100
+        END ,2) grossProfitRate
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        LEFT JOIN (
+        SELECT
+        tpz.*,
+        tpSto.STO_CODE
+        FROM
+        GAIA_TICHENG_PLAN_STO tpSto
+        LEFT JOIN GAIA_TICHENG_PLAN_Z tpz ON tpSto.CLIENT = tpz.CLIENT
+        AND tpSto.PID = tpz.ID
+        WHERE
+        tpz.CLIENT = #{client}
+        AND tpz.DELETE_FLAG = '0'
+        AND IFNULL(tpSto.DELETE_FLAG,'0') = '0'
+        AND tpz.PLAN_SUIT_MONTH = #{suitMonth}
+        AND tpz.PLAN_STATUS = '1'
+
+        ) tp ON tp.CLIENT = saleH.CLIENT
+        AND tp.STO_CODE = saleH.GSSH_BR_ID
+        LEFT JOIN GAIA_TICHENG_PLAN_PRO tpPro ON tpPro.CLIENT = tp.CLIENT
+        AND tpPro.PID = tp.ID
+        AND tpPro.PRO_CODE = saleD.GSSD_PRO_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = saleH.CLIENT
+        AND ud.USER_ID = saleD.GSSD_SALER_ID
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = saleH.CLIENT
+        AND sto.STO_CODE = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND IFNULL(tpPro.DELETE_FLAG,'0') = '0'
+        AND IFNULL(tpPro.PLAN_PRODUCT_WAY,'1') != '0'
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND saleD.GSSD_DATE like concat(#{suitMonth},'%')
+        AND saleD.GSSD_SALER_ID IS NOT NULL
+        <if test="salerId != null and salerId != ''">
+            AND saleD.GSSD_SALER_ID =#{salerId}
+        </if>
+        ) sale
+        LEFT JOIN (
+        SELECT
+        a.CLIENT,
+        a.GSSD_BR_ID,
+        tpSale.MIN_PRO_MLL,
+        tpSale.MAX_PRO_MLL,
+        tpSale.TICHENG_SCALE,
+        tpSale.PRO_SALE_CLASS
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        SUM( saleD.GSSD_AMT )/ COUNT( DISTINCT saleD.GSSD_DATE ) amtDays,
+        tp.ID
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        LEFT JOIN (
+        SELECT
+        tpz.*,
+        tpSto.STO_CODE
+        FROM
+        GAIA_TICHENG_PLAN_STO tpSto
+        LEFT JOIN GAIA_TICHENG_PLAN_Z tpz ON tpSto.CLIENT = tpz.CLIENT
+        AND tpSto.PID = tpz.ID
+        WHERE
+        tpz.CLIENT = #{client}
+        AND tpz.DELETE_FLAG = '0'
+        AND IFNULL(tpSto.DELETE_FLAG,'0') = '0'
+        AND tpz.PLAN_SUIT_MONTH = #{suitMonth}
+        AND tpz.PLAN_STATUS = '1'
+        ) tp ON tp.CLIENT = saleH.CLIENT
+        AND tp.STO_CODE = saleH.GSSH_BR_ID
+        LEFT JOIN GAIA_TICHENG_PLAN_PRO tpPro ON tpPro.CLIENT = tp.CLIENT
+        AND tpPro.PID = tp.ID
+        AND tpPro.PRO_CODE = saleD.GSSD_PRO_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND IFNULL(tpPro.DELETE_FLAG,'0') = '0'
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND saleD.GSSD_DATE like concat(#{suitMonth},'%')
+        GROUP BY
+        saleH.CLIENT,
+        saleH.GSSH_BR_ID
+        ) a
+        LEFT JOIN GAIA_TICHENG_PLAN_SALE tpSale ON tpSale.CLIENT = a.CLIENT
+        AND tpSale.PID = a.ID
+        WHERE
+        a.amtDays &gt; tpSale.MIN_DAILY_SALE_AMT
+        AND a.amtDays &lt;= tpSale.MAX_DAILY_SALE_AMT
+        AND IFNULL(tpSale.DELETE_FLAG,'0') = '0') stoSaleDay ON sale.GSSD_BR_ID = stoSaleDay.GSSD_BR_ID
+        AND sale.grossProfitRate &gt; stoSaleDay.MIN_PRO_MLL
+        AND sale.grossProfitRate &lt;= stoSaleDay.MAX_PRO_MLL
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_SALER_ID
+    </select>
+    <select id="selectMonthSalesByPro"
+            resultType="com.gys.entity.data.MonthPushMoney.MonthPushMoneyBySalespersonOutData">
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID stoCode,
+        IFNULL(sto.STO_SHORT_NAME,sto.STO_NAME) stoName,
+        saleD.GSSD_SALER_ID salerId,
+        ud.USER_NAM salerName,
+        '单品提成' saleClass,
+        COUNT( DISTINCT saleD.GSSD_DATE ) days,
+        SUM( saleD.GSSD_AMT ) amt,
+        SUM( saleD.GSSD_QTY * tp.TICHENG_AMT ) deductionWage,
+        SUM( saleD.GSSD_QTY * tp.TICHENG_AMT )/ SUM( saleD.GSSD_AMT )* 100 deductionRate
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        LEFT JOIN (
+        SELECT
+        tpz.*,
+        tpSto.STO_CODE,
+        tpPro.PLAN_PRODUCT_WAY PRO_PLAN_PRODUCT_WAY,
+        tpPro.PRO_CODE,
+        tpPro.TICHENG_AMT
+        FROM
+        GAIA_TICHENG_PLAN_Z tpz
+        LEFT JOIN GAIA_TICHENG_PLAN_STO tpSto ON tpSto.CLIENT = tpz.CLIENT
+        AND tpSto.PID = tpz.ID
+        LEFT JOIN GAIA_TICHENG_PLAN_PRO tpPro ON tpPro.CLIENT = tpz.CLIENT
+        AND tpPro.PID = tpz.ID
+        WHERE
+        tpz.CLIENT = #{client}
+        AND tpz.DELETE_FLAG = '0'
+        AND IFNULL(tpSto.DELETE_FLAG,'0') = '0'
+        AND IFNULL(tpPro.DELETE_FLAG,'0') = '0'
+        AND tpz.PLAN_SUIT_MONTH = #{suitMonth}
+        AND tpz.PLAN_STATUS = '1'
+        ORDER BY
+        tpSto.STO_CODE
+        ) tp ON tp.CLIENT = saleH.CLIENT
+        AND tp.STO_CODE = saleH.GSSH_BR_ID
+        AND tp.PRO_CODE = saleD.GSSD_PRO_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = saleH.CLIENT
+        AND ud.USER_ID = saleD.GSSD_SALER_ID
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = saleH.CLIENT
+        AND sto.STO_CODE = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND saleD.GSSD_DATE like concat(#{suitMonth},'%')
+        AND tp.PLAN_SUIT_MONTH = #{suitMonth}
+        <if test="salerId != null and salerId != ''">
+            AND saleD.GSSD_SALER_ID =#{salerId}
+        </if>
+        GROUP BY
+        saleH.CLIENT,
+        saleH.GSSH_BR_ID,
+        saleD.GSSD_SALER_ID
+    </select>
+    <select id="selectMonthSalesByStoreAndSales"
+            resultType="com.gys.entity.data.MonthPushMoney.MonthPushMoneyByStoreOutData">
+        SELECT
+        sale.GSSD_BR_ID stoCode,
+        sale.STO_NAME stoName,
+        COUNT( DISTINCT sale.GSSD_DATE ) days,
+        SUM( sale.GSSD_AMT ) amt,
+        CASE WHEN sale.PLAN_IF_NEGATIVE = '1' THEN SUM( sale.prices * stoSaleDay.TICHENG_SCALE / 100 )
+        ELSE SUM( IF(sale.grossProfitRate &gt;= 0,sale.prices,0) * stoSaleDay.TICHENG_SCALE / 100 )
+        END deductionWageSales,
+        CASE WHEN sale.PLAN_IF_NEGATIVE = '1' THEN SUM( sale.prices * stoSaleDay.TICHENG_SCALE )/ SUM( sale.GSSD_AMT )
+        ELSE SUM( IF(sale.grossProfitRate &gt;= 0,sale.prices,0) * stoSaleDay.TICHENG_SCALE )/ SUM( sale.GSSD_AMT )
+        END deductionWageSalesRate
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        IFNULL(sto.STO_SHORT_NAME,sto.STO_NAME) STO_NAME,
+        saleD.GSSD_AMT,
+        saleD.GSSD_DATE,
+        tp.PLAN_IF_NEGATIVE,
+        IF
+        (
+        tpPro.PLAN_PRODUCT_WAY IS NULL OR tpPro.PLAN_PRODUCT_WAY = '1' ,
+        CASE
+
+        WHEN tp.PLAN_AMT_WAY = '0' THEN
+        saleD.GSSD_AMT
+        WHEN tp.PLAN_AMT_WAY = '1' THEN
+        saleD.GSSD_AMT - (
+        IF
+        ( saleD.GSSD_PRO_STATUS = '退货', ( saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX ) *- 1, saleD.GSSD_ADD_AMT +
+        saleD.GSSD_ADD_TAX ))
+        END,
+        0
+        ) prices,
+        ROUND(
+        CASE
+
+        WHEN tp.PLAN_RATE_WAY = '0' THEN
+        (
+        saleD.GSSD_PRC1 * ABS(saleD.GSSD_QTY) - (
+        IF
+        ( saleD.GSSD_PRO_STATUS = '退货', (saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX)*- 1,
+        saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX ))
+        ) / ( saleD.GSSD_PRC1 * ABS(saleD.GSSD_QTY) )* 100
+        WHEN tp.PLAN_RATE_WAY = '1' THEN
+        (
+        saleD.GSSD_AMT - (
+        IF
+        ( saleD.GSSD_PRO_STATUS = '退货', (saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX)*-
+        1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX ))
+        )/ saleD.GSSD_AMT * 100
+        END ,2) grossProfitRate
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        LEFT JOIN (
+        SELECT
+        tpz.*,
+        tpSto.STO_CODE
+        FROM
+        GAIA_TICHENG_PLAN_STO tpSto
+        LEFT JOIN GAIA_TICHENG_PLAN_Z tpz ON tpSto.CLIENT = tpz.CLIENT
+        AND tpSto.PID = tpz.ID
+        WHERE
+        tpz.CLIENT = #{client}
+        AND tpz.DELETE_FLAG = '0'
+        AND IFNULL(tpSto.DELETE_FLAG,'0') = '0'
+        AND tpz.PLAN_SUIT_MONTH = #{suitMonth}
+        AND tpz.PLAN_STATUS = '1'
+        ) tp ON tp.CLIENT = saleH.CLIENT
+        AND tp.STO_CODE = saleH.GSSH_BR_ID
+        LEFT JOIN GAIA_TICHENG_PLAN_PRO tpPro ON tpPro.CLIENT = tp.CLIENT
+        AND tpPro.PID = tp.ID
+        AND tpPro.PRO_CODE = saleD.GSSD_PRO_ID
+
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = saleH.CLIENT
+        AND sto.STO_CODE = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND IFNULL(tpPro.DELETE_FLAG,'0') = '0'
+        AND IFNULL(tpPro.PLAN_PRODUCT_WAY,'1') != '0'
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND saleD.GSSD_DATE like concat(#{suitMonth},'%')
+        AND saleD.GSSD_SALER_ID IS NOT NULL
+        ) sale
+        LEFT JOIN (
+        SELECT
+        a.CLIENT,
+        a.GSSD_BR_ID,
+        tpSale.MIN_PRO_MLL,
+        tpSale.MAX_PRO_MLL,
+        tpSale.TICHENG_SCALE,
+        tpSale.PRO_SALE_CLASS
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        SUM( saleD.GSSD_AMT )/ COUNT( DISTINCT saleD.GSSD_DATE ) amtDays,
+        tp.ID
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        LEFT JOIN (
+        SELECT
+        tpz.*,
+        tpSto.STO_CODE
+        FROM
+        GAIA_TICHENG_PLAN_STO tpSto
+        LEFT JOIN GAIA_TICHENG_PLAN_Z tpz ON tpSto.CLIENT = tpz.CLIENT
+        AND tpSto.PID = tpz.ID
+        WHERE
+        tpz.CLIENT = #{client}
+        AND tpz.DELETE_FLAG = '0'
+        AND IFNULL(tpSto.DELETE_FLAG,'0') = '0'
+        AND tpz.PLAN_SUIT_MONTH = #{suitMonth}
+        AND tpz.PLAN_STATUS = '1'
+        ) tp ON tp.CLIENT = saleH.CLIENT
+        AND tp.STO_CODE = saleH.GSSH_BR_ID
+        LEFT JOIN GAIA_TICHENG_PLAN_PRO tpPro ON tpPro.CLIENT = tp.CLIENT
+        AND tpPro.PID = tp.ID
+        AND tpPro.PRO_CODE = saleD.GSSD_PRO_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND IFNULL(tpPro.DELETE_FLAG,'0') = '0'
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND saleD.GSSD_DATE like concat(#{suitMonth},'%')
+        GROUP BY
+        saleH.CLIENT,
+        saleH.GSSH_BR_ID
+        ) a
+        LEFT JOIN GAIA_TICHENG_PLAN_SALE tpSale ON tpSale.CLIENT = a.CLIENT
+        AND tpSale.PID = a.ID
+        WHERE
+        a.amtDays &gt; tpSale.MIN_DAILY_SALE_AMT
+        AND a.amtDays &lt;=tpSale.MAX_DAILY_SALE_AMT
+        AND IFNULL(tpSale.DELETE_FLAG,'0') = '0') stoSaleDay ON sale.GSSD_BR_ID = stoSaleDay.GSSD_BR_ID AND
+        sale.grossProfitRate &gt; stoSaleDay.MIN_PRO_MLL
+        AND sale.grossProfitRate &lt;=stoSaleDay.MAX_PRO_MLL
+        <where>
+            <if test="stoCode != null and stoCode != ''">
+                AND sale.GSSD_BR_ID =#{stoCode}
+            </if>
+        </where>
+
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID
+
+    </select>
+    <select id="selectMonthSalesByStoreAndPro"
+            resultType="com.gys.entity.data.MonthPushMoney.MonthPushMoneyByStoreOutData">
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID stoCode,
+        IFNULL(sto.STO_SHORT_NAME,sto.STO_NAME) stoName,
+        COUNT( DISTINCT saleD.GSSD_DATE ) days,
+        SUM( saleD.GSSD_AMT ) amt,
+        SUM( saleD.GSSD_QTY * tp.TICHENG_AMT ) deductionWagePro,
+        SUM( saleD.GSSD_QTY * tp.TICHENG_AMT )/ SUM( saleD.GSSD_AMT )* 100 deductionWageProRade
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        LEFT JOIN (
+        SELECT
+        tpz.*,
+        tpSto.STO_CODE,
+        tpPro.PLAN_PRODUCT_WAY PRO_PLAN_PRODUCT_WAY,
+        tpPro.PRO_CODE,
+        tpPro.TICHENG_AMT
+        FROM
+        GAIA_TICHENG_PLAN_Z tpz
+        LEFT JOIN GAIA_TICHENG_PLAN_STO tpSto ON tpSto.CLIENT = tpz.CLIENT
+        AND tpSto.PID = tpz.ID
+        LEFT JOIN GAIA_TICHENG_PLAN_PRO tpPro ON tpPro.CLIENT = tpz.CLIENT
+        AND tpPro.PID = tpz.ID
+        WHERE
+        tpz.CLIENT =#{client}
+        AND tpz.DELETE_FLAG = '0'
+        AND IFNULL(tpSto.DELETE_FLAG,'0') = '0'
+        AND IFNULL(tpPro.DELETE_FLAG,'0') = '0'
+        AND tpz.PLAN_SUIT_MONTH = #{suitMonth}
+        AND tpz.DELETE_FLAG = '0'
+        AND tpz.PLAN_STATUS = '1'
+        ) tp ON tp.CLIENT = saleH.CLIENT
+        AND tp.STO_CODE = saleH.GSSH_BR_ID
+        AND tp.PRO_CODE = saleD.GSSD_PRO_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = saleH.CLIENT
+        AND ud.USER_ID = saleD.GSSD_SALER_ID
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = saleH.CLIENT
+        AND sto.STO_CODE = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT =#{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND saleD.GSSD_DATE like concat(#{suitMonth},'%')
+        AND tp.PLAN_SUIT_MONTH = #{suitMonth}
+        <if test="stoCode != null and stoCode != ''">
+            AND saleH.GSSH_BR_ID =#{stoCode}
+        </if>
+        GROUP BY
+        saleH.CLIENT,
+        saleH.GSSH_BR_ID
+
+    </select>
+
+    <select id="dismantledSale" resultType="com.gys.entity.ProductionVo" parameterType="com.gys.entity.Production">
+        SELECT
+        ta.STO_CODE stoCode,
+        ta.STO_SHORT_NAME stoShortName,
+        a.GSSD_DATE AS gssDate,
+        a.GSSD_BILL_NO AS gssBillNo,
+        d. USER_NAM AS userName,
+        c.PRO_SELF_CODE AS proCode,
+        c.PRO_COMMONNAME AS proCommonName,
+        c.PRO_NAME AS proName,
+        c.PRO_SPECS AS proSpecs,
+        c.PRO_FORM AS proForm,
+        c.PRO_FACTORY_NAME AS proFactoryName,
+        a.GSSD_BATCH_NO AS gssBatchNo,
+        a.GSSD_VALID_DATE AS gssdValidDate,
+        0+cast(a.GSSD_QTY as CHAR) AS proPartUint,
+        c.PRO_UNIT AS proUnit,
+        c.PRO_REGISTER_NO AS proRegisterNo,
+        d. USER_NAM AS userName1,
+        d. USER_NAM AS userName2,
+        gsmb.GSMB_NAME as memberName
+        FROM
+        GAIA_SD_SALE_D a
+        LEFT JOIN GAIA_SD_SALE_H b ON a.CLIENT = b.CLIENT AND a.GSSD_BR_ID = b.GSSH_BR_ID AND a.GSSD_BILL_NO =
+        b.GSSH_BILL_NO AND a.GSSD_DATE = b.GSSH_DATE
+        LEFT JOIN GAIA_PRODUCT_BUSINESS c ON a.CLIENT = c.CLIENT AND a.GSSD_BR_ID = c.PRO_SITE AND a.GSSD_PRO_ID =
+        c.PRO_SELF_CODE
+        LEFT JOIN GAIA_USER_DATA d ON a.CLIENT = d.CLIENT AND a.GSSD_SALER_ID = d.USER_ID
+        LEFT JOIN GAIA_STORE_DATA ta ON ta.CLIENT = a.CLIENT AND ta.STO_CODE = a.GSSD_BR_ID
+        LEFT JOIN GAIA_SD_MEMBER_CARD gsmc ON gsmc.CLIENT=b.CLIENT and b.GSSH_BR_ID=gsmc.GSMBC_BR_ID and
+        b.GSSH_HYK_NO=gsmc.GSMBC_CARD_ID
+        LEFT JOIN GAIA_SD_MEMBER_BASIC gsmb on gsmb.CLIENT=b.CLIENT and gsmc.GSMBC_MEMBER_ID = gsmb.GSMB_MEMBER_ID
+        WHERE
+        b.GSSH_HIDE_FLAG = '0'
+        and 0+cast(a.GSSD_QTY as CHAR) &lt; '1'
+        and 0+cast(a.GSSD_QTY as CHAR) &gt; '-1'
+        AND c.PRO_IFPART = '1'
+        AND a.CLIENT = #{clientId}
+        <if test="brIdList != null and brIdList.length > 0">
+            AND a.GSSD_BR_ID in
+            <foreach collection="brIdList" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        <if test="productCode != null and productCode != ''">
+            and c.PRO_SELF_CODE = #{productCode}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND a.GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND a.GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        order by ta.STO_CODE, a.GSSD_DATE desc
+    </select>
+
+    <select id="getAdminFlag" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            GAIA_AUTHCONFI_DATA B
+            INNER JOIN GAIA_GROUP_DATA C ON C.AUTH_GROUP_ID = B.AUTH_GROUP_ID AND C.CLIENT = B.CLIENT
+            WHERE B.CLIENT = #{client}
+            AND B.AUTHCONFI_USER = #{userId}
+            AND C.AUTH_GROUP_ISADMIN = 'Y'
+    </select>
+    <select id="selectPlanByClientAndDayAndPlanType" resultType="com.gys.entity.GaiaTichengSaleplanZ">
+		select
+			sp.ID id,
+			sp.CLIENT client,
+			sp.PLAN_CODE planCode,
+			sp.PLAN_NAME planName,
+			sp.PLAN_START_DATE planStartDate,
+			sp.PLAN_END_DATE planEndDate,
+			sp.PLAN_AMT_WAY planAmtWay,
+			sp.PLAN_RATE_WAY planRateWay,
+			sp.PLAN_IF_NEGATIVE planIfNegative,
+			sp.PLAN_REJECT_PRO planRejectPro,
+			sp.PLAN_TYPE planType,
+			sp.PLAN_SCALE_STO planScaleSto,
+			sp.PLAN_SCALE_SALER planScaleSaler,
+			sp.PLAN_STATUS planStatus,
+			sp.DELETE_FLAG deleteFlag,
+			sp.PLAN_CREATER planCreater,
+			sp.PLAN_CREATER_ID planCreaterId,
+			sp.PLAN_CREATE_TIME planCreateTime,
+			sp.PLAN_UPDATE_ID planUpdateId,
+			sp.PLAN_UPDATER planUpdater,
+			sp.PLAN_UPDATE_DATETIME planUpdateDatetime,
+			sp.PLAN_STOP_DATE planStopDate,
+			sp.LAST_UPDATE_TIME lastUpdateTime,
+			sp.PLAN_REASON planReason
+		from GAIA_TICHENG_SALEPLAN_Z sp
+		left join GAIA_TICHENG_SALEPLAN_STO p on sp.CLIENT = p.CLIENT and sp.ID = p.PID and p.DELETE_FLAG = "0"
+		where sp.CLIENT = #{client} and p.STO_CODE = #{stoCode} and sp.PLAN_START_DATE &lt;= #{day} and sp.PLAN_END_DATE &gt;=#{day} and sp.PLAN_TYPE = #{planType} and sp.PLAN_STATUS = "1" and sp.DELETE_FLAG = "0"
+	</select>
+    <select id="selectTimeInterleavingProPlan" resultType="com.gys.entity.GaiaTichengProplanZ">
+		select
+			pp.ID id,
+			pp.CLIENT client,
+			pp.PLAN_CODE planCode,
+			pp.PLAN_NAME planName,
+			pp.PLAN_START_DATE planStartDate,
+			pp.PLAN_END_DATE planEndDate,
+			pp.PLAN_PRODUCT_WAY planProductWay,
+			pp.PLAN_TYPE planType,
+			pp.PLAN_SCALE_STO planScaleSto,
+			pp.PLAN_SCALE_SALER planScaleSaler,
+			pp.PLAN_STATUS planStatus,
+			pp.DELETE_FLAG deleteFlag,
+			pp.PLAN_CREATER planCreater,
+			pp.PLAN_CREATER_ID planCreaterId,
+			pp.PLAN_CREATE_TIME planCreateTime,
+			pp.PLAN_UPDATE_ID planUpdateId,
+			pp.PLAN_UPDATER planUpdater,
+			pp.PLAN_UPDATE_DATETIME planUpdateDatetime,
+			pp.PLAN_STOP_DATE planStopDate,
+			pp.LAST_UPDATE_TIME lastUpdateTime,
+			pp.PLAN_REASON planReason
+		from GAIA_TICHENG_PROPLAN_Z pp
+		left join GAIA_TICHENG_PROPLAN_STO s on pp.CLIENT = s.CLIENT and pp.ID  = s.PID and s.DELETE_FLAG = "0"
+		where pp.CLIENT = #{client} and s.STO_CODE = #{stoCode} and pp.PLAN_START_DATE &lt;= #{endDate} and pp.PLAN_END_DATE &gt;= #{startDate} and pp.PLAN_TYPE = "2" and pp.PLAN_STATUS = "1" and pp.DELETE_FLAG = "0"
+	</select>
+    <select id="getProCodeByClientAndPid" resultType="java.lang.String">
+		select
+			PRO_CODE
+		from GAIA_TICHENG_PROPLAN_STO
+		where CLIENT = #{client} and PID = #{pid} and DELETE_FLAG = "0"
+	</select>
+    <select id="getRejectProCodeByClientAndPid" resultType="java.lang.String">
+		select
+			PRO_CODE
+		from GAIA_TICHENG_REJECT_PRO
+		where CLIENT = #{client} and PID = #{pid} and DELETE_FLAG = "0"
+	</select>
+    <select id="getRejectClassByPid" resultType="java.lang.String">
+		select PRO_CLASS from GAIA_TICHENG_REJECT_CLASS where pid = #{pid} and DELETE_FLAG = "0"
+	</select>
+    <select id="getTiChengScale" resultType="com.gys.entity.GaiaTichengSaleplanM">
+		select
+		       ID id,
+			   CLIENT client,
+			   PID pid,
+			   MIN_DAILY_SALE_AMT minDailySaleAmt,
+			   MAX_DAILY_SALE_AMT maxDailySaleAmt,
+			   PRO_SALE_CLASS proSaleClass,
+			   MIN_PRO_MLL minProMll,
+			   MAX_PRO_MLL maxProMll,
+			   TICHENG_SCALE tichengScale,
+			   DELETE_FLAG deleteFlag,
+			   LAST_UPDATE_TIME lastUpdateTime
+		from GAIA_TICHENG_SALEPLAN_M
+		where CLIENT = #{client}
+		  and PID = #{pid}
+		  and MIN_DAILY_SALE_AMT &lt;= #{avgAmt}
+		  and MAX_DAILY_SALE_AMT &gt; #{avgAmt}
+	</select>
+    <select id="getDate" resultType="java.util.Map">
+		select ${selectTime} from GAIA_CAL_DT cd where GCD_DATE = #{date}
+	</select>
+    <select id="selectProPlanByClientAndDayAndPlanType" resultType="com.gys.entity.GaiaTichengProplanZ">
+		select
+			pp.ID id,
+			pp.CLIENT client,
+			pp.PLAN_CODE planCode,
+			pp.PLAN_NAME planName,
+			pp.PLAN_START_DATE planStartDate,
+			pp.PLAN_END_DATE planEndDate,
+			pp.PLAN_PRODUCT_WAY planProductWay,
+			pp.PLAN_TYPE planType,
+			pp.PLAN_SCALE_STO planScaleSto,
+			pp.PLAN_SCALE_SALER planScaleSaler,
+			pp.PLAN_STATUS planStatus,
+			pp.DELETE_FLAG deleteFlag,
+			pp.PLAN_CREATER planCreater,
+			pp.PLAN_CREATER_ID planCreaterId,
+			pp.PLAN_CREATE_TIME planCreateTime,
+			pp.PLAN_UPDATE_ID planUpdateId,
+			pp.PLAN_UPDATER planUpdater,
+			pp.PLAN_UPDATE_DATETIME planUpdateDatetime,
+			pp.PLAN_STOP_DATE planStopDate,
+			pp.LAST_UPDATE_TIME lastUpdateTime,
+			pp.PLAN_REASON planReason
+		from GAIA_TICHENG_PROPLAN_Z pp
+		where pp.CLIENT = #{client} and pp.PLAN_START_DATE &lt;= #{day} and pp.PLAN_END_DATE &gt;=#{day} and pp.PLAN_TYPE = #{planType} and pp.PLAN_STATUS = "1" and pp.DELETE_FLAG = "0"
+	</select>
+    <select id="selectSalePlanByClientAndDay" resultType="com.gys.entity.GaiaTichengSaleplanZ">
+		select
+			sp.ID id,
+			sp.CLIENT client,
+			sp.PLAN_CODE planCode,
+			sp.PLAN_NAME planName,
+			sp.PLAN_START_DATE planStartDate,
+			sp.PLAN_END_DATE planEndDate,
+			sp.PLAN_AMT_WAY planAmtWay,
+			sp.PLAN_RATE_WAY planRateWay,
+			sp.PLAN_IF_NEGATIVE planIfNegative,
+			sp.PLAN_REJECT_PRO planRejectPro,
+			sp.PLAN_TYPE planType,
+			sp.PLAN_SCALE_STO planScaleSto,
+			sp.PLAN_SCALE_SALER planScaleSaler,
+			sp.PLAN_STATUS planStatus,
+			sp.DELETE_FLAG deleteFlag,
+			sp.PLAN_CREATER planCreater,
+			sp.PLAN_CREATER_ID planCreaterId,
+			sp.PLAN_CREATE_TIME planCreateTime,
+			sp.PLAN_UPDATE_ID planUpdateId,
+			sp.PLAN_UPDATER planUpdater,
+			sp.PLAN_UPDATE_DATETIME planUpdateDatetime,
+			sp.PLAN_STOP_DATE planStopDate,
+			sp.LAST_UPDATE_TIME lastUpdateTime,
+			sp.PLAN_REASON planReason
+		from GAIA_TICHENG_SALEPLAN_Z sp
+		where sp.CLIENT = #{client} and sp.PLAN_START_DATE &lt;= #{day} and sp.PLAN_END_DATE &gt;=#{day} and sp.PLAN_TYPE = "1" and sp.PLAN_STATUS = "1" and sp.DELETE_FLAG = "0"
+	</select>
+    <select id="selectSalePlanByClientAndStartDayAndEndDay" resultType="com.gys.entity.GaiaTichengSaleplanZ">
+		select
+			sp.ID id,
+			sp.CLIENT client,
+			sp.PLAN_CODE planCode,
+			sp.PLAN_NAME planName,
+			sp.PLAN_START_DATE planStartDate,
+			sp.PLAN_END_DATE planEndDate,
+			sp.PLAN_AMT_WAY planAmtWay,
+			sp.PLAN_RATE_WAY planRateWay,
+			sp.PLAN_IF_NEGATIVE planIfNegative,
+			sp.PLAN_REJECT_PRO planRejectPro,
+			sp.PLAN_TYPE planType,
+			sp.PLAN_SCALE_STO planScaleSto,
+			sp.PLAN_SCALE_SALER planScaleSaler,
+			sp.PLAN_STATUS planStatus,
+			sp.DELETE_FLAG deleteFlag,
+			sp.PLAN_CREATER planCreater,
+			sp.PLAN_CREATER_ID planCreaterId,
+			sp.PLAN_CREATE_TIME planCreateTime,
+			sp.PLAN_UPDATE_ID planUpdateId,
+			sp.PLAN_UPDATER planUpdater,
+			sp.PLAN_UPDATE_DATETIME planUpdateDatetime,
+			sp.PLAN_STOP_DATE planStopDate,
+			sp.LAST_UPDATE_TIME lastUpdateTime,
+			sp.PLAN_REASON planReason
+		from GAIA_TICHENG_SALEPLAN_Z sp
+		where sp.CLIENT = #{client} and sp.PLAN_START_DATE &lt;= #{endDay} and sp.PLAN_END_DATE &gt;=#{startDay} and sp.PLAN_TYPE = "1" and sp.PLAN_STATUS = "1" and sp.DELETE_FLAG = "0"
+	</select>
+    <select id="getDaySaleStoCode" resultType="java.lang.String">
+		select GSSD_BR_ID from GAIA_SD_SALE_D where CLIENT = #{client} and GSSD_DATE = #{day} and GSSD_SALER_ID = #{userId} group by GSSD_BR_ID
+	</select>
+    <select id="selectProPlanByClientAndDay" resultType="com.gys.entity.GaiaTichengProplanZ">
+		select
+			pp.ID id,
+			pp.CLIENT client,
+			pp.PLAN_CODE planCode,
+			pp.PLAN_NAME planName,
+			pp.PLAN_START_DATE planStartDate,
+			pp.PLAN_END_DATE planEndDate,
+			pp.PLAN_PRODUCT_WAY planProductWay,
+			pp.PLAN_TYPE planType,
+			pp.PLAN_SCALE_STO planScaleSto,
+			pp.PLAN_SCALE_SALER planScaleSaler,
+			pp.PLAN_STATUS planStatus,
+			pp.DELETE_FLAG deleteFlag,
+			pp.PLAN_CREATER planCreater,
+			pp.PLAN_CREATER_ID planCreaterId,
+			pp.PLAN_CREATE_TIME planCreateTime,
+			pp.PLAN_UPDATE_ID planUpdateId,
+			pp.PLAN_UPDATER planUpdater,
+			pp.PLAN_UPDATE_DATETIME planUpdateDatetime,
+			pp.PLAN_STOP_DATE planStopDate,
+			pp.LAST_UPDATE_TIME lastUpdateTime,
+			pp.PLAN_REASON planReason
+		from GAIA_TICHENG_PROPLAN_Z pp
+		where pp.CLIENT = #{client} and pp.PLAN_START_DATE &lt;= #{day} and pp.PLAN_END_DATE &gt;=#{day} and pp.PLAN_TYPE = "2" and pp.PLAN_STATUS = "1" and pp.DELETE_FLAG = "0"
+	</select>
+    <select id="selectProPlanByClientAndStoCodeAndDay" resultType="com.gys.entity.GaiaTichengProplanZ">
+		select
+			pp.ID id,
+			pp.CLIENT client,
+			pp.PLAN_CODE planCode,
+			pp.PLAN_NAME planName,
+			pp.PLAN_START_DATE planStartDate,
+			pp.PLAN_END_DATE planEndDate,
+			pp.PLAN_PRODUCT_WAY planProductWay,
+			pp.PLAN_TYPE planType,
+			pp.PLAN_SCALE_STO planScaleSto,
+			pp.PLAN_SCALE_SALER planScaleSaler,
+			pp.PLAN_STATUS planStatus,
+			pp.DELETE_FLAG deleteFlag,
+			pp.PLAN_CREATER planCreater,
+			pp.PLAN_CREATER_ID planCreaterId,
+			pp.PLAN_CREATE_TIME planCreateTime,
+			pp.PLAN_UPDATE_ID planUpdateId,
+			pp.PLAN_UPDATER planUpdater,
+			pp.PLAN_UPDATE_DATETIME planUpdateDatetime,
+			pp.PLAN_STOP_DATE planStopDate,
+			pp.LAST_UPDATE_TIME lastUpdateTime,
+			pp.PLAN_REASON planReason
+		from GAIA_TICHENG_PROPLAN_Z pp
+		left join GAIA_TICHENG_PROPLAN_STO ps on pp.ID = ps.pid and ps.DELETE_FLAG = "0"
+		where pp.CLIENT = #{client} and pp.PLAN_START_DATE &lt;= #{day} and pp.PLAN_END_DATE &gt;=#{day} and ps.STO_CODE = #{stoCode} and pp.PLAN_TYPE = "2" and pp.PLAN_STATUS = "1" and pp.DELETE_FLAG = "0"
+	</select>
+    <select id="getProListByClientAndPid" resultType="com.gys.entity.GaiaTichengProplanPro">
+		select
+			ID id,
+			CLIENT client,
+			PID pid,
+			PLAN_PRODUCT_WAY planProductWay,
+			PRO_CODE proCode,
+			PRO_NAME proName,
+			PRO_SPECS proSpecs,
+			PRO_FACTORY_NAME proFactoryName,
+			PRO_COST_PRICE proCostPrice,
+			PRO_PRICE_NORMAL proPriceNormal,
+			TICHENG_AMT tichengAmt,
+			DELETE_FLAG deleteFlag,
+			LAST_UPDATE_TIME lastUpdateTime
+		from GAIA_TICHENG_PROPLAN_PRO
+		where CLIENT = #{client} and PID = #{pid} and DELETE_FLAG = "0"
+	</select>
+    <select id="getSaleClass" resultType="java.lang.String">
+		SELECT DISTINCT(PRO_SLAE_CLASS) FROM GAIA_PRODUCT_BUSINESS WHERE CLIENT = #{client}
+	</select>
+    <select id="getProPosition" resultType="java.lang.String">
+		SELECT DISTINCT(PRO_POSITION) FROM GAIA_PRODUCT_BUSINESS WHERE CLIENT = #{client}
+	</select>
+    <select id="getSaleUserInfo" resultType="com.gys.common.data.CommonVo">
+        SELECT ud.USER_ID as lable,ud.USER_NAM as `value` FROM GAIA_USER_DATA ud WHERE CLIENT = #{client} AND ud.USER_ID
+        IN (
+        SELECT DISTINCT(GSSD_SALER_ID) FROM GAIA_SD_SALE_D sd WHERE CLIENT = #{client}
+        <if test="startDate != null and startDate != ''">
+            AND sd.GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND sd.GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        )
+    </select>
+    <select id="getDoctorUserInfo" resultType="com.gys.common.data.CommonVo">
+        SELECT ud.USER_ID as lable,ud.USER_NAM as `value` FROM GAIA_USER_DATA ud WHERE CLIENT = #{client} AND ud.USER_ID
+        IN (
+        SELECT DISTINCT(GSSD_DOCTOR_ID) FROM GAIA_SD_SALE_D sd WHERE CLIENT = #{client}
+        <if test="startDate != null and startDate != ''">
+            AND sd.GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND sd.GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        )
+    </select>
+    <select id="getEmpUserInfo" resultType="com.gys.common.data.CommonVo">
+        SELECT ud.USER_ID as lable,ud.USER_NAM as `value` FROM GAIA_USER_DATA ud WHERE CLIENT = #{client} AND ud.USER_ID
+        IN (
+        SELECT DISTINCT(GSSH_EMP) FROM GAIA_SD_SALE_H sh WHERE CLIENT = #{client}
+        <if test="startDate != null and startDate != ''">
+            AND sh.GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND sh.GSSH_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        )
+    </select>
+    <select id="selectStoInfo" resultType="com.gys.common.data.CommonVo">
+		select STO_CODE as lable,STO_NAME as `value` FROM GAIA_STORE_DATA  WHERE CLIENT = #{client} AND STO_STATUS = '0'
+	</select>
+    <select id="selectStoreByStoreCodes" resultType="com.gys.common.data.CommonVo">
+        SELECT STO_CODE as lable, STO_NAME AS `value` from GAIA_STORE_DATA WHERE CLIENT = #{client}
+        <if test="stoArr != null and stoArr.size() > 0">
+            and STO_CODE in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectAssistantByCondition" resultType="java.util.Map">
+        select
+        distinct
+        a.AUTHCONFI_USER userCode,
+        d.USER_NAM userName
+        from GAIA_AUTHCONFI_DATA a
+        left join GAIA_FRANCHISEE b on (a.CLIENT = b.CLIENT)
+        left join GAIA_STORE_DATA c on (a.CLIENT = c.CLIENT and a.AUTHOBJ_SITE = c.STO_CODE)
+        left join GAIA_USER_DATA d on (a.CLIENT = d.CLIENT and a.AUTHCONFI_USER = d.USER_ID)
+        <where>
+            <if test="client!=null and client!=''">
+                AND a.CLIENT = #{client}
+            </if>
+            <if test="stoCode != null and stoCode != ''">
+                AND a.AUTHOBJ_SITE = #{stoCode}
+            </if>
+            <if test="searchValue != null and searchValue != ''">
+                AND (d.USER_ID LIKE CONCAT('%', #{searchValue}, '%') OR d.USER_NAM LIKE CONCAT('%', #{searchValue},
+                '%'))
+            </if>
+            <if test="staff != null and staff.size() > 0">
+                AND a.AUTH_GROUP_ID in
+                <foreach item="item" collection="staff" separator="," open="(" close=")" index="">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY a.AUTHCONFI_USER
+        ORDER BY a.AUTHCONFI_USER
+    </select>
+    <select id="selecrSaleDaysByCondition" resultType="com.gys.entity.data.MonthPushMoney.SaleDateNumRes">
+        SELECT COUNT(DISTINCT
+        ( GSSD_DATE ) ) as days
+        <if test="type != null and stoCodes == '1' > 0">
+            ,GSSD_BR_ID as stoCode
+        </if>
+        <if test="type != null and stoCodes == '2' > 0">
+            ,GSSD_SALER_ID as saleId
+        </if>
+        FROM
+        GAIA_SD_SALE_D
+        WHERE
+        CLIENT = #{client}
+        AND GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        AND GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        <if test="stoCodes != null and stoCodes.size() > 0">
+            AND GSSD_BR_ID IN
+            <foreach collection="stoCodes" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="saleIds != null and saleIds.size() > 0">
+            AND GSSD_SALER_ID IN
+            <foreach collection="saleIds" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY CLIENT
+        <if test="type != null and stoCodes == '1' > 0">
+            ,GSSD_BR_ID
+        </if>
+        <if test="type != null and stoCodes == '2' > 0">
+            ,GSSD_SALER_ID
+        </if>
+    </select>
+    <select id="getToDayAllEmpSaleDetailList" resultType="com.gys.common.data.EmpSaleDetailResVo">
+		SELECT
+			sd.CLIENT AS client,
+			sd.GSSD_BR_ID AS stoCode,
+			dd.STO_NAME AS stoName,
+			sd.GSSD_DATE AS saleDate,
+			sd.GSSD_BILL_NO AS gssdBillNo,
+			sd.GSSD_PRO_ID AS proSelfCode,
+			sd.GSSD_SERIAL AS serial,
+			sd.GSSD_BATCH_NO AS batBatchNo,
+			sd.GSSD_SALER_ID  AS salerId,
+			pb.PRO_NAME  AS proName,
+			pb.PRO_COMMONNAME  AS proCommonName,
+			pb.PRO_SPECS  AS proSpecs,
+			pb.PRO_UNIT AS proUnit,
+			pb.PRO_FACTORY_CODE AS PRO_FACTORY_CODE,
+			pb.PRO_FACTORY_NAME  AS factoryName,
+			pb.PRO_LSJ AS proLsj,
+			sbc.GSBC_BATCH  AS GSBC_BATCH,
+			bi.BAT_EXPIRY_DATE  AS batExpiryDate,
+			sd.GSSD_VALID_DATE  AS gssdValidDate,
+			round( sum( GSSD_AMT )+ sum( GSSD_ZK_AMT ), 2 ) AS ysAmt,
+			round( sum( GSSD_AMT ), 2 ) AS amt,
+            round(IFNULL(CONVERT(SUM(sd.GSSD_AMT - (CASE IFNULL(sh.GSSH_BILL_NO_RETURN, 1) WHEN 1 THEN 1 ELSE - 1 END) * (sd.GSSD_ADD_AMT + sd.GSSD_ADD_TAX)), DECIMAL(19,4)), 0), 2 ) AS grossProfitAmt,
+            round(( CASE WHEN sum( GSSD_AMT ) = 0 THEN 0 ELSE IFNULL(CONVERT(SUM(sd.GSSD_AMT - (CASE IFNULL(sh.GSSH_BILL_NO_RETURN, 1) WHEN 1 THEN 1 ELSE - 1 END) * (sd.GSSD_ADD_AMT + sd.GSSD_ADD_TAX)), DECIMAL(19,4)), 0)  / sum( GSSD_AMT ) END ), 4 ) AS grossProfitRate,
+            round(sum( GSSD_ZK_AMT ), 2 ) AS zkAmt,
+			sum( GSSD_QTY ) AS qyt,
+			round(( CASE WHEN sum( GSSD_AMT ) + sum( GSSD_ZK_AMT )= 0 THEN 0 ELSE sum( GSSD_ZK_AMT )/( sum( GSSD_AMT ) + sum( GSSD_ZK_AMT )) END ), 4 ) AS zkl,
+            round(SUM((CASE IFNULL(sh.GSSH_BILL_NO_RETURN, 1) WHEN 1 THEN 1 ELSE - 1 END) * (sd.GSSD_ADD_AMT + sd.GSSD_ADD_TAX)), 4 ) AS costAmt,
+			sh.GSSH_EMP  AS gsshEmpId,
+			sd.GSSD_DOCTOR_ID  AS doctorId,
+			pb.PRO_CLASS  AS proClassCode,
+			pb.PRO_SLAE_CLASS  AS proSlaeClass,
+			pb.PRO_POSITION  AS proPosition,
+			bi.BAT_SUPPLIER_SALESMAN  AS batSupplierSalesman,
+			bi.BAT_SUPPLIER_CODE AS batSupplierCode,
+			sb.SUP_NAME  AS batSupplierName
+		FROM
+			GAIA_SD_SALE_D sd
+			LEFT JOIN GAIA_SD_SALE_H sh ON sh.CLIENT = sd.CLIENT
+			AND sh.GSSH_BR_ID = sd.GSSD_BR_ID
+			AND sh.GSSH_BILL_NO = sd.GSSD_BILL_NO
+			LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON sd.CLIENT = pb.CLIENT
+			AND sd.GSSD_BR_ID = pb.PRO_SITE
+			AND sd.GSSD_PRO_ID = pb.PRO_SELF_CODE
+			LEFT JOIN GAIA_STORE_DATA dd ON dd.CLIENT = sd.CLIENT
+			AND sd.GSSD_BR_ID = dd.STO_CODE
+			LEFT JOIN (
+                SELECT
+                t1.CLIENT,
+                t1.GSBC_BR_ID,
+                t1.GSBC_DATE,
+                t1.GSBC_BATCH_NO,
+                t1.GSBC_PRO_ID,
+                t1.GSBC_SERIAL,
+                t1.GSBC_VOUCHER_ID,
+                sum( t1.GSBC_QTY ) AS GSBC_QTY ,
+                t1.GSBC_BATCH
+                FROM
+                GAIA_SD_BATCH_CHANGE t1
+                WHERE
+                t1.CLIENT = #{client}
+                AND t1.GSBC_DATE = #{today}
+                GROUP BY
+                t1.CLIENT,
+                t1.GSBC_BR_ID,
+                t1.GSBC_VOUCHER_ID,
+                t1.GSBC_PRO_ID,
+                t1.GSBC_SERIAL,
+                t1.GSBC_BATCH_NO
+                ) sbc ON sd.CLIENT = sbc.CLIENT
+			AND sd.GSSD_BR_ID = sbc.GSBC_BR_ID
+			AND sd.GSSD_BILL_NO = sbc.GSBC_VOUCHER_ID
+			AND sd.GSSD_SERIAL = sbc.GSBC_SERIAL
+			AND sd.GSSD_PRO_ID = sbc.GSBC_PRO_ID
+			AND sd.GSSD_BATCH_NO = sbc.GSBC_BATCH_NO
+            AND sd.GSSD_QTY = sbc.GSBC_QTY
+			LEFT JOIN GAIA_BATCH_INFO bi ON sbc.CLIENT = bi.CLIENT
+			AND sbc.GSBC_BR_ID = bi.BAT_SITE_CODE
+			AND sbc.GSBC_BATCH_NO = bi.BAT_BATCH_NO
+			AND sbc.GSBC_PRO_ID = bi.BAT_PRO_CODE
+			AND sbc.GSBC_BATCH = bi.BAT_BATCH
+			LEFT JOIN GAIA_SUPPLIER_BUSINESS sb ON bi.BAT_SUPPLIER_CODE = sb.SUP_SELF_CODE
+			AND bi.CLIENT = sb.CLIENT
+			AND bi.BAT_SITE_CODE = sb.SUP_SITE
+		WHERE
+			1 = 1
+			AND sd.CLIENT = #{client}
+			AND sd.GSSD_DATE = #{today}
+			<if test="stoArr != null and stoArr.size() > 0">
+				AND sd.GSSD_BR_ID IN
+				<foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="nameSearchType != null and nameSearchType!= '' and nameSearchType == '1'.toString() ">
+				<if test="nameSearchIdList != null and nameSearchIdList.size() > 0">
+					AND sd.GSSD_SALER_ID in
+					<foreach collection="nameSearchIdList" item="item" index="index" open="(" separator="," close=")">
+						#{item}
+					</foreach>
+				</if>
+			</if>
+			<if test="nameSearchType != null and nameSearchType!= '' and nameSearchType == '2'.toString() ">
+				<if test="nameSearchIdList != null and nameSearchIdList.size() > 0">
+					AND sh.GSSH_EMP in
+					<foreach collection="nameSearchIdList" item="item" index="index" open="(" separator="," close=")">
+						#{item}
+					</foreach>
+				</if>
+			</if>
+			<if test="nameSearchType != null and nameSearchType!= '' and nameSearchType == '3'.toString() ">
+				<if test="nameSearchIdList != null and nameSearchIdList.size() > 0">
+					AND sd.GSSD_DOCTOR_ID in
+					<foreach collection="nameSearchIdList" item="item" index="index" open="(" separator="," close=")">
+						#{item}
+					</foreach>
+				</if>
+			</if>
+			<if test="proCode != null and proCode!=''">
+				AND ( pb.PRO_NAME LIKE CONCAT('%', #{proCode}, '%')
+				or pb.PRO_COMMONNAME LIKE CONCAT('%', #{proCode}, '%' )
+				or  pb.PRO_SELF_CODE LIKE CONCAT('%', #{proCode}, '%' )
+				)
+			</if>
+			<if test="factoryName != null and factoryName!=''">
+				AND pb.PRO_FACTORY_NAME LIKE CONCAT('%', #{factoryName}, '%')
+			</if>
+			<if test="proClass != null and proClass.size() > 0">
+				AND pb.PRO_CLASS in
+				<foreach collection="proClass" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="proPosition != null and proPosition.size() > 0">
+				AND pb.PRO_POSITION in
+				<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+
+			<if test="saleClass != null and saleClass.size() > 0">
+				AND pb.PRO_SLAE_CLASS in
+				<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+			<if test="gssName != null and gssName!=''">
+				AND bi.BAT_SUPPLIER_SALESMAN like  CONCAT('%', #{gssName}, '%')
+			</if>
+			<if test="supSelfCode != null and supSelfCode!=''">
+				AND bi.BAT_SUPPLIER_CODE in  CONCAT('(', #{supSelfCode}, ')')
+			</if>
+			GROUP BY
+			sd.CLIENT,
+			sd.GSSD_BR_ID,
+			dd.STO_NAME,
+			sd.GSSD_DATE,
+			sd.GSSD_BILL_NO,
+			sd.GSSD_PRO_ID,
+			sd.GSSD_BATCH_NO,
+			sd.GSSD_SERIAL
+            <if test="planIfNegative != null and planIfNegative!='' and planIfNegative =='0'">
+                HAVING grossProfitRate > 0
+            </if>
+			ORDER BY
+			sd.CLIENT,
+			sd.GSSD_BR_ID,
+			dd.STO_NAME,
+			sd.GSSD_DATE,
+			sd.GSSD_BILL_NO,
+			sd.GSSD_PRO_ID,
+			sd.GSSD_BATCH_NO
+	</select>
+
+    <select id="getRealTimeSaleSummary" resultType="com.gys.entity.data.commissionplan.StoreCommissionSummary">
+        SELECT
+            sd.CLIENT AS client,
+            <if test="showStore">
+                sd.GSSD_BR_ID AS stoCode,
+            </if>
+            <if test="isSaleDateSummary">
+                sd.GSSD_DATE AS saleDateStr,
+            </if>
+            <if test="isSaleManSummary" >
+                sd.GSSD_SALER_ID  AS saleManCode,
+            </if>
+            1 AS saleDays,
+            round( sum( GSSD_AMT )+ sum( GSSD_ZK_AMT ), 2 ) AS ysAmt,
+            round( sum( GSSD_AMT ), 2 ) AS amt,
+            round(IFNULL(CONVERT(SUM(sd.GSSD_AMT - (CASE IFNULL(sh.GSSH_BILL_NO_RETURN, 1) WHEN 1 THEN 1 ELSE - 1 END) * (sd.GSSD_ADD_AMT + sd.GSSD_ADD_TAX)), DECIMAL(19,4)), 0), 2 ) AS grossProfitAmt,
+            round(sum( GSSD_ZK_AMT ), 2 ) AS zkAmt,
+            round(SUM((CASE IFNULL(sh.GSSH_BILL_NO_RETURN, 1) WHEN 1 THEN 1 ELSE - 1 END) * (sd.GSSD_ADD_AMT + sd.GSSD_ADD_TAX)), 4 ) AS costAmt
+        FROM
+            GAIA_SD_SALE_D sd
+        LEFT JOIN GAIA_SD_SALE_H sh ON sh.CLIENT = sd.CLIENT
+            AND sh.GSSH_BR_ID = sd.GSSD_BR_ID
+            AND sh.GSSH_BILL_NO = sd.GSSD_BILL_NO
+        LEFT JOIN GAIA_STORE_DATA dd ON dd.CLIENT = sd.CLIENT
+            AND sd.GSSD_BR_ID = dd.STO_CODE
+        WHERE sd.CLIENT = #{client}
+        AND sd.GSSD_DATE = #{nowDate}
+        <if test="stoCodes != null and stoCodes.size() > 0">
+            AND sd.GSSD_BR_ID IN
+            <foreach collection="stoCodes" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        sd.CLIENT
+        <if test="showStore">
+            ,sd.GSSD_BR_ID
+        </if>
+        <if test="isSaleDateSummary">
+            ,sd.GSSD_DATE
+        </if>
+        <if test="isSaleManSummary" >
+            ,sd.GSSD_SALER_ID
+        </if>
+    </select>
+
+
+</mapper>

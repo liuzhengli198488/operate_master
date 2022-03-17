@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.TichengProplanSettingMapper">
+
+
+
+    <select id="selectAllByCondition" resultType="com.gys.entity.TichengProplanSetting">
+        SELECT
+            ID AS id,
+            CLIENT AS client,
+            C_PLAN_NAME AS cPlanName,
+            PID AS pid,
+            PLAN_PRODUCT_WAY AS planProductWay,
+            PLIANT_PERCENTAGE_TYPE AS pliantPercentageType,
+            PLAN_TYPE AS planType,
+            PLAN_REJECT_DISCOUNT_RATE_SYMBOL AS planRejectDiscountRateSymbol,
+            PLAN_REJECT_DISCOUNT_RATE AS planRejectDiscountRate,
+            PLAN_IF_NEGATIVE AS planIfNegative
+        FROM GAIA_TICHENG_PROPLAN_SETTING
+        WHERE CLIENT = #{client}
+        AND DELETE_FLAG = '0'
+        AND PID = #{pid}
+        <if test="cPlanName!=null and cPlanName!=''" >
+            AND C_PLAN_NAME LIKE CONCAT('%', #{cPlanName}, '%')
+        </if>
+
+    </select>
+
+</mapper>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdSaleHMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdSaleH">
+        <id column="CLIENT" property="client" />
+        <result column="GSSH_BILL_NO" property="gsshBillNo" />
+        <result column="GSSH_BR_ID" property="gsshBrId" />
+        <result column="GSSH_DATE" property="gsshDate" />
+        <result column="GSSH_TIME" property="gsshTime" />
+        <result column="GSSH_EMP" property="gsshEmp" />
+        <result column="GSSH_TAX_NO" property="gsshTaxNo" />
+        <result column="GSSH_HYK_NO" property="gsshHykNo" />
+        <result column="GSSH_NORMAL_AMT" property="gsshNormalAmt" />
+        <result column="GSSH_ZK_AMT" property="gsshZkAmt" />
+        <result column="GSSH_YS_AMT" property="gsshYsAmt" />
+        <result column="GSSH_RMB_ZL_AMT" property="gsshRmbZlAmt" />
+        <result column="GSSH_RMB_AMT" property="gsshRmbAmt" />
+        <result column="GSSH_DYQ_NO" property="gsshDyqNo" />
+        <result column="GSSH_DYQ_AMT" property="gsshDyqAmt" />
+        <result column="GSSH_DYQ_TYPE" property="gsshDyqType" />
+        <result column="GSSH_RECHARGE_CARD_NO" property="gsshRechargeCardNo" />
+        <result column="GSSH_RECHARGE_CARD_AMT" property="gsshRechargeCardAmt" />
+        <result column="GSSH_DZQCZ_ACTNO1" property="gsshDzqczActno1" />
+        <result column="GSSH_DZQCZ_AMT1" property="gsshDzqczAmt1" />
+        <result column="GSSH_DZQDY_ACTNO1" property="gsshDzqdyActno1" />
+        <result column="GSSH_DZQDY_AMT1" property="gsshDzqdyAmt1" />
+        <result column="GSSH_INTEGRAL_ADD" property="gsshIntegralAdd" />
+        <result column="GSSH_INTEGRAL_EXCHANGE" property="gsshIntegralExchange" />
+        <result column="GSSH_INTEGRAL_EXCHANGE_AMT" property="gsshIntegralExchangeAmt" />
+        <result column="GSSH_INTEGRAL_CASH" property="gsshIntegralCash" />
+        <result column="GSSH_INTEGRAL_CASH_AMT" property="gsshIntegralCashAmt" />
+        <result column="GSSH_PAYMENT_NO1" property="gsshPaymentNo1" />
+        <result column="GSSH_PAYMENT_AMT1" property="gsshPaymentAmt1" />
+        <result column="GSSH_BILL_NO_RETURN" property="gsshBillNoReturn" />
+        <result column="GSSH_EMP_RETURN" property="gsshEmpReturn" />
+        <result column="GSSH_PROMOTION_TYPE1" property="gsshPromotionType1" />
+        <result column="GSSH_PROMOTION_TYPE2" property="gsshPromotionType2" />
+        <result column="GSSH_PROMOTION_TYPE3" property="gsshPromotionType3" />
+        <result column="GSSH_PROMOTION_TYPE4" property="gsshPromotionType4" />
+        <result column="GSSH_PROMOTION_TYPE5" property="gsshPromotionType5" />
+        <result column="GSSH_REGISTER_VOUCHER_ID" property="gsshRegisterVoucherId" />
+        <result column="GSSH_REPLACE_BR_ID" property="gsshReplaceBrId" />
+        <result column="GSSH_REPLACE_SALER_ID" property="gsshReplaceSalerId" />
+        <result column="GSSH_HIDE_FLAG" property="gsshHideFlag" />
+        <result column="GSSH_CALL_ALLOW" property="gsshCallAllow" />
+        <result column="GSSH_EMP_GROUP_NAME" property="gsshEmpGroupName" />
+        <result column="GSSH_CALL_QTY" property="gsshCallQty" />
+        <result column="GSSH_PAYMENT_NO2" property="gsshPaymentNo2" />
+        <result column="GSSH_PAYMENT_AMT2" property="gsshPaymentAmt2" />
+        <result column="GSSH_PAYMENT_NO3" property="gsshPaymentNo3" />
+        <result column="GSSH_PAYMENT_AMT3" property="gsshPaymentAmt3" />
+        <result column="GSSH_PAYMENT_NO4" property="gsshPaymentNo4" />
+        <result column="GSSH_PAYMENT_AMT4" property="gsshPaymentAmt4" />
+        <result column="GSSH_PAYMENT_NO5" property="gsshPaymentNo5" />
+        <result column="GSSH_PAYMENT_AMT5" property="gsshPaymentAmt5" />
+        <result column="GSSH_DZQDY_ACTNO2" property="gsshDzqdyActno2" />
+        <result column="GSSH_DZQDY_AMT2" property="gsshDzqdyAmt2" />
+        <result column="GSSH_DZQDY_ACTNO3" property="gsshDzqdyActno3" />
+        <result column="GSSH_DZQDY_AMT3" property="gsshDzqdyAmt3" />
+        <result column="GSSH_DZQDY_ACTNO4" property="gsshDzqdyActno4" />
+        <result column="GSSH_DZQDY_AMT4" property="gsshDzqdyAmt4" />
+        <result column="GSSH_DZQDY_ACTNO5" property="gsshDzqdyActno5" />
+        <result column="GSSH_DZQDY_AMT5" property="gsshDzqdyAmt5" />
+        <result column="GSSH_DAYREPORT" property="gsshDayreport" />
+        <result column="LAST_UPDATE_TIME" property="lastUpdateTime" />
+        <result column="GSSH_CR_FLAG" property="gsshCrFlag" />
+        <result column="GSSH_CR_STATUS" property="gsshCrStatus" />
+        <result column="GSSH_RETURN_STATUS" property="gsshReturnStatus" />
+        <result column="GSSH_IF_RELATED_SALE" property="gsshIfRelatedSale" />
+        <result column="GSSH_BILL_TYPE" property="gsshBillType" />
+        <result column="GSSH_ORDER_SOURCE" property="gsshOrderSource" />
+        <result column="GSSH_INVOICED" property="gsshInvoiced" />
+    </resultMap>
+
+    <update id="updateInvoicedByBillNo" parameterType="java.util.List">
+        <foreach collection="list" item="item" index="index" open="" close="" separator=";">
+            UPDATE GAIA_SD_SALE_H SET GSSH_INVOICED = '1'
+            WHERE CLIENT = #{item.client,jdbcType=VARCHAR}
+            AND GSSH_BR_ID = #{item.stoCode,jdbcType=VARCHAR}
+            AND GSSH_BILL_NO = #{item.billNo,jdbcType=VARCHAR}
+            AND GSSH_DATE = #{item.saleDate,jdbcType=VARCHAR}
+        </foreach>
+    </update>
+
+</mapper>

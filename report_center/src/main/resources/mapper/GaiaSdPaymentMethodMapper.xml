@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdPaymentMethodMapper">
+
+  <select id="payTypeListByClient" parameterType="com.gys.report.entity.GetPayInData" resultType="com.gys.report.entity.GetPayTypeOutData">
+    select
+    a.GSPM_ID gspmId,
+    concat('s',a.GSPM_ID) gspmKey,
+    a.GSPM_NAME gspmName,
+    a.GSPM_TYPE gspmType,
+    a.GSPM_RECHARGE gspmRecharge,
+    a.GSPM_FI_ID gspmFiId,
+    a.GSPM_REMARK gspmRemark,
+    a.GSPM_REMARK1 gspmRemark1
+    from GAIA_SD_PAYMENT_METHOD a
+    where a.CLIENT = #{clientId}
+    <if test="brId != null and brId != ''">
+      and a.GSPM_BR_ID = #{brId}
+    </if>
+    <if test="type != null and type != ''">
+      and a.GSPM_TYPE = #{type}
+    </if>
+    <if test="payName != null and payName.length > 0">
+      AND a.GSPM_NAME in
+      <foreach item="item" collection="payName" separator="," open="(" close=")" index="">
+        #{item}
+      </foreach>
+    </if>
+    group by a.GSPM_ID
+    order by a.GSPM_SERIAL+0
+  </select>
+
+</mapper>

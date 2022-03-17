@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.PayClientMapper">
+    <select id="payClientList" parameterType="com.gys.entity.PayClientInData" resultType="com.gys.entity.PayClientOutData">
+        SELECT
+        a.CLIENT clientId,
+        b.FRANC_NAME clientName,
+        c.USER_NAM userName,
+        date_format( a.FICO_PAYING_DATE, '%Y%m%d' ) payDate,
+        round(a.FICO_PAYMENT_AMOUNT_TOTAL,2) payAmt,
+        a.FICO_ID payNo,
+        ( CASE WHEN FICO_INVOICE_TYPE = '1' THEN '增值税普通发票' WHEN FICO_INVOICE_TYPE = '2' THEN '增值税专用发票' END ) invoiceType,
+        ( CASE WHEN FICO_ORDER_TYPE = '1' THEN '门店付款' WHEN FICO_ORDER_TYPE = '2' THEN '短信充值' END ) payTypeName,
+        a.FICO_ORDER_TYPE payType
+        FROM
+        GAIA_PAYING_HEADER a
+        LEFT JOIN GAIA_FRANCHISEE b ON a.CLIENT = b.CLIENT
+        LEFT JOIN GAIA_USER_DATA c ON a.CLIENT = c.CLIENT
+        AND a.FICO_OPERATOR = c.USER_ID
+        WHERE
+        a.FICO_PAYMENT_STATUS = '1'
+          <if test="clientId != null and clientId != ''">
+              AND a.CLIENT = #{clientId}
+          </if>
+          <if test="startDate != null and startDate != ''">
+              AND date_format( a.FICO_PAYING_DATE, '%Y%m%d' ) <![CDATA[>=]]> #{startDate}
+          </if>
+          <if test="endDate != null and endDate != ''">
+              AND date_format( a.FICO_PAYING_DATE, '%Y%m%d' ) <![CDATA[<=]]> #{endDate}
+          </if>
+          <if test="payType != null and payType != ''">
+              AND a.FICO_ORDER_TYPE = #{payType}
+          </if>
+        ORDER BY a.CLIENT,a.FICO_PAYING_DATE
+    </select>
+    <select id="payClientTotal" parameterType="com.gys.entity.PayClientInData" resultType="com.gys.entity.PayClientOutData">
+        SELECT round(sum(a.FICO_PAYMENT_AMOUNT_TOTAL),2) payAmt FROM
+        GAIA_PAYING_HEADER a
+        WHERE
+        a.FICO_PAYMENT_STATUS = '1'
+        <if test="clientId != null and clientId != ''">
+            AND a.CLIENT = #{clientId}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND date_format( a.FICO_PAYING_DATE, '%Y%m%d' ) <![CDATA[>=]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND date_format( a.FICO_PAYING_DATE, '%Y%m%d' ) <![CDATA[<=]]> #{endDate}
+        </if>
+        <if test="payType != null and payType != ''">
+            AND a.FICO_ORDER_TYPE = #{payType}
+        </if>
+    </select>
+    <select id="selectPayDetailList" parameterType="com.gys.entity.PayClientInData"
+            resultType="com.gys.entity.PayClientDetail">
+        SELECT
+            a.FICO_COMPANY_CODE stoCode,
+            b.STO_SHORT_NAME stoName,
+            TIMESTAMPDIFF( MONTH, DATE_FORMAT( FICO_STARTING_TIME, '%Y-%m-%d' ), DATE_FORMAT( FICO_ENDING_TIME, '%Y-%m-%d' )) monthNum,
+            round(FICO_PAYMENT_AMOUNT / TIMESTAMPDIFF( MONTH, DATE_FORMAT( FICO_STARTING_TIME, '%Y-%m-%d' ), DATE_FORMAT( FICO_ENDING_TIME, '%Y-%m-%d' ) ),2) payBasicNum,
+            (CASE FICO_PAYMENT_METHOD WHEN '0' THEN '月' WHEN '1' THEN '季' WHEN '2' THEN '半年' ELSE '年' END ) payType,
+            concat( DATE_FORMAT( FICO_STARTING_TIME, '%Y/%m/%d' ), '~', DATE_FORMAT( FICO_ENDING_TIME, '%Y/%m/%d' ) ) payDate,
+            FICO_PAYMENT_AMOUNT payAmt
+        FROM
+            GAIA_PAYING_ITEM a
+                LEFT JOIN GAIA_STORE_DATA b ON a.CLIENT = b.CLIENT
+                AND a.FICO_COMPANY_CODE = b.STO_CODE
+                LEFT JOIN GAIA_PAYING_HEADER c ON a.CLIENT = c.CLIENT
+                AND a.FICO_ID = c.FICO_ID
+        WHERE
+            a.CLIENT = #{clientId}
+          AND a.FICO_ID = #{payNo}
+        ORDER BY a.FICO_COMPANY_CODE
+    </select>
+    <select id="selectPayDetailTotal" parameterType="com.gys.entity.PayClientInData"
+            resultType="com.gys.entity.PayClientDetail">
+        SELECT
+            sum(FICO_PAYMENT_AMOUNT) payAmt
+        FROM
+            GAIA_PAYING_ITEM a
+        WHERE
+            a.CLIENT = #{clientId}
+          AND a.FICO_ID = #{payNo}
+        ORDER BY a.FICO_COMPANY_CODE
+    </select>
+    <select id="selectClientList" resultType="java.util.Map" parameterType="java.lang.String">
+        SELECT a.CLIENT clientId,b.FRANC_NAME clientName
+        FROM GAIA_PAYING_HEADER a LEFT JOIN GAIA_FRANCHISEE b ON a.CLIENT = b.CLIENT
+        WHERE a.FICO_PAYMENT_STATUS = '1'
+        <if test="clientId != null and clientId != ''">
+            AND a.CLIENT like concat('%',#{clientId},'%') OR b.FRANC_NAME like concat('%',#{clientId},'%')
+        </if>
+        GROUP BY a.CLIENT
+    </select>
+</mapper>

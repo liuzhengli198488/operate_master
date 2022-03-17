@@ -1,0 +1,2587 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.GaiaSalesSummaryMapper">
+
+    <select id="selectSalesByProduct" resultType="com.gys.entity.data.salesSummary.GaiaSalesSummary"
+            parameterType="com.gys.entity.data.salesSummary.SalesSummaryData">
+        SELECT
+        tab.proCode,
+        tab.proName,
+        tab.prCommonName,
+        tab.proDepict,
+        tab.normalPrice,
+        tab.proFactoryName,
+        tab.proUnit,
+        tab.proSpecs,
+        tab.bigClass,
+        tab.midClass,
+        tab.proClass,
+        tab.proTssx,
+        ifnull(sum(tab.proQty),0) proQty,
+        ifnull(sum(tab.gssdnormalAmt),0) gssdnormalAmt,
+        ifnull(sum(tab.gssdAmt),0) gssdAmt,
+        ifnull(sum(tab.discountAmt),0) discountAmt,
+        sum(tab.discountAmt)/sum(tab.gssdnormalAmt) *100 AS discountRate,
+        max(tab.gsisdQty) AS gsisdQty,
+        tab.proSaleClass,
+        tab.proZdy1,
+        tab.proZdy2,
+        tab.proZdy3,
+        ifnull(sum(tab.costAmt),0) costAmt,
+        ifnull(sum(tab.grossProfitAmt),0) grossProfitAmt,
+        sum(tab.grossProfitAmt)/ sum(tab.gssdAmt) * 100 AS grossProfitRate
+        FROM
+        (
+        SELECT
+        case b.PRO_TSSX when '1' then '防疫'
+        else '' end AS proTssx,
+        d.GSSD_PRO_ID AS proCode,
+        b.PRO_NAME AS proName,
+        b.PRO_COMMONNAME AS prCommonName,
+        b.PRO_DEPICT AS proDepict,
+        d.GSSD_PRC1 AS normalPrice,
+        b.PRO_FACTORY_NAME AS proFactoryName,
+        b.PRO_UNIT AS proUnit,
+        b.PRO_SPECS AS proSpecs,
+        concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+        concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+        concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+        d.GSSD_QTY AS proQty,
+        d.GSSD_PRC1 * ABS( d.GSSD_QTY ) AS gssdnormalAmt,
+        d.GSSD_AMT AS gssdAmt,
+        d.GSSD_PRC1 * ABS( d.GSSD_QTY )- d.GSSD_AMT AS discountAmt,
+        st.GSS_QTY AS gsisdQty,
+        b.PRO_SLAE_CLASS AS proSaleClass,
+        b.PRO_ZDY1 AS proZdy1,
+        b.PRO_ZDY2 AS proZdy2,
+        b.PRO_ZDY3 AS proZdy3,
+        CASE
+
+        WHEN d.GSSD_PRO_STATUS = '退货' THEN
+        CONCAT( '-', d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ELSE d.GSSD_ADD_AMT + d.GSSD_ADD_TAX
+        END AS costAmt,
+        CASE
+
+        WHEN d.GSSD_PRO_STATUS = '退货' THEN
+        d.GSSD_AMT + ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ELSE d.GSSD_AMT - ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX )
+        END AS grossProfitAmt
+        FROM
+        GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON (
+        d.CLIENT = h.CLIENT
+        AND d.GSSD_DATE = h.GSSH_DATE
+        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+        )
+        LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( d.CLIENT = b.CLIENT AND d.GSSD_BR_ID = b.PRO_SITE AND d.GSSD_PRO_ID = b.PRO_SELF_CODE )
+        LEFT JOIN (
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS
+        ) proClass
+        GROUP BY
+        classId
+        ) pc ON pc.classId = b.PRO_CLASS
+        LEFT JOIN GAIA_SD_STOCK st ON ( d.CLIENT = st.CLIENT AND d.GSSD_BR_ID = st.GSS_BR_ID AND d.GSSD_PRO_ID = st.GSS_PRO_ID )
+        WHERE
+        h.GSSH_HIDE_FLAG = '0'
+        AND d.CLIENT =  #{client}
+        and not EXISTS (select * from GAIA_SALES_CATALOG where CLIENT = d.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+        <if test="storeCode != null and storeCode != ''">
+            AND d.GSSD_BR_ID = #{storeCode}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND d.GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND d.GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+            AND d.GSSD_PRO_ID in
+            <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="classArrs != null and classArrs.size > 0">
+            and b.PRO_CLASS  in
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="gssdSalerId != null and gssdSalerId != ''">
+            AND d.GSSD_SALER_ID = #{gssdSalerId}
+        </if>
+        <if test="flag == '1'.toString()">
+            and (b.PRO_OUT != '1' or b.PRO_OUT is null)
+        </if>
+
+        <!--<if test="proSaleClass != null and proSaleClass != ''">-->
+            <!--AND b.PRO_SLAE_CLASS = #{proSaleClass}-->
+        <!--</if>-->
+
+        <if test="proSaleClassList != null and proSaleClassList.size > 0">
+            AND b.PRO_SLAE_CLASS in
+        <foreach collection="proSaleClassList" separator="," open="(" close=")" item="proSaleClass" >
+             #{proSaleClass}
+        </foreach>
+        </if>
+
+        <if test="proZdy1 != null and proZdy1 != ''">
+            AND b.PRO_ZDY1 = #{proZdy1}
+        </if>
+        <if test="proZdy2 != null and proZdy2 != ''">
+            AND b.PRO_ZDY2 = #{proZdy2}
+        </if>
+        <if test="proZdy3 != null and proZdy3 != ''">
+            AND b.PRO_ZDY3 = #{proZdy3}
+        </if>
+        <if test="proTssx != null and proTssx.size() > 0">
+            AND b.PRO_TSSX in
+            <foreach collection="proTssx" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="specialType != null and specialType!=''">
+            <choose>
+                <when test="specialType == '0'.toString()">
+                    and  (b.PRO_CLASS like '1%' or b.PRO_CLASS like '2%')
+                </when>
+                <when test="specialType == '1'.toString()">
+                    and b.PRO_CLASS like '5%'
+                </when>
+                <when test="specialType == '2'.toString()">
+                    and b.PRO_CONTROL_CLASS like '5%'
+                </when>
+                <when test="specialType == '3'.toString()">
+                    and b.PRO_CLASS like '4%'
+                </when>
+            </choose>
+        </if>
+        ) tab
+        <where>
+            <if test="grossProfitRateMax != null and grossProfitRateMax != ''">
+                tab.grossProfitAmt/ tab.gssdAmt * 100  &lt;= #{grossProfitRateMax} +0
+            </if>
+
+            <if test="grossProfitRateMin != null and grossProfitRateMin != ''">
+                AND tab.grossProfitAmt/ tab.gssdAmt * 100  &gt;= #{grossProfitRateMin} +0
+            </if>
+        </where>
+        GROUP BY
+        tab.proCode
+        ORDER BY
+        tab.proCode
+
+    </select>
+    <select id="selectSalesByProductTotal" resultType="com.gys.entity.data.salesSummary.GaiaSalesSummaryTotal">
+
+        SELECT
+        sum(tab.proQty) proQty,
+        sum(tab.gssdnormalAmt) gssdnormalAmt,
+        sum(tab.gssdAmt) gssdAmt,
+        sum(tab.discountAmt) discountAmt,
+        sum(tab.discountAmt)/sum(tab.gssdnormalAmt) *100 AS discountRate,
+        sum(tab.gsisdQty) AS gsisdQty,
+        sum(tab.costAmt) costAmt,
+        sum(tab.grossProfitAmt) grossProfitAmt,
+        sum(tab.grossProfitAmt)/ sum(tab.gssdAmt) * 100 AS grossProfitRate
+        FROM
+        (
+        SELECT
+        d.GSSD_PRO_ID AS proCode,
+        b.PRO_NAME AS proName,
+        b.PRO_COMMONNAME AS prCommonName,
+        d.GSSD_PRC1 AS normalPrice,
+        b.PRO_FACTORY_NAME AS proFactoryName,
+        b.PRO_UNIT AS proUnit,
+        b.PRO_SPECS AS proSpecs,
+        concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+        concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+        concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+        d.GSSD_QTY AS proQty,
+        d.GSSD_PRC1 * ABS( d.GSSD_QTY ) AS gssdnormalAmt,
+        d.GSSD_AMT AS gssdAmt,
+        d.GSSD_PRC1 * ABS( d.GSSD_QTY )- d.GSSD_AMT AS discountAmt,
+        st.GSS_QTY AS gsisdQty,
+        b.PRO_SLAE_CLASS AS proSaleClass,
+        b.PRO_ZDY1 AS proZdy1,
+        b.PRO_ZDY2 AS proZdy2,
+        b.PRO_ZDY3 AS proZdy3,
+        CASE
+
+        WHEN d.GSSD_PRO_STATUS = '退货' THEN
+        CONCAT( '-', d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ELSE d.GSSD_ADD_AMT + d.GSSD_ADD_TAX
+        END AS costAmt,
+        CASE
+
+        WHEN d.GSSD_PRO_STATUS = '退货' THEN
+        d.GSSD_AMT + ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) ELSE d.GSSD_AMT - ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX )
+        END AS grossProfitAmt
+        FROM
+        GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON (
+        d.CLIENT = h.CLIENT
+        AND d.GSSD_DATE = h.GSSH_DATE
+        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+        )
+        LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( d.CLIENT = b.CLIENT AND d.GSSD_BR_ID = b.PRO_SITE AND d.GSSD_PRO_ID = b.PRO_SELF_CODE )
+        LEFT JOIN (
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS
+        ) proClass
+        GROUP BY
+        classId
+        ) pc ON pc.classId = b.PRO_CLASS
+        LEFT JOIN GAIA_SD_STOCK st ON ( d.CLIENT = st.CLIENT AND d.GSSD_BR_ID = st.GSS_BR_ID AND d.GSSD_PRO_ID = st.GSS_PRO_ID )
+        WHERE
+        h.GSSH_HIDE_FLAG = '0'
+        AND d.CLIENT =  #{client}
+        and not EXISTS (select * from GAIA_SALES_CATALOG where CLIENT = d.CLIENT and PRO_SELF_CODE=b.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+        <if test="storeCode != null and storeCode != ''">
+            AND d.GSSD_BR_ID = #{storeCode}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND d.GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND d.GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+            AND d.GSSD_PRO_ID in
+            <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="classArrs != null and classArrs.size > 0">
+            and b.PRO_CLASS  in
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="gssdSalerId != null and gssdSalerId != ''">
+            AND d.GSSD_SALER_ID = #{gssdSalerId}
+        </if>
+        <if test="flag == '1'.toString()">
+            and (b.PRO_OUT != '1' or b.PRO_OUT is null)
+        </if>
+
+        <if test="proSaleClass != null and proSaleClass != ''">
+            AND b.PRO_SLAE_CLASS = #{proSaleClass}
+        </if>
+        <if test="proZdy1 != null and proZdy1 != ''">
+            AND b.PRO_ZDY1 = #{proZdy1}
+        </if>
+        <if test="proZdy2 != null and proZdy2 != ''">
+            AND b.PRO_ZDY2 = #{proZdy2}
+        </if>
+        <if test="proZdy3 != null and proZdy3 != ''">
+            AND b.PRO_ZDY3 = #{proZdy3}
+        </if>
+        ) tab
+        <where>
+            <if test="grossProfitRateMax != null and grossProfitRateMax != ''">
+                tab.grossProfitAmt/ tab.gssdAmt * 100  &lt;= #{grossProfitRateMax} +0
+            </if>
+            <if test="grossProfitRateMin != null and grossProfitRateMin != ''">
+                AND tab.grossProfitAmt/ tab.gssdAmt * 100  &gt;= #{grossProfitRateMin} +0
+            </if>
+        </where>
+    </select>
+    <select id="selectPersonSales" resultType="com.gys.entity.data.salesSummary.PersonSalesOutData">
+                SELECT
+            tab.CLIENT,
+            tab.userCode,
+            ud.USER_NAM userName,
+        <choose>
+            <when test="notSto == 'Y'.toString()">
+                tab.GSSD_BR_ID stoCode,
+                IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) stoName,
+            </when>
+        </choose>
+
+        <choose>
+            <when test="notSales == 'N'.toString()">
+                ROUND(COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )),2) saleDays,
+                ROUND(SUM( tab.amt )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )),2) amtByDay,
+                ROUND(COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )),2) numberTradesByDay,
+            </when>
+            <when test="notSales == 'Y'.toString()">
+                ROUND(COUNT(DISTINCT tab.GSSD_DATE),2) saleDays,
+                ROUND(SUM( tab.amt )/ COUNT(DISTINCT tab.GSSD_DATE),2) amtByDay,
+                ROUND(COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT tab.GSSD_DATE),2) numberTradesByDay,
+            </when>
+        </choose>
+        ROUND(SUM( tab.amountReceivable ),2) amountReceivable,
+        ROUND(SUM( tab.amt ),2) amt,
+        ROUND(COUNT( DISTINCT tab.GSSD_BILL_NO ),2) numberTrades,
+        ROUND(SUM( tab.amt )/ COUNT( DISTINCT tab.GSSD_BILL_NO ),2) perTicketSales,
+        ROUND(SUM( tab.amountReceivable ) - SUM( tab.amt ),2) discountAmt,
+        ROUND((SUM( tab.amountReceivable ) - SUM( tab.amt ))/ SUM( tab.amountReceivable )* 100,2) discountRate,
+        ROUND(SUM( tab.memberSale ),2) memberSale,
+        ROUND(SUM( tab.memberSale )/ SUM( tab.amt ) * 100,2) memberSaleRate,
+        ROUND(SUM( tab.includeTaxSale ),2) includeTaxSale,
+        ROUND(SUM( tab.amt )- SUM( tab.includeTaxSale ),2) grossProfitMargin,
+        ROUND((SUM( tab.amt )- SUM( tab.includeTaxSale )) / sum( tab.amt )* 100,2) grossProfitRate,
+        ROUND(SUM( tab.proCount )/COUNT( DISTINCT tab.GSSD_BILL_NO ),2 ) kpc,
+        ROUND(SUM( tab.amt )/ SUM( tab.qty ), 2 ) pdj
+        FROM
+            (
+            SELECT
+                sale.CLIENT,
+                sale.GSSD_BR_ID,
+                sale.GSSD_DATE,
+                sale.userCode,
+                sale.GSSD_BILL_NO,
+                sale.GSSD_PRO_ID,
+                pb.PRO_CLASS,
+                sale.type,
+                SUM( sale.amountReceivable ) amountReceivable,
+                SUM( sale.amt ) amt,
+                SUM( sale.includeTaxSale ) includeTaxSale,
+                SUM( sale.memberSale ) memberSale,
+                COUNT(
+                    CASE
+                    WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+                    WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+                    WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+                    ELSE sale.GSSD_PRO_ID END
+                    ) proCount,
+                SUM(
+                    CASE
+                    WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+                    WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+                    WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+                    ELSE sale.qty END
+                    ) qty
+                FROM
+                (
+                SELECT
+                    saleD.CLIENT,
+                    saleD.GSSD_BR_ID,
+                    saleD.GSSD_DATE,
+                    saleD.GSSD_BILL_NO,
+                    saleD.GSSD_PRO_ID,
+                    <choose>
+                        <when test="type == '1'.toString()">
+                            saleH.GSSH_EMP userCode,
+                        </when>
+                        <when test="type == '2'.toString()">
+                            saleD.GSSD_SALER_ID userCode,
+                        </when>
+                        <when test="type == '3'.toString()">
+                            saleD.GSSD_DOCTOR_ID userCode,
+                        </when>
+                    </choose>
+                    saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+                    saleD.GSSD_AMT amt,
+                    saleD.GSSD_QTY qty,
+                CASE
+
+                        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+                        saleD.GSSD_AMT ELSE 0
+                    END AS memberSale,
+                    saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX includeTaxSale,
+                    '1' AS type
+                FROM
+                    GAIA_SD_SALE_H saleH
+                    LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+                    AND saleD.GSSD_DATE = saleH.GSSH_DATE
+                    AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+                    AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+                WHERE
+                    saleH.CLIENT = #{client}
+                    AND saleH.GSSH_HIDE_FLAG = '0'
+                    AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+                    <if test="statDatePart!=null and statDatePart!=''">
+                        AND saleH.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+                    </if>
+                    <if test="endDatePart!=null and endDatePart!=''">
+                        AND saleH.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+                    </if>
+                    AND saleH.GSSH_BILL_NO_RETURN IS NULL UNION ALL
+                SELECT
+                    saleD.CLIENT,
+                    saleD.GSSD_BR_ID,
+                    saleD.GSSD_DATE,
+                    saleD.GSSD_BILL_NO,
+                    saleD.GSSD_PRO_ID,
+                    <choose>
+                        <when test="type == '1'.toString()">
+                            saleH.GSSH_EMP userCode,
+                        </when>
+                        <when test="type == '2'.toString()">
+                            saleD.GSSD_SALER_ID userCode,
+                        </when>
+                        <when test="type == '3'.toString()">
+                            saleD.GSSD_DOCTOR_ID userCode,
+                        </when>
+                    </choose>
+                    saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+                    saleD.GSSD_AMT amt,
+                    saleD.GSSD_QTY qty,
+                    CASE
+
+                        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+                        saleD.GSSD_AMT ELSE 0
+                    END AS memberSale,
+                    (saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX)* -1 includeTaxSale,
+                    '2' AS type
+                FROM
+                    GAIA_SD_SALE_H saleH
+                    LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+                    AND saleD.GSSD_DATE = saleH.GSSH_DATE
+                    AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+                    AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+                WHERE
+                    saleH.CLIENT = #{client}
+                    AND saleH.GSSH_HIDE_FLAG = '0'
+                    AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+                    <if test="statDatePart!=null and statDatePart!=''">
+                        AND saleH.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+                    </if>
+                    <if test="endDatePart!=null and endDatePart!=''">
+                        AND saleH.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+                    </if>
+                    AND saleH.GSSH_BILL_NO_RETURN IS NOT NULL
+                ) sale
+                LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = sale.CLIENT
+                AND pb.PRO_SITE = sale.GSSD_BR_ID
+                AND pb.PRO_SELF_CODE = sale.GSSD_PRO_ID
+                <where>
+                    <if test="userCodes != null and userCodes.size() > 0">
+                        AND sale.userCode in
+                        <foreach collection="userCodes" item="item" index="index" open="(" separator="," close=")">
+                            #{item}
+                        </foreach>
+                    </if>
+                </where>
+            GROUP BY
+                sale.CLIENT,
+                sale.GSSD_BR_ID,
+                sale.GSSD_DATE,
+                sale.GSSD_BILL_NO,
+                sale.userCode
+            ) tab
+            LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+            AND sto.STO_CODE = tab.GSSD_BR_ID
+            LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+            AND ud.USER_ID = tab.userCode
+        GROUP BY
+            tab.CLIENT,
+            <choose>
+                <when test="notSto == 'Y'.toString()">
+                    tab.GSSD_BR_ID,
+                </when>
+            </choose>
+
+            tab.userCode
+        ORDER BY
+            tab.CLIENT,
+            tab.userCode,
+            tab.GSSD_BR_ID
+    </select>
+    <select id="selectPersonSalesTotal" resultType="com.gys.entity.data.salesSummary.PersonSalesOutDataTotal">
+        SELECT
+        <choose>
+            <when test="notSales == 'N'.toString()">
+                COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )) saleDays,
+                SUM( tab.amt )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )) amtByDay,
+                COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )) numberTradesByDay,
+            </when>
+            <when test="notSales == 'Y'.toString()">
+                COUNT(DISTINCT tab.GSSD_DATE) saleDays,
+                SUM( tab.amt )/ COUNT(DISTINCT tab.GSSD_DATE) amtByDay,
+                COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT tab.GSSD_DATE) numberTradesByDay,
+            </when>
+        </choose>
+        SUM( tab.amountReceivable ) amountReceivable,
+        SUM( tab.amt ) amt,
+        COUNT( DISTINCT tab.GSSD_BILL_NO ) numberTrades,
+        SUM( tab.amt )/ COUNT( DISTINCT tab.GSSD_BILL_NO ) perTicketSales,
+        SUM( tab.amountReceivable ) - SUM( tab.amt ) discountAmt,
+        CONCAT(ROUND((SUM( tab.amountReceivable ) - SUM( tab.amt ))/ SUM( tab.amountReceivable )* 100 ,2),'%') discountRate,
+        SUM( tab.memberSale ) memberSale,
+        CONCAT(ROUND(SUM( tab.memberSale )/ SUM( tab.amt ) * 100,2),'%') memberSaleRate,
+        SUM( tab.includeTaxSale ) includeTaxSale,
+        SUM( tab.amt )- SUM( tab.includeTaxSale ) grossProfitMargin,
+        CONCAT(ROUND((SUM( tab.amt )- SUM( tab.includeTaxSale )) / sum( tab.amt )* 100,2),'%') grossProfitRate,
+        ROUND( SUM( tab.proCount )/COUNT( DISTINCT tab.GSSD_BILL_NO ),2 ) kpc,
+        ROUND(SUM( tab.amt )/ SUM( tab.qty ), 2 ) pdj
+        FROM
+        (
+        SELECT
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.userCode,
+        sale.GSSD_BILL_NO,
+        sale.GSSD_PRO_ID,
+        pb.PRO_CLASS,
+        sale.type,
+        SUM( sale.amountReceivable ) amountReceivable,
+        SUM( sale.amt ) amt,
+        SUM( sale.includeTaxSale ) includeTaxSale,
+        SUM( sale.memberSale ) memberSale,
+        COUNT(
+            CASE
+            WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+            WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+            WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+            ELSE sale.GSSD_PRO_ID END
+        ) proCount,
+        SUM(
+            CASE
+            WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+            WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+            WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+            ELSE sale.qty END
+        ) qty
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX includeTaxSale,
+        '1' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        <if test="statDatePart!=null and statDatePart!=''">
+            AND saleH.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+        </if>
+        <if test="endDatePart!=null and endDatePart!=''">
+            AND saleH.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+        </if>
+        AND saleH.GSSH_BILL_NO_RETURN IS NULL UNION ALL
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        (saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX)* -1 includeTaxSale,
+        '2' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        <if test="statDatePart!=null and statDatePart!=''">
+            AND saleH.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+        </if>
+        <if test="endDatePart!=null and endDatePart!=''">
+            AND saleH.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+        </if>
+        AND saleH.GSSH_BILL_NO_RETURN IS NOT NULL
+        ) sale
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = sale.CLIENT
+        AND pb.PRO_SITE = sale.GSSD_BR_ID
+        AND pb.PRO_SELF_CODE = sale.GSSD_PRO_ID
+        <where>
+            <if test="userCodes != null and userCodes.size() > 0">
+                AND sale.userCode in
+                <foreach collection="userCodes" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.GSSD_BILL_NO,
+        sale.userCode
+        ) tab
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+        AND sto.STO_CODE = tab.GSSD_BR_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+        AND ud.USER_ID = tab.userCode
+    </select>
+    <select id="selectPersonSalesDetail" resultType="com.gys.entity.data.salesSummary.PersonSalesDetailOutData">
+        SELECT
+        tab.CLIENT,
+        tab.userCode,
+        ud.USER_NAM userName,
+        tab.GSSD_BR_ID stoCode,
+        IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) stoName,
+        tab.GSSD_DATE saleDate,
+        ROUND(SUM( tab.amountReceivable ),2) amountReceivable,
+        ROUND(SUM( tab.amt ),2) amt,
+        ROUND(COUNT( DISTINCT tab.GSSD_BILL_NO ),2) numberTrades,
+        ROUND(SUM( tab.amt )/ COUNT( DISTINCT tab.GSSD_BILL_NO ),2) perTicketSales,
+        ROUND(SUM( tab.amountReceivable ) - SUM( tab.amt ),2) discountAmt,
+        ROUND((SUM( tab.amountReceivable ) - SUM( tab.amt ))/ SUM( tab.amountReceivable )* 100,2) discountRate,
+        ROUND(SUM( tab.memberSale ),2) memberSale,
+        ROUND(SUM( tab.memberSale )/ SUM( tab.amt ) * 100,2) memberSaleRate,
+        ROUND(SUM( tab.includeTaxSale ),2) includeTaxSale,
+        ROUND(SUM( tab.amt )- SUM( tab.includeTaxSale ),2) grossProfitMargin,
+        ROUND((SUM( tab.amt )- SUM( tab.includeTaxSale )) / sum( tab.amt )* 100,2) grossProfitRate,
+        ROUND(SUM( tab.proCount )/COUNT( DISTINCT tab.GSSD_BILL_NO ),2 ) kpc,
+        ROUND(SUM( tab.amt )/ SUM( tab.qty ), 2 ) pdj
+        FROM
+        (
+        SELECT
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.userCode,
+        sale.GSSD_BILL_NO,
+        sale.GSSD_PRO_ID,
+        pb.PRO_CLASS,
+        sale.type,
+        SUM( sale.amountReceivable ) amountReceivable,
+        SUM( sale.amt ) amt,
+        SUM( sale.includeTaxSale ) includeTaxSale,
+        SUM( sale.memberSale ) memberSale,
+        COUNT(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.GSSD_PRO_ID END
+        ) proCount,
+        SUM(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.qty END
+        ) qty
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX includeTaxSale,
+        '1' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NULL
+        <if test="stoArr != null and stoArr.length > 0">
+            and saleH.GSSH_BR_ID  in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        UNION ALL
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        (saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX)* -1 includeTaxSale,
+        '2' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NOT NULL
+        <if test="stoArr != null and stoArr.length > 0">
+            and saleH.GSSH_BR_ID  in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        ) sale
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = sale.CLIENT
+        AND pb.PRO_SITE = sale.GSSD_BR_ID
+        AND pb.PRO_SELF_CODE = sale.GSSD_PRO_ID
+        <where>
+            <if test="userCode != null and userCode != ''">
+                AND sale.userCode = #{userCode}
+            </if>
+        </where>
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.GSSD_BILL_NO,
+        sale.userCode
+        ) tab
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+        AND sto.STO_CODE = tab.GSSD_BR_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+        AND ud.USER_ID = tab.userCode
+        GROUP BY
+        tab.CLIENT,
+        <choose>
+            <when test="notSto == 'Y'.toString()">
+                tab.GSSD_BR_ID,
+            </when>
+        </choose>
+        tab.GSSD_DATE,
+        tab.userCode
+        ORDER BY
+        tab.CLIENT,
+        tab.userCode,
+        tab.GSSD_BR_ID,
+        tab.GSSD_DATE
+    </select>
+    <select id="selectPersonSalesDetailTotal"
+            resultType="com.gys.entity.data.salesSummary.PersonSalesDetailOutDataTotal">
+        SELECT
+        SUM( tab.amountReceivable ) amountReceivable,
+        SUM( tab.amt ) amt,
+        COUNT( DISTINCT tab.GSSD_BILL_NO ) numberTrades,
+        SUM( tab.amt )/ COUNT( DISTINCT tab.GSSD_BILL_NO ) perTicketSales,
+        SUM( tab.amountReceivable ) - SUM( tab.amt ) discountAmt,
+        CONCAT(ROUND((SUM( tab.amountReceivable ) - SUM( tab.amt ))/ SUM( tab.amountReceivable )* 100 ,2),'%') discountRate,
+        SUM( tab.memberSale ) memberSale,
+        CONCAT(ROUND(SUM( tab.memberSale )/ SUM( tab.amt ) * 100,2),'%') memberSaleRate,
+        SUM( tab.includeTaxSale ) includeTaxSale,
+        SUM( tab.amt )- SUM( tab.includeTaxSale ) grossProfitMargin,
+        CONCAT(ROUND((SUM( tab.amt )- SUM( tab.includeTaxSale )) / sum( tab.amt )* 100,2),'%') grossProfitRate,
+        ROUND( SUM( tab.proCount )/COUNT( DISTINCT tab.GSSD_BILL_NO ),2 ) kpc,
+        ROUND(SUM( tab.amt )/ SUM( tab.qty ), 2 ) pdj
+        FROM
+        (
+        SELECT
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.userCode,
+        sale.GSSD_BILL_NO,
+        sale.GSSD_PRO_ID,
+        pb.PRO_CLASS,
+        sale.type,
+        SUM( sale.amountReceivable ) amountReceivable,
+        SUM( sale.amt ) amt,
+        SUM( sale.includeTaxSale ) includeTaxSale,
+        SUM( sale.memberSale ) memberSale,
+        COUNT(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.GSSD_PRO_ID END
+        ) proCount,
+        SUM(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.qty END
+        ) qty
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX includeTaxSale,
+        '1' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NULL
+        <if test="stoArr != null and stoArr.length > 0">
+            and saleH.GSSH_BR_ID  in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        UNION ALL
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        (saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX)* -1 includeTaxSale,
+        '2' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NOT NULL
+        <if test="stoArr != null and stoArr.length > 0">
+            and saleH.GSSH_BR_ID  in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        ) sale
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = sale.CLIENT
+        AND pb.PRO_SITE = sale.GSSD_BR_ID
+        AND pb.PRO_SELF_CODE = sale.GSSD_PRO_ID
+        <where>
+            <if test="userCode != null and userCode != ''">
+                AND sale.userCode = #{userCode}
+            </if>
+        </where>
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.GSSD_BILL_NO,
+        sale.userCode
+        ) tab
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+        AND sto.STO_CODE = tab.GSSD_BR_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+        AND ud.USER_ID = tab.userCode
+        ORDER BY
+        tab.CLIENT,
+        tab.userCode,
+        tab.GSSD_BR_ID
+    </select>
+    <select id="selectStoreSaleSummaryByBrId" resultType="java.util.Map">
+        SELECT
+        h.GSSH_TIME as datePart,
+        h.GSSH_BR_ID brId,
+        IFNULL(c.STO_SHORT_NAME,c.STO_NAME) brName,
+        IFNULL( CONVERT ( SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY), DECIMAL ( 19,4 ) ), 0 ) AS gssdnormalAmt,
+        IFNULL( CONVERT ( SUM( d.GSSD_AMT ), DECIMAL ( 19, 4 ) ), 0 ) AS gssdAmt,
+        IFNULL(CONVERT ( SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ), DECIMAL ( 19, 4 ) ),0) AS discountAmt,
+        IFNULL(CONVERT (( SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ) ) / SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY ) * 100,DECIMAL ( 10, 2 )),0) AS discountRate,
+        IFNULL( CONVERT ( SUM( ( t.GSSH_BILL_NO_RETURN * d.GSSD_ADD_AMT ) ), DECIMAL ( 19, 4 ) ), 0 ) AS costAmt,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX)),DECIMAL ( 19, 4 )),0 ) AS grossProfitAmt,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT - ( t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+d.GSSD_ADD_TAX) ) ) / SUM( d.GSSD_AMT ) * 100,DECIMAL ( 10, 2 )),0) AS grossProfitRate,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT )/i.count,DECIMAL ( 19, 4 )),0) gsshSinglePrice,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT ) / g.count,DECIMAL ( 19, 4 )),0) dailyPayAmt,
+        IFNULL(CONVERT (i.count / g.count,DECIMAL(19,2)),0) dailyPayCount,
+        IFNULL(j.hykAmt,0) gsshHykAmt,
+        IFNULL(CONVERT (j.hykAmt / SUM( d.GSSD_AMT ) * 100,DECIMAL ( 19, 2 )),0) AS gsshHykCost,
+        IFNULL(i.count,0) payCount,
+        IFNULL(CONVERT (SUM(t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX)),DECIMAL ( 19, 4)),0) allCostAmt,
+        IFNULL(g.count,0) payDayTime,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT - ( t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+d.GSSD_ADD_TAX) ))/g.count,DECIMAL ( 19, 4 )),0 ) dailyProfitAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_JFDH,0)),DECIMAL ( 19, 4 )) jfdhZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_JFDX,0)),DECIMAL ( 19, 4 )) jfdxZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_DZQ,0)),DECIMAL ( 19, 4 )) dzqZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_DYQ,0)),DECIMAL ( 19, 4 )) dyqZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_PM,0)),DECIMAL ( 19, 4 )) pmZkAmt,
+        CASE
+        WHEN h.GSSH_BILL_NO_RETURN IS NULL THEN
+        d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ELSE ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) * - 1
+        END AS GSSD_MOV_PRICES,
+        <!-- 诊疗成本 -->
+        SUM(IFNULL(CASE
+        WHEN gpb.PRO_CLASS LIKE 'H%' THEN
+        (CASE
+        WHEN h.GSSH_BILL_NO_RETURN IS NULL THEN
+        d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ELSE ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) * - 1
+        END)
+        END,0)) AS therapyGssdMovPrices,
+        <!-- 医疗成本 -->
+        SUM(IFNULL(CASE
+        WHEN gud.USER_STATUS = '0' THEN
+        (CASE
+        WHEN h.GSSH_BILL_NO_RETURN IS NULL THEN
+        d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ELSE ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) * - 1
+        END)
+        END,0)) AS doctorGssdMovPrices,
+        <!-- 计算还原后销售额（实收金额基础上+积分抵现折扣金额+电子券折扣金额+抵用券折扣金额） -->
+        CONVERT (IFNULL(CONVERT(SUM(d.GSSD_AMT),DECIMAL ( 19, 4 ) ), 0 )
+            +(SUM(IFNULL(d.GSSD_ZK_JFDX,0)))
+            +(SUM(IFNULL(d.GSSD_ZK_DZQ,0)))
+            +(SUM(IFNULL(d.GSSD_ZK_DYQ,0))),DECIMAL ( 19, 4 )) restoreSaleAmt,
+        <!-- 医疗销售 -->
+        SUM( CASE gud.USER_STATUS WHEN 0 THEN IFNULL( CONVERT (d.GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END)
+            AS doctorGssdAmt,
+        <!-- 医疗毛利额 -->
+        SUM( CASE gud.USER_STATUS WHEN 0 THEN IFNULL( CONVERT (d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX),DECIMAL ( 19, 4 )),0 ) ELSE 0 END)
+            AS doctorGrossProfitAmt,
+        <!-- 医疗毛利率 -->
+        IFNULL(CONVERT(((SUM( CASE gud.USER_STATUS WHEN 0 THEN IFNULL( CONVERT (d.GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END))-(SUM(IFNULL(CASE
+        WHEN gud.USER_STATUS = '0' THEN
+        (CASE
+        WHEN h.GSSH_BILL_NO_RETURN IS NULL THEN
+        d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ELSE ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) * - 1
+        END)
+        END,0))))/(SUM( CASE gud.USER_STATUS WHEN 0 THEN IFNULL( CONVERT (d.GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END)) * 100,DECIMAL ( 10, 2 )),0) AS doctorGrossProfitRate,
+        <!-- 医疗交易次数 -->
+        IFNULL(i.doctorPayCount,0) AS doctorPayCount,
+        <!-- 医疗客单价 -->
+        SUM( CASE gud.USER_STATUS WHEN 0 THEN IFNULL( CONVERT (d.GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END) /i.doctorPayCount
+            AS doctorGsshSinglePrice,
+        <!-- 诊疗销售 -->
+        SUM( CASE WHEN gpb.PRO_CLASS LIKE 'H%' THEN IFNULL( CONVERT (d.GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END)
+            AS therapyGssdAmt,
+        <!-- 诊疗毛利额 -->
+        SUM( CASE WHEN gpb.PRO_CLASS LIKE 'H%' THEN IFNULL( CONVERT (d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX),DECIMAL ( 19, 4 )),0 ) ELSE 0 END)
+            AS therapyGrossProfitAmt,
+        <!-- 诊疗毛利率 -->
+        IFNULL(CONVERT(((SUM( CASE WHEN gpb.PRO_CLASS LIKE 'H%' THEN IFNULL( CONVERT (d.GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END))-(SUM(IFNULL(CASE
+        WHEN gpb.PRO_CLASS LIKE 'H%' THEN
+        (CASE
+        WHEN h.GSSH_BILL_NO_RETURN IS NULL THEN
+        d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ELSE ( d.GSSD_ADD_AMT + d.GSSD_ADD_TAX ) * - 1
+        END)
+        END,0))))/(SUM( CASE WHEN gpb.PRO_CLASS LIKE 'H%' THEN IFNULL( CONVERT (d.GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END)) * 100,DECIMAL ( 10, 2 )),0) AS therapyGrossProfitRate,
+        c.STO_ATTRIBUTE stoAttribute,
+        c.STO_IF_DTP stoIfDtp,
+        c.STO_IF_MEDICALCARE stoIfMedical,
+        c.STO_TAX_CLASS stoTaxClass
+        FROM GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+        LEFT JOIN ( SELECT USER_STATUS, USER_ID, CLIENT FROM GAIA_USER_DATA WHERE CLIENT = #{client} )
+        gud ON gud.USER_ID = d.GSSD_SALER_ID AND gud.CLIENT = h.CLIENT
+        LEFT JOIN ( SELECT PRO_CLASS, PRO_SELF_CODE, PRO_SITE, CLIENT FROM GAIA_PRODUCT_BUSINESS WHERE CLIENT = #{client} )
+        gpb ON gpb.PRO_SELF_CODE = d.GSSD_PRO_ID AND d.CLIENT = gpb.CLIENT AND gpb.PRO_SITE = h.GSSH_BR_ID
+        LEFT JOIN GAIA_STORE_DATA c ON c.CLIENT = h.CLIENT AND c.STO_CODE = h.GSSH_BR_ID
+        LEFT JOIN (SELECT (CASE IFNULL(GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE -1 END)
+        GSSH_BILL_NO_RETURN,GSSH_BILL_NO,GSSH_DATE,GSSH_BR_ID FROM GAIA_SD_SALE_H
+        WHERE GSSH_DATE <![CDATA[ <= ]]> #{endDate} AND GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+        AND CLIENT = #{client}) t ON t.GSSH_BILL_NO = h.GSSH_BILL_NO AND t.GSSH_DATE = h.GSSH_DATE AND t.GSSH_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN (SELECT COUNT( * ) count,s.GSSH_BR_ID FROM (SELECT hs.GSSH_BR_ID,hs.GSSH_DATE FROM GAIA_SD_SALE_H hs
+        WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND hs.GSSH_DATE <![CDATA[ >= ]]> #{startDate} AND
+        hs.GSSH_DATE <![CDATA[ <= ]]> #{endDate} GROUP BY hs.CLIENT, hs.GSSH_BR_ID, hs.GSSH_DATE ) s GROUP BY s.GSSH_BR_ID) g ON g.GSSH_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN (SELECT count(s.GSSH_BILL_NO) count,
+        count( s.doctorPayCount ) doctorPayCount,
+        count( s.therapyPayCount ) therapyPayCount,
+        s.GSSH_BR_ID
+        FROM
+        (SELECT
+        hs.CLIENT,
+        hs.GSSH_BR_ID,
+        hs.GSSH_BILL_NO,
+        IF( gud.USER_STATUS = '0', 1, NULL ) doctorPayCount,
+        IF( gpb.PRO_CLASS LIKE 'H%', 1, NULL ) therapyPayCount
+        FROM
+        GAIA_SD_SALE_H hs
+        LEFT JOIN(
+        SELECT GSSD_SALER_ID,GSSD_PRO_ID,CLIENT,GSSD_BR_ID,GSSD_BILL_NO FROM GAIA_SD_SALE_D WHERE CLIENT = #{client} AND GSSD_DATE <![CDATA[ >= ]]> #{startDate} AND GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        ) d ON d.GSSD_BR_ID = hs.GSSH_BR_ID
+        AND d.CLIENT = hs.CLIENT
+        AND d.GSSD_BILL_NO = hs.GSSH_BILL_NO
+        LEFT JOIN ( SELECT USER_STATUS, USER_ID, CLIENT FROM GAIA_USER_DATA WHERE CLIENT = #{client} )
+        gud ON gud.USER_ID = d.GSSD_SALER_ID AND gud.CLIENT = hs.CLIENT
+        LEFT JOIN ( SELECT PRO_CLASS, PRO_SELF_CODE, PRO_SITE, CLIENT FROM GAIA_PRODUCT_BUSINESS WHERE CLIENT = #{client} )
+        gpb ON gpb.PRO_SELF_CODE = d.GSSD_PRO_ID AND d.CLIENT = gpb.CLIENT AND gpb.PRO_SITE = hs.GSSH_BR_ID
+        WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND hs.GSSH_DATE <![CDATA[ >= ]]> #{startDate} AND
+        hs.GSSH_DATE <![CDATA[ <= ]]> #{endDate} GROUP BY hs.CLIENT,hs.GSSH_BR_ID,hs.GSSH_BILL_NO ) s GROUP BY
+        s.GSSH_BR_ID) i ON i.GSSH_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN (SELECT CONVERT( SUM( ds.GSSD_AMT ), DECIMAL ( 16, 4 ) ) hykAmt,hs.GSSH_BR_ID FROM GAIA_SD_SALE_H hs
+        LEFT JOIN GAIA_SD_SALE_D ds ON ds.GSSD_BR_ID = hs.GSSH_BR_ID AND ds.CLIENT = hs.CLIENT AND ds.GSSD_BILL_NO =
+        hs.GSSH_BILL_NO WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND hs.GSSH_DATE <![CDATA[ >= ]]>
+        #{startDate} AND hs.GSSH_DATE <![CDATA[ <= ]]> #{endDate} AND hs.GSSH_HYK_NO IS NOT NULL
+        GROUP BY ds.CLIENT,hs.GSSH_BR_ID) j ON j.GSSH_BR_ID = h.GSSH_BR_ID
+        WHERE h.GSSH_HIDE_FLAG = '0'
+        AND h.CLIENT = #{client}
+        <if test="statDatePart!=null and statDatePart!=''">
+            AND h.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+        </if>
+        <if test="endDatePart!=null and endDatePart!=''">
+            AND h.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+        </if>
+        <if test="storeCode != null and storeCode != ''">
+            AND d.GSSD_BR_ID = #{storeCode}
+        </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and d.GSSD_BR_ID  in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND d.GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND d.GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        <if test="gssdProId != null and gssdProId != ''">
+            AND d.GSSD_PRO_ID = #{gssdProId}
+        </if>
+        <include refid="STORE_CATEGORY_CONDITION" />
+        GROUP BY h.CLIENT,h.GSSH_BR_ID
+        ORDER BY h.GSSH_BR_ID
+    </select>
+
+    <select id="findSalesSummaryByBrId" resultType="java.util.Map"
+            parameterType="com.gys.entity.data.salesSummary.SalesSummaryDataReport">
+        SELECT
+        h.GSSH_TIME as datePart,
+        h.GSSH_BR_ID brId,
+        IFNULL(c.STO_SHORT_NAME,c.STO_NAME) brName,
+        IFNULL( CONVERT ( SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY), DECIMAL ( 19,4 ) ), 0 ) AS
+        gssdnormalAmt,
+        IFNULL( CONVERT ( SUM( d.GSSD_AMT ), DECIMAL ( 19, 4 ) ), 0 ) AS gssdAmt,
+        IFNULL(CONVERT ( SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ), DECIMAL ( 19, 4 ) ),0) AS discountAmt,
+        IFNULL(CONCAT(CONVERT (( SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY ) - SUM( d.GSSD_AMT ) ) / SUM( abs(d.GSSD_PRC1) * d.GSSD_QTY ) * 100,DECIMAL ( 10, 2 )),'%'),'0.00%') AS discountRate,
+        IFNULL( CONVERT ( SUM( ( t.GSSH_BILL_NO_RETURN * d.GSSD_ADD_AMT ) ), DECIMAL ( 19, 4 ) ), 0 ) AS costAmt,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT - t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX)),DECIMAL ( 19, 4 )),0 ) AS grossProfitAmt,
+        IFNULL(CONCAT(CONVERT (SUM( d.GSSD_AMT - ( t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+d.GSSD_ADD_TAX) ) )
+        / SUM( d.GSSD_AMT ) * 100,DECIMAL ( 10, 2 )),'%'),'0.00%') AS grossProfitRate,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT )/i.count,DECIMAL ( 19, 4 )),0) gsshSinglePrice,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT ) / g.count,DECIMAL ( 19, 4 )),0) dailyPayAmt,
+        IFNULL(CONVERT (i.count / g.count,DECIMAL(19,2)),0) dailyPayCount,
+        IFNULL(j.hykAmt,0) gsshHykAmt,
+        IFNULL(CONVERT (j.hykAmt / SUM( d.GSSD_AMT ) * 100,DECIMAL ( 19, 2 )),0) AS gsshHykCost,
+        IFNULL(i.count,0) payCount,
+        IFNULL(CONVERT (SUM(t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+GSSD_ADD_TAX)),DECIMAL ( 19, 4)),0) allCostAmt,
+        IFNULL(g.count,0) payDayTime,
+        IFNULL(CONVERT (SUM( d.GSSD_AMT - ( t.GSSH_BILL_NO_RETURN * (d.GSSD_ADD_AMT+d.GSSD_ADD_TAX) ))/g.count,DECIMAL ( 19, 4 )),0 ) dailyProfitAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_JFDH,0)),DECIMAL ( 19, 4 )) jfdhZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_JFDX,0)),DECIMAL ( 19, 4 )) jfdxZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_DZQ,0)),DECIMAL ( 19, 4 )) dzqZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_DYQ,0)),DECIMAL ( 19, 4 )) dyqZkAmt,
+        CONVERT (SUM(IFNULL(d.GSSD_ZK_PM,0)),DECIMAL ( 19, 4 )) pmZkAmt,
+        c.STO_ATTRIBUTE stoAttribute,
+        c.STO_IF_DTP stoIfDtp,
+        c.STO_IF_MEDICALCARE stoIfMedical,
+        c.STO_TAX_CLASS stoTaxClass
+        <if test="payTypeOutData != null and payTypeOutData.size > 0">
+            ,s.*
+        </if>
+        FROM GAIA_SD_SALE_H h
+        LEFT JOIN GAIA_SD_SALE_D d ON d.GSSD_BR_ID = h.GSSH_BR_ID AND d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO =
+        h.GSSH_BILL_NO
+        <if test="userRestrictInfo!=null">
+            <if test="userRestrictInfo.restrictType != '0'.toString()">
+                AND h.GSSH_BR_ID IN
+                <foreach collection="userRestrictInfo.restrictStoCodes" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </if>
+        LEFT JOIN GAIA_STORE_DATA c ON c.CLIENT = h.CLIENT AND c.STO_CODE = h.GSSH_BR_ID
+        LEFT JOIN
+        (SELECT (CASE IFNULL(GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE -1 END)
+        GSSH_BILL_NO_RETURN,GSSH_BILL_NO,GSSH_DATE,GSSH_BR_ID FROM GAIA_SD_SALE_H
+        WHERE GSSH_DATE <![CDATA[ <= ]]> #{endDate} AND GSSH_DATE <![CDATA[ >= ]]> #{startDate}
+        AND CLIENT = #{client}
+        <if test="userRestrictInfo!=null">
+            <if test="userRestrictInfo.restrictType != '0'.toString()">
+                AND GSSH_BR_ID IN
+                <foreach collection="userRestrictInfo.restrictStoCodes" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </if>
+        ) t
+        ON t.GSSH_BILL_NO = h.GSSH_BILL_NO AND t.GSSH_DATE = h.GSSH_DATE AND t.GSSH_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN
+        (SELECT COUNT( * ) count,s.GSSH_BR_ID FROM
+            (
+            SELECT hs.GSSH_BR_ID,hs.GSSH_DATE FROM GAIA_SD_SALE_H hs
+            WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND hs.GSSH_DATE <![CDATA[ >= ]]> #{startDate} AND
+            hs.GSSH_DATE <![CDATA[ <= ]]> #{endDate}
+        <if test="userRestrictInfo!=null">
+            <if test="userRestrictInfo.restrictType != '0'.toString()">
+                AND GSSH_BR_ID IN
+                <foreach collection="userRestrictInfo.restrictStoCodes" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </if>
+             GROUP BY hs.CLIENT, hs.GSSH_BR_ID, hs.GSSH_DATE
+            ) s GROUP BY s.GSSH_BR_ID
+        ) g ON g.GSSH_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN (SELECT count(s.GSSH_BILL_NO) count,s.GSSH_BR_ID FROM (SELECT hs.CLIENT,hs.GSSH_BR_ID,hs.GSSH_BILL_NO FROM GAIA_SD_SALE_H hs
+        WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND hs.GSSH_DATE <![CDATA[ >= ]]> #{startDate} AND
+        hs.GSSH_DATE <![CDATA[ <= ]]> #{endDate} GROUP BY hs.CLIENT,hs.GSSH_BR_ID,hs.GSSH_BILL_NO ) s GROUP BY
+        s.GSSH_BR_ID) i ON i.GSSH_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN (SELECT CONVERT( SUM( ds.GSSD_AMT ), DECIMAL ( 16, 4 ) ) hykAmt,hs.GSSH_BR_ID FROM GAIA_SD_SALE_H hs
+        LEFT JOIN GAIA_SD_SALE_D ds ON ds.GSSD_BR_ID = hs.GSSH_BR_ID AND ds.CLIENT = hs.CLIENT AND ds.GSSD_BILL_NO =
+        hs.GSSH_BILL_NO WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND hs.GSSH_DATE <![CDATA[ >= ]]>
+        #{startDate} AND hs.GSSH_DATE <![CDATA[ <= ]]> #{endDate} AND hs.GSSH_HYK_NO IS NOT NULL
+        GROUP BY ds.CLIENT,hs.GSSH_BR_ID) j ON j.GSSH_BR_ID = h.GSSH_BR_ID
+        <if test="payTypeOutData != null and payTypeOutData.size > 0">
+            LEFT JOIN (SELECT GSSPM_BR_ID,
+            GROUP_CONCAT(DISTINCT GSSPM_NAME SEPARATOR ';' ) payName,
+            <foreach collection="payTypeOutData" item="item" separator=",">
+                IFNULL(CONVERT(SUM(CASE GSSPM_ID WHEN #{item.gspmId} THEN GSSPM_AMT END ),DECIMAL(19,4)),0)
+                #{item.gspmId}
+            </foreach>
+            FROM GAIA_SD_SALE_PAY_MSG
+            WHERE CLIENT = #{client}
+            AND GSSPM_DATE <![CDATA[ >= ]]> #{startDate}
+            AND GSSPM_DATE <![CDATA[ <= ]]> #{endDate}
+            <if test="storeCode != null and storeCode != ''">
+                AND GSSPM_BR_ID = #{storeCode}
+            </if>
+            <if test="siteArr != null and siteArr.length > 0">
+                and GSSPM_BR_ID in
+                <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND GSSPM_TYPE = 1
+            group by GSSPM_BR_ID) s on s.GSSPM_BR_ID = h.GSSH_BR_ID
+        </if>
+        WHERE h.GSSH_HIDE_FLAG = '0'
+        AND h.CLIENT = #{client}
+        <if test="statDatePart!=null and statDatePart!=''">
+            AND h.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+        </if>
+        <if test="endDatePart!=null and endDatePart!=''">
+            AND h.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+        </if>
+        <if test="storeCode != null and storeCode != ''">
+            AND d.GSSD_BR_ID = #{storeCode}
+        </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and d.GSSD_BR_ID  in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND d.GSSD_DATE <![CDATA[ >= ]]> #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND d.GSSD_DATE <![CDATA[ <= ]]> #{endDate}
+        </if>
+        <if test="gssdProId != null and gssdProId != ''">
+            AND d.GSSD_PRO_ID = #{gssdProId}
+        </if>
+        <if test="payTypeOutData != null and payTypeOutData.size() > 0">
+            <if test="payName != null and payName.length > 0">
+                and
+                <foreach collection="payName" item="item" index="index"  open="(" close=")" separator="OR">
+                    s.payName  like CONCAT('%',#{item},'%')
+                </foreach>
+            </if>
+        </if>
+        <include refid="STORE_CATEGORY_CONDITION" />
+        GROUP BY h.CLIENT,h.GSSH_BR_ID
+        ORDER BY h.GSSH_BR_ID
+    </select>
+
+    <sql id="STORE_CATEGORY_CONDITION" >
+        <trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+            <if test="stoGssgTypes!=null and stoGssgTypes.size">
+                EXISTS (
+                SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE c.CLIENT = gssg.CLIENT AND c.STO_CODE = gssg.GSSG_BR_ID
+                AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+                <foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+                    (#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+                </foreach>
+                )
+            </if>
+            <if test="stoAttributes!=null and stoAttributes.size">
+                OR c.STO_ATTRIBUTE IN
+                <foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+                    #{stoAttribute}
+                </foreach>
+            </if>
+            <if test="stoAttribute==''" >
+                OR c.STO_ATTRIBUTE IS NOT NULL AND c.STO_ATTRIBUTE != ''
+            </if>
+            <if test="stoIfMedicals!=null and stoIfMedicals.size">
+                OR c.STO_IF_MEDICALCARE IN
+                <foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+                    #{stoIfMedical}
+                </foreach>
+            </if>
+            <if test="stoIfMedical==''" >
+                OR c.STO_IF_MEDICALCARE IS NOT NULL AND c.STO_IF_MEDICALCARE != ''
+            </if>
+            <if test="stoTaxClasss!=null and stoTaxClasss.size">
+                OR c.STO_TAX_CLASS IN
+                <foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+                    #{stoTaxClass}
+                </foreach>
+            </if>
+            <if test="stoTaxClass==''" >
+                OR c.STO_TAX_CLASS IS NOT NULL AND c.STO_TAX_CLASS != ''
+            </if>
+            <if test="stoIfDtps!=null and stoIfDtps.size">
+                OR c.STO_IF_DTP IN
+                <foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+                    #{stoIfDtp}
+                </foreach>
+            </if>
+            <if test="stoIfDtp==''" >
+                OR c.STO_IF_DTP IS NOT NULL AND c.STO_IF_DTP != ''
+            </if>
+        </trim>
+    </sql>
+
+    <select id="findSalesSummaryByDate" resultType="java.util.Map">
+
+        select
+        tb.datePart,
+        count(tb.stoCode) as stoCount,
+        tb.saleDate,
+        ifnull(sum(tb.amountReceivable),0) as amountReceivable,
+        ifnull(sum(tb.numberTrades),0) numberTrades,
+        ifnull(round(sum(tb.amt)/sum(tb.numberTrades),2),0) perTicketSales,
+        ifnull(sum(tb.amt),0) amt,
+        ifnull(sum(tb.zkJfdx),0) zkJfdx,
+        ifnull(sum(tb.zkDyq),0) zkDyq,
+        ifnull(sum(tb.zkDzq),0) zkDzq,
+        ifnull(sum(tb.movPrices),0) movPrices,
+        ifnull(sum(tb.grossProfitMargin),0) grossProfitMargin,
+        ifnull(sum(tb.grossProfitMarginByDay),0) grossProfitMarginByDay,
+        ifnull(round(sum(tb.grossProfitMargin)*100/sum(tb.amt),2),0) grossProfitRate,
+        ifnull(sum(tb.discountAmt),0) discountAmt,
+        ifnull(sum(tb.grossProfitMargin)/count(tb.stoCode),0) as grossProfitMarginByStoAvg,
+        ifnull(sum(tb.amt)/count(tb.stoCode),0) as amtByStoAvg,
+        ifnull(sum(tb.numberTrades)/count(tb.stoCode),0) as numberTradesByStoAvg,
+        ifnull(round(sum(tb.discountAmt)*100/sum(tb.amountReceivable),2),0) discountRate,
+        ifnull(sum(tb.amtByDay),0) amtByDay,
+        ifnull(sum(tb.numberTradesByDay),0) numberTradesByDay,
+        ifnull(sum( tb.memberSale ),0) memberSale,
+        ifnull(round(sum(tb.memberSale)*100/sum( tb.amt),2),0) memberSaleRate
+        <if test="payTypeOutData != null and payTypeOutData.size() > 0">
+            ,tb.payName
+            <foreach collection="payTypeOutData" item="item">
+                ,IFNULL(CONVERT(sum(${item.gspmKey}),DECIMAL(15,4)),0) As #{item.gspmKey}
+            </foreach>
+        </if>
+        from
+        (
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        sd.saleYear,
+        sd.saleMonth,
+        sd.saleDay,
+        <if test="dateType != null and dateType != ''">
+            <if test=" dateType == '1'.toString() ">
+                sd.saleYear saleDate,
+            </if>
+            <if test=" dateType == '2'.toString() ">
+                CONCAT(sd.saleYear,LPAD(sd.saleMonth,2,'0')) saleDate,
+            </if>
+            <if test=" dateType == '3'.toString() ">
+                CONCAT(sd.saleYear,LPAD(sd.saleMonth,2,'0'),LPAD(sd.saleDay,2,'0')) saleDate,
+            </if>
+        </if>
+        sd.GSSD_BR_ID stoCode,
+        sum( sd.amountReceivable ) amountReceivable,
+        count( DISTINCT sd.GSSD_BILL_NO ) numberTrades,
+        sum( sd.GSSD_AMT )/ count( DISTINCT sd.GSSD_BILL_NO ) perTicketSales,
+        sum( sd.GSSD_AMT ) amt,
+        sum( sd.GSSD_ZK_JFDX ) zkJfdx,
+        sum( sd.GSSD_ZK_DYQ ) zkDyq,
+        sum( sd.GSSD_ZK_DZQ ) zkDzq,
+        sum( sd.GSSD_MOV_PRICES ) movPrices,
+        sum( sd.GSSD_AMT - sd.GSSD_MOV_PRICES ) grossProfitMargin,
+        sum( sd.GSSD_AMT - sd.GSSD_MOV_PRICES )/ count( DISTINCT sd.GSSD_DATE ) grossProfitMarginByDay,
+        sum( sd.GSSD_AMT - sd.GSSD_MOV_PRICES ) / sum( sd.GSSD_AMT )* 100 grossProfitRate,
+        sum( sd.amountReceivable ) - sum( sd.GSSD_AMT ) discountAmt,
+        (
+        sum( sd.amountReceivable ) - sum( sd.GSSD_AMT ))/ sum( sd.amountReceivable )* 100 discountRate,
+        sum( sd.GSSD_AMT )/ count( DISTINCT sd.GSSD_DATE ) amtByDay,
+        count( DISTINCT sd.GSSD_BILL_NO )/ count( DISTINCT sd.GSSD_DATE ) numberTradesByDay,
+        sum( sd.memberSale ) memberSale,
+        sum( sd.memberSale )/ sum( sd.GSSD_AMT ) * 100 memberSaleRate,
+        sd.datePart
+        <if test="payTypeOutData != null and payTypeOutData.size() > 0">
+            ,s.payName
+            <foreach collection="payTypeOutData" item="item">
+                ,IFNULL(CONVERT(sum(${item.gspmKey}),DECIMAL(15,4)),0) As #{item.gspmKey}
+            </foreach>
+        </if>
+        FROM
+        (
+        SELECT
+        sale.CLIENT,
+        sale.GSSD_DATE,
+        sale.GSSD_BILL_NO,
+        YEAR (
+        STR_TO_DATE( sale.GSSD_DATE, '%Y%m%d' )) saleYear,
+        MONTH (
+        STR_TO_DATE( sale.GSSD_DATE, '%Y%m%d' )) saleMonth,
+        DAY (
+        STR_TO_DATE( sale.GSSD_DATE, '%Y%m%d' )) saleDay,
+        sale.GSSD_BR_ID,
+        SUM( sale.GSSD_AMT ) GSSD_AMT,
+        SUM( CASE WHEN sale.GSSH_HYK_NO IS NOT NULL THEN sale.GSSD_AMT ELSE 0 END ) AS memberSale,
+        IFNULL( SUM( sale.GSSD_ZK_JFDX ), 0 ) GSSD_ZK_JFDX,
+        IFNULL( SUM( sale.GSSD_ZK_DYQ ), 0 ) GSSD_ZK_DYQ,
+        IFNULL( SUM( sale.GSSD_ZK_DZQ ), 0 ) GSSD_ZK_DZQ,
+        SUM(sale.GSSD_PRC1 * ABS( sale.GSSD_QTY )) AS amountReceivable,
+        SUM(sale.GSSD_MOV_PRICES) GSSD_MOV_PRICES,
+        sale.datePart
+        FROM
+        (
+        SELECT
+        gssd.CLIENT,
+        gssd.GSSD_DATE,
+        gssd.GSSD_BILL_NO,
+        gssd.GSSD_BR_ID,
+        GSSD_AMT,
+        gssh.GSSH_HYK_NO,
+        GSSD_ZK_JFDX,
+        GSSD_ZK_DYQ,
+        GSSD_ZK_DZQ,
+        gssd.GSSD_PRC1,
+        gssd.GSSD_QTY,
+        gssh.GSSH_TIME AS datePart,
+        CASE
+
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ELSE ( gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ) * - 1
+        END AS GSSD_MOV_PRICES
+        FROM
+        GAIA_SD_SALE_D gssd
+        LEFT JOIN GAIA_SD_SALE_H gssh ON gssd.CLIENT = gssh.CLIENT
+        AND gssd.GSSD_BR_ID = gssh.GSSH_BR_ID
+        AND gssd.GSSD_BILL_NO = gssh.GSSH_BILL_NO
+        WHERE
+        gssd.CLIENT = #{client}
+        AND gssh.GSSH_HIDE_FLAG = '0'
+        <if test="userRestrictInfo!=null">
+            <if test="userRestrictInfo.restrictType != '0'.toString()">
+                AND gssd.GSSD_BR_ID IN
+                <foreach collection="userRestrictInfo.restrictStoCodes" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </if>
+        <if test="stoCode != null and stoCode != ''">
+            AND gssd.GSSD_BR_ID = #{stoCode}
+        </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and gssd.GSSD_BR_ID in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="startDate != null and startDate != ''">
+            and gssd.GSSD_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and gssd.GSSD_DATE &lt;= #{endDate}
+        </if>
+        <if test="statDatePart!=null and statDatePart!=''">
+            AND gssh.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+        </if>
+        <if test="endDatePart!=null and endDatePart!=''">
+            AND gssh.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+        </if>
+        ) sale
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_BILL_NO,
+        sale.GSSD_DATE
+        ) sd
+        <if test="payTypeOutData != null and payTypeOutData.size() > 0">
+            LEFT JOIN (
+            SELECT
+            GSSPM_BR_ID,
+            GSSPM_BILL_NO,
+            GROUP_CONCAT(DISTINCT GSSPM_NAME SEPARATOR ';' ) payName,
+            <foreach collection="payTypeOutData" item="item" separator=",">
+                IFNULL(CONVERT(SUM(CASE GSSPM_ID WHEN #{item.gspmId} THEN GSSPM_AMT END ),DECIMAL(15,4)),'0.00')
+                #{item.gspmKey}
+            </foreach>
+            FROM
+            GAIA_SD_SALE_PAY_MSG
+            WHERE
+            CLIENT = #{client}
+            <if test="stoCode != null and stoCode != ''">
+                AND GSSPM_BR_ID = #{stoCode}
+            </if>
+            <if test="siteArr != null and siteArr.length > 0">
+                and GSSPM_BR_ID in
+                <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="startDate != null and startDate != ''">
+                and GSSPM_DATE &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                and GSSPM_DATE &lt;= #{endDate}
+            </if>
+            AND GSSPM_TYPE = 1
+            GROUP BY
+            CLIENT,
+            GSSPM_BR_ID,
+            GSSPM_BILL_NO,
+            GSSPM_DATE
+            ) s ON s.GSSPM_BR_ID = sd.GSSD_BR_ID
+            AND s.GSSPM_BILL_NO = sd.GSSD_BILL_NO
+        </if>
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = sd.CLIENT
+        AND sto.STO_CODE = sd.GSSD_BR_ID
+        <where>
+            <if test="payTypeOutData != null and payTypeOutData.size() > 0">
+                <if test="payName != null and payName.length > 0">
+                    and
+                    <foreach collection="payName" item="item" index="index" open="(" close=")" separator="OR">
+                        s.payName like CONCAT('%',#{item},'%')
+                    </foreach>
+                </if>
+            </if>
+        </where>
+        GROUP BY
+        sd.GSSD_BR_ID,
+        sd.saleYear,
+        saleDate
+        <if test="dateType != null and dateType != ''">
+            <if test=" dateType == '2'.toString() ">
+                ,sd.saleMonth
+            </if>
+            <if test=" dateType == '3'.toString() ">
+                ,sd.saleMonth
+                ,sd.saleDay
+            </if>
+        </if>
+        ) tab
+        <where>
+            <if test="saleType != null and saleType != ''">
+                and ${saleType} IS NOT NULL AND ${saleType} != 0
+            </if>
+        </where>
+        group by
+        tab.saleDate,
+        tab.stoCode
+        ORDER BY
+        tab.stoCode,
+        tab.saleDate
+        <if test="dateType != null and dateType != ''">
+            <if test=" dateType == '2'.toString() ">
+                ,tab.saleMonth
+            </if>
+            <if test=" dateType == '3'.toString() ">
+                ,tab.saleMonth
+                ,tab.saleDay
+            </if>
+        </if>
+        ) tb
+        group by
+        tb.saleDate
+        <!--        HAVING 1=1-->
+        <!--        <if test="statDatePart!=null and statDatePart!=''">-->
+        <!--            AND tb.datePart <![CDATA[ >= ]]> #{statDatePart}-->
+        <!--        </if>-->
+        <!--        <if test="endDatePart!=null and endDatePart!=''">-->
+        <!--            AND tb.datePart <![CDATA[ <= ]]> #{endDatePart}-->
+        <!--        </if>-->
+    </select>
+
+    <select id="findSalesSummaryByTotal" resultType="java.util.Map">
+        select count(*) as stoCount
+        from (
+                 SELECT GSSH_BR_ID
+                 FROM GAIA_SD_SALE_H
+                 WHERE client = #{client}
+                   AND gssh_date &gt;= #{startDate}
+                   AND gssh_date &lt;= #{endDate}
+                 GROUP BY GSSH_BR_ID
+             ) a
+    </select>
+
+    <select id="selectAuthStoreList" resultType="java.lang.String">
+        select AUTHOBJ_SITE from GAIA_AUTHCONFI_DATA where CLIENT = #{client} and AUTHCONFI_USER = #{userId} GROUP BY AUTHOBJ_SITE
+    </select>
+
+    <select id="selectProductUnit" resultType="java.util.Map">
+        SELECT
+        count(DISTINCT(pcTem.GSSD_BILL_NO) ) AS jycs,
+        pcTem.GSSD_BR_ID brId,
+        count(  pcTem.GSSD_PRO_ID ) AS xspx,
+        ifnull(CONVERT(count(pcTem.GSSD_PRO_ID)/count(DISTINCT ( pcTem.GSSD_BILL_NO )),DECIMAL ( 19, 2 )),0) as guest,
+        ifnull(SUM(pcTem.GSSD_AMT),0) gssdAmt,
+        ifnull(SUM(pcTem.GSSD_QTY),0) gssdQty,
+        ifnull(CONVERT(SUM(pcTem.GSSD_AMT)/SUM(pcTem.GSSD_QTY),DECIMAL ( 19, 2 )),0) as productunitprice
+        <!--ROUND( count( DISTINCT pcTem.GSSD_PRO_ID ) / count( DISTINCT ( pcTem.GSSD_BILL_NO )), 2 ) as guest,-->
+        <!--ROUND(sum(pcTem.amt) * pcTem.qty / pcTem.GSSD_PRO_ID,2) as productunitprice,-->
+        <!--pcTem.GSSD_BR_ID as brId-->
+
+        FROM
+        <if test="brIdList!=null and brIdList.size>0">
+            (
+            <foreach collection="brIdList" item="brId" index="index" separator="union all">
+                select #{brId} as brr
+            </foreach>
+            ) as br  left join
+        </if>
+        (
+        SELECT
+        pcd.CLIENT,
+        pcd.GSSD_BILL_NO,
+        pcd.GSSD_BR_ID,
+        pcd.GSSD_DATE,
+        pcd.GSSD_PRO_ID,
+        pcd.GSSD_SALER_ID,
+        pcd.GSSD_AMT ,
+        pcd.GSSD_QTY
+        FROM
+        GAIA_SD_SALE_D pcd
+        LEFT JOIN GAIA_SD_SALE_H pch ON pch.CLIENT = pcd.CLIENT
+        AND pcd.GSSD_BILL_NO = pch.GSSH_BILL_NO
+        AND pcd.GSSD_BR_ID = pch.GSSH_BR_ID
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pcpb ON pch.CLIENT = pcpb.CLIENT
+        AND pcd.GSSD_PRO_ID = pcpb.PRO_SELF_CODE
+        AND pcd.GSSD_BR_ID = pcpb.PRO_SITE
+        WHERE
+        pch.GSSH_HIDE_FLAG = '0'
+        AND pcd.GSSD_SALER_ID IS NOT NULL
+        <if test="client!=null and client!=''">
+            AND pch.CLIENT = #{client}
+        </if>
+        <if test="brIdList!=null and brIdList.size>0">
+            and pch.GSSH_BR_ID in
+            <foreach collection="brIdList" item="brId" index="index" separator="," open="(" close=")">
+                #{brId}
+            </foreach>
+        </if>
+        <if test="startDate!=null and startDate!=''">
+            AND pch.GSSH_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate!=null and endDate!=''">
+            AND pch.GSSH_DATE &lt;= #{endDate}
+        </if>
+        AND pcpb.PRO_CLASS NOT IN ( SELECT PRO_CLASS_CODE FROM GAIA_PRODUCT_CLASS pcpc WHERE pcpc.PRO_CLASS_CODE LIKE
+        '301%' OR pcpc.PRO_CLASS_CODE LIKE '302%' OR pcpc.PRO_CLASS_CODE LIKE '8%' )) pcTem
+        <if test="brIdList!=null and brIdList.size>0">
+            on brr=pcTem.GSSD_BR_ID
+        </if>
+        GROUP BY
+        pcTem.GSSD_BR_ID
+    </select>
+
+    <select id="selectPopUpData" resultType="java.util.Map">
+        SELECT t.CLIENT AS client,
+        t.SITE_CODE AS brId,
+        s.CREATE_BY AS createBy,
+        ifnull(s.unitCount,0) AS unitCount,
+        ifnull(t.inputCount,0) AS inputCount
+        FROM
+        (SELECT
+        rse.CLIENT,
+        rse.SITE_CODE,
+        rse.CREATE_BY,
+        count(rse.PRO_CODE) AS inputCount
+        FROM
+        GAIA_SD_RELATED_SALE_EJECT rse
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb
+        ON rse.CLIENT = pb.CLIENT
+        AND rse.SITE_CODE = pb.PRO_SITE
+        AND rse.PRO_CODE = pb.PRO_SELF_CODE
+        WHERE
+        rse.CLIENT = #{client}
+        <if test="brIdList!=null and brIdList.size>0">
+            and rse.SITE_CODE in
+            <foreach collection="brIdList" index="index" item="siteCode" open="(" close=")" separator=",">
+                #{siteCode}
+            </foreach>
+        </if>
+        AND rse.CREATE_DATE <![CDATA[>=]]> #{startDate}
+        AND rse.CREATE_DATE <![CDATA[<=]]> #{endDate}
+        AND pb.PRO_CLASS NOT IN (
+        SELECT
+        PRO_CLASS_CODE
+        FROM
+        GAIA_PRODUCT_CLASS pcpc
+        WHERE
+        pcpc.PRO_CLASS_CODE LIKE '301%'
+        OR pcpc.PRO_CLASS_CODE LIKE '302%'
+        OR pcpc.PRO_CLASS_CODE LIKE '8%'
+        )
+        GROUP BY rse.CLIENT,rse.SITE_CODE) t LEFT JOIN
+        (SELECT
+        rse.CLIENT,
+        rse.SITE_CODE,
+        rse.CREATE_BY,
+        count(rse.PRO_CODE) AS unitCount
+        FROM
+        GAIA_SD_RELATED_SALE_EJECT rse
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb
+        ON rse.CLIENT = pb.CLIENT
+        AND rse.SITE_CODE = pb.PRO_SITE
+        AND rse.PRO_CODE = pb.PRO_SELF_CODE
+        WHERE
+        rse.CLIENT = #{client}
+        <if test="brIdList!=null and brIdList.size>0">
+            and rse.SITE_CODE in
+            <foreach collection="brIdList" index="index" item="siteCode" open="(" close=")" separator=",">
+                #{siteCode}
+            </foreach>
+        </if>
+        AND rse.CREATE_DATE <![CDATA[>=]]> #{startDate}
+        AND rse.CREATE_DATE <![CDATA[<=]]> #{endDate}
+        AND pb.PRO_CLASS NOT IN (
+        SELECT
+        PRO_CLASS_CODE
+        FROM
+        GAIA_PRODUCT_CLASS pcpc
+        WHERE
+        pcpc.PRO_CLASS_CODE LIKE '301%'
+        OR pcpc.PRO_CLASS_CODE LIKE '302%'
+        OR pcpc.PRO_CLASS_CODE LIKE '8%'
+        )
+        AND rse.RELATED_SALE_FLAG = '1'
+        GROUP BY rse.CLIENT,rse.SITE_CODE) s
+        ON t.CLIENT = s.CLIENT AND t.SITE_CODE = s.SITE_CODE
+    </select>
+
+    <select id="selectPopUpBrData" resultType="java.util.Map">
+        SELECT t.CLIENT AS client, t.GSSD_BR_ID AS brId, t.GSSD_SALER_ID AS sellerCode,businessCount,
+        businessAmt,IFNULL(unionBussinessCount,0) AS unionBusinessCount,IFNULL(unionBussinessAmt,0) AS unionBusinessAmt
+        FROM (SELECT
+        d.GSSD_SALER_ID,
+        d.CLIENT,
+        d.GSSD_BR_ID,
+        COUNT(DISTINCT(h.GSSH_BILL_NO)) AS businessCount,
+        SUM(h.GSSH_YS_AMT) AS businessAmt
+        FROM
+        GAIA_SD_SALE_D d
+        LEFT JOIN GAIA_SD_SALE_H h ON d.CLIENT = h.CLIENT
+        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON d.CLIENT = pb.CLIENT
+        AND d.GSSD_PRO_ID = pb.PRO_SELF_CODE
+        AND d.GSSD_BR_ID = pb.PRO_SITE
+        WHERE
+        h.GSSH_HIDE_FLAG = '0'
+        AND h.CLIENT = #{client}
+        <if test="brIdList!=null and brIdList.size>0">
+            and h.GSSH_BR_ID in
+            <foreach collection="brIdList" index="index" item="siteCode" open="(" close=")" separator=",">
+                #{siteCode}
+            </foreach>
+        </if>
+        AND d.GSSD_SALER_ID IS NOT NULL
+        <if test="queryStartDate != null and queryStartDate != ''">
+            AND h.GSSH_DATE <![CDATA[>=]]> #{queryStartDate}
+        </if>
+        <if test="queryEndDate != null and queryEndDate != ''">
+            AND h.GSSH_DATE <![CDATA[<=]]> #{queryEndDate}
+        </if>
+        AND pb.PRO_CLASS NOT IN (
+        SELECT
+        PRO_CLASS_CODE
+        FROM
+        GAIA_PRODUCT_CLASS pcpc
+        WHERE
+        pcpc.PRO_CLASS_CODE LIKE '301%'
+        OR pcpc.PRO_CLASS_CODE LIKE '302%'
+        OR pcpc.PRO_CLASS_CODE LIKE '8%'
+        )
+        GROUP BY d.CLIENT, d.GSSD_BR_ID) t LEFT JOIN
+
+        (SELECT
+        d.CLIENT,
+        d.GSSD_BR_ID,
+        COUNT(DISTINCT(h.GSSH_BILL_NO)) AS unionBussinessCount,
+        SUM(d.GSSD_AMT) AS unionBussinessAmt
+        FROM
+        GAIA_SD_SALE_D d
+        LEFT JOIN GAIA_SD_SALE_H h ON d.CLIENT = h.CLIENT
+        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON d.CLIENT = pb.CLIENT
+        AND d.GSSD_PRO_ID = pb.PRO_SELF_CODE
+        AND d.GSSD_BR_ID = pb.PRO_SITE
+        WHERE
+        h.GSSH_HIDE_FLAG = '0'
+        AND h.CLIENT = #{client}
+        <if test="brIdList!=null and brIdList.size>0">
+            and h.GSSH_BR_ID in
+            <foreach collection="brIdList" index="index" item="siteCode" open="(" close=")" separator=",">
+                #{siteCode}
+            </foreach>
+        </if>
+        AND d.GSSD_SALER_ID IS NOT NULL
+        <if test="queryStartDate != null and queryStartDate != ''">
+            AND h.GSSH_DATE <![CDATA[>=]]> #{queryStartDate}
+        </if>
+        <if test="queryEndDate != null and queryEndDate != ''">
+            AND h.GSSH_DATE <![CDATA[<=]]> #{queryEndDate}
+        </if>
+        AND d.GSSD_IF_RELATED_SALE = '1'
+        AND pb.PRO_CLASS
+        GROUP BY d.CLIENT, d.GSSD_BR_ID) s
+        ON t.CLIENT = s.CLIENT AND t.GSSD_BR_ID = s.GSSD_BR_ID
+
+    </select>
+
+    <select id="selectClosingData" resultType="java.util.Map">
+        SELECT
+        pcd.CLIENT AS client,
+        pcd.GSSD_BR_ID AS siteCode,
+        pcd.GSSD_SALER_ID AS sellerCode,
+        COUNT(DISTINCT(pch.GSSH_BILL_NO)) AS unionBussinessCount
+        FROM
+        GAIA_SD_SALE_D pcd
+        LEFT JOIN GAIA_SD_SALE_H pch ON pch.CLIENT = pcd.CLIENT
+        AND pcd.GSSD_BILL_NO = pch.GSSH_BILL_NO
+        AND pcd.GSSD_BR_ID = pch.GSSH_BR_ID
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pcpb ON pch.CLIENT = pcpb.CLIENT
+        AND pcd.GSSD_PRO_ID = pcpb.PRO_SELF_CODE
+        AND pcd.GSSD_BR_ID = pcpb.PRO_SITE
+        WHERE
+        pch.GSSH_HIDE_FLAG = '0'
+        AND pch.CLIENT = #{client}
+        <if test="brIdList!=null and brIdList.size>0">
+            and pch.GSSH_BR_ID in
+            <foreach collection="brIdList" index="index" item="siteCode" open="(" close=")" separator=",">
+                #{siteCode}
+            </foreach>
+        </if>
+        AND pcd.GSSD_SALER_ID IS NOT NULL
+        <if test="queryStartDate != null and queryStartDate != ''">
+            AND pch.GSSH_DATE <![CDATA[>=]]> #{queryStartDate}
+        </if>
+        <if test="queryEndDate != null and queryEndDate != ''">
+            AND pch.GSSH_DATE <![CDATA[<=]]> #{queryEndDate}
+        </if>
+        <!-- <if test="queryUserId != null and queryUserId != ''">
+             AND pcd.GSSD_SALER_ID = #{queryUserId}
+         </if>-->
+        AND pch.GSSH_IF_RELATED_SALE = '1'
+        AND pcpb.PRO_CLASS NOT IN (
+        SELECT
+        PRO_CLASS_CODE
+        FROM
+        GAIA_PRODUCT_CLASS pcpc
+        WHERE
+        pcpc.PRO_CLASS_CODE LIKE '301%'
+        OR pcpc.PRO_CLASS_CODE LIKE '302%'
+        OR pcpc.PRO_CLASS_CODE LIKE '8%'
+        )
+        GROUP BY pcd.CLIENT, pcd.GSSD_BR_ID
+    </select>
+
+
+    <select id="selectRenHePersonSales" resultType="com.gys.entity.renhe.RenHePersonSales">
+        SELECT
+        tab.CLIENT,
+        tab.userCode,
+        ud.USER_NAM userName,
+        tab.proClassName,
+        <choose>
+            <when test="notSto == 'Y'.toString()">
+                tab.GSSD_BR_ID stoCode,
+                IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) stoName,
+            </when>
+        </choose>
+
+        <choose>
+            <when test="notSales == 'N'.toString()">
+                ROUND(COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )),2) saleDays,
+                ROUND(SUM( tab.amt )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )),2) amtByDay,
+                ROUND(COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )),2) numberTradesByDay,
+            </when>
+            <when test="notSales == 'Y'.toString()">
+                ROUND(COUNT(DISTINCT tab.GSSD_DATE),2) saleDays,
+                ROUND(SUM( tab.amt )/ COUNT(DISTINCT tab.GSSD_DATE),2) amtByDay,
+                ROUND(COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT tab.GSSD_DATE),2) numberTradesByDay,
+            </when>
+        </choose>
+        ROUND(SUM( tab.amountReceivable ),2) amountReceivable,
+        ROUND(SUM( tab.amt ),2) amt,
+        ROUND(SUM( tab.ctmAmt ),2) ctmAmt,
+        ROUND(COUNT( DISTINCT tab.GSSD_BILL_NO ),2) numberTrades,
+        ROUND(SUM( tab.amt )/ COUNT( DISTINCT tab.GSSD_BILL_NO ),2) perTicketSales,
+        ROUND(SUM( tab.amountReceivable ) - SUM( tab.amt ),2) discountAmt,
+        ROUND((SUM( tab.amountReceivable ) - SUM( tab.amt ))/ SUM( tab.amountReceivable )* 100,2) discountRate,
+        ROUND(SUM( tab.memberSale ),2) memberSale,
+        ROUND(SUM( tab.memberSale )/ SUM( tab.amt ) * 100,2) memberSaleRate,
+        ROUND(SUM( tab.includeTaxSale ),2) includeTaxSale,
+        ROUND(SUM( tab.ctmIncludeTaxSale ),2) ctmIncludeTaxSale,
+        ROUND(SUM( tab.amt )- SUM( tab.includeTaxSale ),2) grossProfitMargin,
+        ROUND(SUM( tab.ctmAmt )- SUM( tab.ctmIncludeTaxSale ),2) ctmGrossProfitMargin,
+        ROUND((SUM( tab.amt )- SUM( tab.includeTaxSale )) / sum( tab.amt )* 100,2) grossProfitRate,
+        IFNULL(ROUND((SUM( tab.ctmAmt )- SUM( tab.ctmIncludeTaxSale )) / sum( tab.ctmAmt )* 100,2),0) ctmGrossProfitRate,
+        ROUND(SUM( tab.proCount )/COUNT( DISTINCT tab.GSSD_BILL_NO ),2 ) kpc,
+        ROUND(SUM( tab.amt )/ SUM( tab.qty ), 2 ) pdj
+        FROM
+        (
+        SELECT
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.userCode,
+        sale.GSSD_BILL_NO,
+        sale.GSSD_PRO_ID,
+        pb.PRO_CLASS,
+        sale.type,
+        SUM( sale.amountReceivable ) amountReceivable,
+        SUM( sale.amt ) amt,
+        SUM( sale.includeTaxSale ) includeTaxSale,
+        pb.PRO_CLASS_NAME proClassName,
+        SUM( CASE pb.PRO_SFJY WHEN 1 THEN sale.amt ELSE 0 END ) ctmAmt,
+        SUM( CASE pb.PRO_SFJY WHEN 1 THEN sale.sale.includeTaxSale ELSE 0 END ) ctmIncludeTaxSale,
+        SUM( sale.memberSale ) memberSale,
+        COUNT(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.GSSD_PRO_ID END
+        ) proCount,
+        SUM(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.qty END
+        ) qty
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX includeTaxSale,
+        '1' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NULL UNION ALL
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        (saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX)* -1 includeTaxSale,
+        '2' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NOT NULL
+        ) sale
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = sale.CLIENT
+        AND pb.PRO_SITE = sale.GSSD_BR_ID
+        AND pb.PRO_SELF_CODE = sale.GSSD_PRO_ID
+        <where>
+            <if test="userCode != null and userCode != ''">
+                AND sale.userCode = #{userCode}
+            </if>
+        </where>
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.GSSD_BILL_NO,
+        sale.userCode
+        ) tab
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+        AND sto.STO_CODE = tab.GSSD_BR_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+        AND ud.USER_ID = tab.userCode
+        GROUP BY
+        tab.CLIENT,
+        <choose>
+            <when test="notSto == 'Y'.toString()">
+                tab.GSSD_BR_ID,
+            </when>
+        </choose>
+
+        tab.userCode
+        ORDER BY
+        tab.CLIENT,
+        tab.userCode,
+        tab.GSSD_BR_ID
+    </select>
+
+    <select id="selectStoreSalesSummaryByDate" resultType="java.util.Map">
+        select
+        tb.datePart,
+        count(tb.stoCode) as stoCount,
+        tb.saleDate,
+        ifnull(sum(tb.amountReceivable),0) as amountReceivable,
+        ifnull(sum(tb.numberTrades),0) numberTrades,
+        ifnull(round(sum(tb.amt)/sum(tb.numberTrades),2),0) perTicketSales,
+        ifnull(sum(tb.amt),0) amt,
+        ifnull(sum(tb.zkJfdx),0) zkJfdx,
+        ifnull(sum(tb.zkDyq),0) zkDyq,
+        ifnull(sum(tb.zkDzq),0) zkDzq,
+        ifnull(sum(tb.doctorGssdAmt),0) doctorGssdAmt,
+        ifnull(sum(tb.doctorGrossProfitAmt),0) doctorGrossProfitAmt,
+        <!-- 医疗毛利率 -->
+        IFNULL(CONVERT(SUM( tb.doctorGssdAmt - tb.doctorGssdMovPrices )/ SUM( tb.doctorGssdAmt ) * 100,DECIMAL ( 10, 2 )),0) doctorGrossProfitRate,
+        ifnull(sum(tb.doctorPayCount),0) doctorPayCount,
+        IFNULL(sum(tb.doctorGssdAmt) / sum(tb.doctorPayCount),0) AS doctorGsshSinglePrice,
+        ifnull(sum(tb.therapyGssdAmt),0) therapyGssdAmt,
+        ifnull(sum(tb.therapyGrossProfitAmt),0) therapyGrossProfitAmt,
+        <!-- 诊疗毛利率 -->
+        IFNULL(CONVERT(SUM( tb.therapyGssdAmt - tb.therapyGssdMovPrices )/ SUM( tb.therapyGssdAmt ) * 100,DECIMAL ( 10, 2 )),0) therapyGrossProfitRate,
+        ifnull(sum(tb.restoreSaleAmt),0) restoreSaleAmt,
+        ifnull(sum(tb.movPrices),0) movPrices,
+        ifnull(sum(tb.doctorGssdMovPrices),0) doctorGssdMovPrices,
+        ifnull(sum(tb.therapyGssdMovPrices),0) therapyGssdMovPrices,
+        ifnull(sum(tb.grossProfitMargin),0) grossProfitMargin,
+        ifnull(sum(tb.grossProfitMarginByDay),0) grossProfitMarginByDay,
+        ifnull(round(sum(tb.grossProfitMargin)*100/sum(tb.amt),2),0) grossProfitRate,
+        ifnull(sum(tb.discountAmt),0) discountAmt,
+        ifnull(sum(tb.grossProfitMargin)/count(tb.stoCode),0) as grossProfitMarginByStoAvg,
+        ifnull(sum(tb.amt)/count(tb.stoCode),0) as amtByStoAvg,
+        ifnull(sum(tb.numberTrades)/count(tb.stoCode),0) as numberTradesByStoAvg,
+        ifnull(round(sum(tb.discountAmt)*100/sum(tb.amountReceivable),2),0) discountRate,
+        ifnull(sum(tb.amtByDay),0) amtByDay,
+        ifnull(sum(tb.numberTradesByDay),0) numberTradesByDay,
+        ifnull(sum( tb.memberSale ),0) memberSale,
+        ifnull(round(sum(tb.memberSale)*100/sum( tb.amt),2),0) memberSaleRate
+        from
+        (
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        sd.saleYear,
+        sd.saleMonth,
+        sd.saleDay,
+        <if test="dateType != null and dateType != ''">
+            <if test=" dateType == '1'.toString() ">
+                sd.saleYear saleDate,
+            </if>
+            <if test=" dateType == '2'.toString() ">
+                CONCAT(sd.saleYear,LPAD(sd.saleMonth,2,'0')) saleDate,
+            </if>
+            <if test=" dateType == '3'.toString() ">
+                CONCAT(sd.saleYear,LPAD(sd.saleMonth,2,'0'),LPAD(sd.saleDay,2,'0')) saleDate,
+            </if>
+        </if>
+        sd.GSSD_BR_ID stoCode,
+        sum( sd.amountReceivable ) amountReceivable,
+        count( DISTINCT sd.GSSD_BILL_NO ) numberTrades,
+        sum( sd.GSSD_AMT )/ count( DISTINCT sd.GSSD_BILL_NO ) perTicketSales,
+        sum( sd.GSSD_AMT ) amt,
+        sum( sd.GSSD_ZK_JFDX ) zkJfdx,
+        sum( sd.GSSD_ZK_DYQ ) zkDyq,selectStoreSaleByDate
+        sum( sd.GSSD_ZK_DZQ ) zkDzq,
+        sum( sd.doctorGssdAmt ) doctorGssdAmt,
+        sum( sd.doctorGrossProfitAmt ) doctorGrossProfitAmt,
+        ( sd.doctorPayCount ) doctorPayCount,
+        sum( sd.therapyGssdAmt ) therapyGssdAmt,
+        sum( sd.therapyGrossProfitAmt ) therapyGrossProfitAmt,
+        sum( sd.restoreSaleAmt ) restoreSaleAmt,
+        sum( sd.GSSD_MOV_PRICES ) movPrices,
+        SUM( sd.doctorGssdMovPrices) doctorGssdMovPrices,
+        SUM( sd.therapyGssdMovPrices) therapyGssdMovPrices,
+        sum( sd.GSSD_AMT - sd.GSSD_MOV_PRICES ) grossProfitMargin,
+        sum( sd.GSSD_AMT - sd.GSSD_MOV_PRICES )/ count( DISTINCT sd.GSSD_DATE ) grossProfitMarginByDay,
+        sum( sd.GSSD_AMT - sd.GSSD_MOV_PRICES ) / sum( sd.GSSD_AMT )* 100 grossProfitRate,
+        sum( sd.amountReceivable ) - sum( sd.GSSD_AMT ) discountAmt,
+        (sum( sd.amountReceivable ) - sum( sd.GSSD_AMT ))/ sum( sd.amountReceivable )* 100 discountRate,
+        sum( sd.GSSD_AMT )/ count( DISTINCT sd.GSSD_DATE ) amtByDay,
+        count( DISTINCT sd.GSSD_BILL_NO )/ count( DISTINCT sd.GSSD_DATE ) numberTradesByDay,
+        sum( sd.memberSale ) memberSale,
+        sum( sd.memberSale )/ sum( sd.GSSD_AMT ) * 100 memberSaleRate,
+        sd.datePart
+        FROM
+        (
+        SELECT
+        sale.CLIENT,
+        sale.GSSD_DATE,
+        sale.GSSD_BILL_NO,
+        YEAR (
+        STR_TO_DATE( sale.GSSD_DATE, '%Y%m%d' )) saleYear,
+        MONTH (
+        STR_TO_DATE( sale.GSSD_DATE, '%Y%m%d' )) saleMonth,
+        DAY (
+        STR_TO_DATE( sale.GSSD_DATE, '%Y%m%d' )) saleDay,
+        sale.GSSD_BR_ID,
+        SUM( sale.GSSD_AMT ) GSSD_AMT,
+        SUM( sale.doctorGssdAmt ) doctorGssdAmt,
+        SUM( sale.doctorGrossProfitAmt ) doctorGrossProfitAmt,
+        ( sale.doctorPayCount ) doctorPayCount,
+        SUM( sale.therapyGssdAmt ) therapyGssdAmt,
+        SUM( sale.therapyGrossProfitAmt ) therapyGrossProfitAmt,
+        SUM( sale.restoreSaleAmt ) restoreSaleAmt,
+        SUM( CASE WHEN sale.GSSH_HYK_NO IS NOT NULL THEN sale.GSSD_AMT ELSE 0 END ) AS memberSale,
+        IFNULL( SUM( sale.GSSD_ZK_JFDX ), 0 ) GSSD_ZK_JFDX,
+        IFNULL( SUM( sale.GSSD_ZK_DYQ ), 0 ) GSSD_ZK_DYQ,
+        IFNULL( SUM( sale.GSSD_ZK_DZQ ), 0 ) GSSD_ZK_DZQ,
+        SUM(sale.GSSD_PRC1 * ABS( sale.GSSD_QTY )) AS amountReceivable,
+        SUM(sale.GSSD_MOV_PRICES) GSSD_MOV_PRICES,
+        SUM(sale.doctorGssdMovPrices) doctorGssdMovPrices,
+        SUM(sale.therapyGssdMovPrices) therapyGssdMovPrices,
+        sale.datePart
+        FROM
+        (
+        SELECT
+        gssd.CLIENT,
+        gssd.GSSD_DATE,
+        gssd.GSSD_BILL_NO,
+        gssd.GSSD_BR_ID,
+        GSSD_AMT,
+        gssh.GSSH_HYK_NO,
+        GSSD_ZK_JFDX,
+        GSSD_ZK_DYQ,
+        GSSD_ZK_DZQ,
+        (IFNULL(GSSD_AMT,0)+IFNULL(GSSD_ZK_JFDX,0)+IFNULL(GSSD_ZK_DYQ,0)+IFNULL(GSSD_ZK_DZQ,0)) AS restoreSaleAmt,
+        gssd.GSSD_PRC1,
+        gssd.GSSD_QTY,
+        gssh.GSSH_TIME AS datePart,
+        CASE
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ELSE ( gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ) * - 1
+        END AS GSSD_MOV_PRICES,
+        <!-- 诊疗成本 -->
+        CASE
+        WHEN gpb.PRO_CLASS LIKE 'H%' THEN
+        (CASE
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ELSE ( gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ) * - 1
+        END)
+        END AS therapyGssdMovPrices,
+        <!-- 医疗成本 -->
+        CASE
+        WHEN gud.USER_STATUS = '0' THEN
+        (CASE
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ELSE ( gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ) * - 1
+        END)
+        END AS doctorGssdMovPrices,
+        <!-- 医疗销售 -->
+        (CASE gud.USER_STATUS WHEN 0 THEN IFNULL( CONVERT (GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END)
+        AS doctorGssdAmt,
+        <!-- 医疗毛利额 -->
+        ( CASE gud.USER_STATUS WHEN 0 THEN IFNULL( CONVERT (GSSD_AMT - CASE
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ELSE ( gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ) * - 1
+        END ,DECIMAL ( 19, 4 )),0 ) ELSE 0 END)
+        AS doctorGrossProfitAmt,
+        <!-- 医疗交易次数 -->
+        IFNULL(i.doctorPayCount,0) AS doctorPayCount,
+        <!-- 诊疗销售 -->
+        ( CASE WHEN gpb.PRO_CLASS LIKE 'H%' THEN IFNULL( CONVERT (GSSD_AMT, DECIMAL ( 19, 4 )), 0 ) ELSE 0 END)
+        AS therapyGssdAmt,
+        <!-- 诊疗毛利额 -->
+        ( CASE WHEN gpb.PRO_CLASS LIKE 'H%' THEN IFNULL( CONVERT (GSSD_AMT - CASE
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ELSE ( gssd.GSSD_ADD_AMT + gssd.GSSD_ADD_TAX ) * - 1
+        END,DECIMAL ( 19, 4 )),0 ) ELSE 0 END)
+        AS therapyGrossProfitAmt
+        FROM
+        GAIA_SD_SALE_D gssd
+        LEFT JOIN GAIA_SD_SALE_H gssh ON gssd.CLIENT = gssh.CLIENT
+        AND gssd.GSSD_BR_ID = gssh.GSSH_BR_ID
+        AND gssd.GSSD_BILL_NO = gssh.GSSH_BILL_NO
+        LEFT JOIN GAIA_USER_DATA gud ON gud.USER_ID = gssd.GSSD_SALER_ID AND gud.CLIENT = gssd.CLIENT
+        LEFT JOIN GAIA_PRODUCT_BUSINESS gpb ON gpb.PRO_SELF_CODE = gssd.GSSD_PRO_ID AND gssd.CLIENT = gpb.CLIENT AND gpb.PRO_SITE = gssd.GSSD_BR_ID
+        LEFT JOIN (SELECT count(s.GSSH_BILL_NO) count,
+        count( s.doctorPayCount ) doctorPayCount,
+        count( s.therapyPayCount ) therapyPayCount,
+        s.GSSH_BR_ID
+        FROM
+        (SELECT
+        hs.CLIENT,
+        hs.GSSH_BR_ID,
+        hs.GSSH_BILL_NO,
+        IF( gud.USER_STATUS = '0', 1, NULL ) doctorPayCount,
+        IF( gpb.PRO_CLASS LIKE 'H%', 1, NULL ) therapyPayCount
+        FROM
+        GAIA_SD_SALE_H hs
+        LEFT JOIN GAIA_SD_SALE_D d ON d.GSSD_BR_ID = hs.GSSH_BR_ID
+        AND d.CLIENT = hs.CLIENT
+        AND d.GSSD_BILL_NO = hs.GSSH_BILL_NO
+        LEFT JOIN GAIA_USER_DATA gud ON gud.USER_ID = d.GSSD_SALER_ID
+        AND gud.CLIENT = hs.CLIENT
+        LEFT JOIN GAIA_PRODUCT_BUSINESS gpb ON gpb.PRO_SELF_CODE = d.GSSD_PRO_ID
+        AND d.CLIENT = gpb.CLIENT
+        AND gpb.PRO_SITE = hs.GSSH_BR_ID
+        WHERE hs.GSSH_HIDE_FLAG = '0' AND hs.CLIENT = #{client} AND hs.GSSH_DATE <![CDATA[ >= ]]> #{startDate} AND
+        hs.GSSH_DATE <![CDATA[ <= ]]> #{endDate} GROUP BY hs.CLIENT,hs.GSSH_BR_ID,hs.GSSH_BILL_NO ) s GROUP BY
+        s.GSSH_BR_ID) i ON i.GSSH_BR_ID = gssh.GSSH_BR_ID
+        WHERE
+        gssd.CLIENT = #{client}
+        AND gssh.GSSH_HIDE_FLAG = '0'
+        <if test="stoCode != null and stoCode != ''">
+            AND gssd.GSSD_BR_ID = #{stoCode}
+        </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and gssd.GSSD_BR_ID in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="startDate != null and startDate != ''">
+            and gssd.GSSD_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and gssd.GSSD_DATE &lt;= #{endDate}
+        </if>
+        <if test="statDatePart!=null and statDatePart!=''">
+            AND gssh.GSSH_TIME <![CDATA[ >= ]]> #{statDatePart}
+        </if>
+        <if test="endDatePart!=null and endDatePart!=''">
+            AND gssh.GSSH_TIME <![CDATA[ <= ]]> #{endDatePart}
+        </if>
+        ) sale
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_BILL_NO,
+        sale.GSSD_DATE
+        ) sd
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = sd.CLIENT
+        AND sto.STO_CODE = sd.GSSD_BR_ID
+        GROUP BY
+        sd.GSSD_BR_ID,
+        sd.saleYear,
+        saleDate
+        <if test="dateType != null and dateType != ''">
+            <if test=" dateType == '2'.toString() ">
+                ,sd.saleMonth
+            </if>
+            <if test=" dateType == '3'.toString() ">
+                ,sd.saleMonth
+                ,sd.saleDay
+            </if>
+        </if>
+        ) tab
+        <where>
+            <if test="saleType != null and saleType != ''">
+                and ${saleType} IS NOT NULL AND ${saleType} != 0
+            </if>
+        </where>
+        group by
+        tab.saleDate,
+        tab.stoCode
+        ORDER BY
+        tab.stoCode,
+        tab.saleDate
+        <if test="dateType != null and dateType != ''">
+            <if test=" dateType == '2'.toString() ">
+                ,tab.saleMonth
+            </if>
+            <if test=" dateType == '3'.toString() ">
+                ,tab.saleMonth
+                ,tab.saleDay
+            </if>
+        </if>
+        ) tb
+        group by
+        tb.saleDate
+    </select>
+    <select id="selectRenHePersonSalesTotal"
+            resultType="com.gys.entity.data.salesSummary.PersonSalesOutDataTotal">
+        SELECT
+        <choose>
+            <when test="notSales == 'N'.toString()">
+                COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )) saleDays,
+                SUM( tab.amt )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )) amtByDay,
+                COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT IF( tab.type = '1', tab.GSSD_DATE, NULL )) numberTradesByDay,
+            </when>
+            <when test="notSales == 'Y'.toString()">
+                COUNT(DISTINCT tab.GSSD_DATE) saleDays,
+                SUM( tab.amt )/ COUNT(DISTINCT tab.GSSD_DATE) amtByDay,
+                COUNT( DISTINCT tab.GSSD_BILL_NO )/ COUNT(DISTINCT tab.GSSD_DATE) numberTradesByDay,
+            </when>
+        </choose>
+        SUM( tab.amountReceivable ) amountReceivable,
+        SUM( tab.amt ) amt,
+        SUM( tab.ctmAmt ) ctmAmt,
+        COUNT( DISTINCT tab.GSSD_BILL_NO ) numberTrades,
+        SUM( tab.amt )/ COUNT( DISTINCT tab.GSSD_BILL_NO ) perTicketSales,
+        SUM( tab.amountReceivable ) - SUM( tab.amt ) discountAmt,
+        CONCAT(ROUND((SUM( tab.amountReceivable ) - SUM( tab.amt ))/ SUM( tab.amountReceivable )* 100 ,2),'%') discountRate,
+        SUM( tab.memberSale ) memberSale,
+        CONCAT(ROUND(SUM( tab.memberSale )/ SUM( tab.amt ) * 100,2),'%') memberSaleRate,
+        SUM( tab.includeTaxSale ) includeTaxSale,
+        SUM( tab.ctmIncludeTaxSale ) ctmIncludeTaxSale,
+        SUM( tab.amt )- SUM( tab.includeTaxSale ) grossProfitMargin,
+        SUM( tab.ctmAmt )- SUM( tab.ctmIncludeTaxSale ) ctmGrossProfitMargin,
+        CONCAT(ROUND((SUM( tab.amt )- SUM( tab.includeTaxSale )) / sum( tab.amt )* 100,2),'%') grossProfitRate,
+        CONCAT(IFNULL(ROUND((SUM( tab.ctmAmt )- SUM( tab.ctmIncludeTaxSale )) / sum( tab.ctmAmt )* 100,2),'0.00'),'%') ctmGrossProfitRate,
+        ROUND( SUM( tab.proCount )/COUNT( DISTINCT tab.GSSD_BILL_NO ),2 ) kpc,
+        ROUND(SUM( tab.amt )/ SUM( tab.qty ), 2 ) pdj
+        FROM
+        (
+        SELECT
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.userCode,
+        sale.GSSD_BILL_NO,
+        sale.GSSD_PRO_ID,
+        pb.PRO_CLASS,
+        sale.type,
+        SUM( sale.amountReceivable ) amountReceivable,
+        SUM( sale.amt ) amt,
+        SUM( sale.includeTaxSale ) includeTaxSale,
+        pb.PRO_CLASS_NAME proClassName,
+        SUM( CASE pb.PRO_SFJY WHEN 1 THEN sale.amt ELSE 0 END ) ctmAmt,
+        SUM( CASE pb.PRO_SFJY WHEN 1 THEN sale.sale.includeTaxSale ELSE 0 END ) ctmIncludeTaxSale,
+        SUM( sale.memberSale ) memberSale,
+        COUNT(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.GSSD_PRO_ID END
+        ) proCount,
+        SUM(
+        CASE
+        WHEN pb.PRO_CLASS like ( '301%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '302%') THEN NULL
+        WHEN pb.PRO_CLASS like ( '8%') THEN NULL
+        ELSE sale.qty END
+        ) qty
+        FROM
+        (
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX includeTaxSale,
+        '1' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NULL UNION ALL
+        SELECT
+        saleD.CLIENT,
+        saleD.GSSD_BR_ID,
+        saleD.GSSD_DATE,
+        saleD.GSSD_BILL_NO,
+        saleD.GSSD_PRO_ID,
+        <choose>
+            <when test="type == '1'.toString()">
+                saleH.GSSH_EMP userCode,
+            </when>
+            <when test="type == '2'.toString()">
+                saleD.GSSD_SALER_ID userCode,
+            </when>
+            <when test="type == '3'.toString()">
+                saleD.GSSD_DOCTOR_ID userCode,
+            </when>
+        </choose>
+        saleD.GSSD_PRC1 * ABS( saleD.GSSD_QTY ) amountReceivable,
+        saleD.GSSD_AMT amt,
+        saleD.GSSD_QTY qty,
+        CASE
+
+        WHEN saleH.GSSH_HYK_NO IS NOT NULL THEN
+        saleD.GSSD_AMT ELSE 0
+        END AS memberSale,
+        (saleD.GSSD_ADD_AMT + saleD.GSSD_ADD_TAX)* -1 includeTaxSale,
+        '2' AS type
+        FROM
+        GAIA_SD_SALE_H saleH
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = saleH.CLIENT
+        AND saleD.GSSD_DATE = saleH.GSSH_DATE
+        AND saleD.GSSD_BILL_NO = saleH.GSSH_BILL_NO
+        AND saleD.GSSD_BR_ID = saleH.GSSH_BR_ID
+        WHERE
+        saleH.CLIENT = #{client}
+        AND saleH.GSSH_HIDE_FLAG = '0'
+        AND ( saleH.GSSH_DATE BETWEEN #{startDate} AND #{endDate} )
+        AND saleH.GSSH_BILL_NO_RETURN IS NOT NULL
+        ) sale
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = sale.CLIENT
+        AND pb.PRO_SITE = sale.GSSD_BR_ID
+        AND pb.PRO_SELF_CODE = sale.GSSD_PRO_ID
+        <where>
+            <if test="userCode != null and userCode != ''">
+                AND sale.userCode = #{userCode}
+            </if>
+        </where>
+        GROUP BY
+        sale.CLIENT,
+        sale.GSSD_BR_ID,
+        sale.GSSD_DATE,
+        sale.GSSD_BILL_NO,
+        sale.userCode
+        ) tab
+        LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+        AND sto.STO_CODE = tab.GSSD_BR_ID
+        LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+        AND ud.USER_ID = tab.userCode
+    </select>
+</mapper>

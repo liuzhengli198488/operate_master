@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdReplenishHMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdReplenishH">
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSRH_BR_ID" jdbcType="VARCHAR" property="gsrhBrId" />
+    <id column="GSRH_VOUCHER_ID" jdbcType="VARCHAR" property="gsrhVoucherId" />
+    <result column="GSRH_DATE" jdbcType="VARCHAR" property="gsrhDate" />
+    <result column="GSRH_TYPE" jdbcType="VARCHAR" property="gsrhType" />
+    <result column="GSRH_ADDR" jdbcType="VARCHAR" property="gsrhAddr" />
+    <result column="GSRH_TOTAL_AMT" jdbcType="DECIMAL" property="gsrhTotalAmt" />
+    <result column="GSRH_TOTAL_QTY" jdbcType="DECIMAL" property="gsrhTotalQty" />
+    <result column="GSRH_EMP" jdbcType="VARCHAR" property="gsrhEmp" />
+    <result column="GSRH_STATUS" jdbcType="VARCHAR" property="gsrhStatus" />
+    <result column="GSRH_FLAG" jdbcType="VARCHAR" property="gsrhFlag" />
+    <result column="GSRH_POID" jdbcType="VARCHAR" property="gsrhPoid" />
+    <result column="GSRH_PATTERN" jdbcType="VARCHAR" property="gsrhPattern" />
+    <result column="GSRH_DN_BY" jdbcType="VARCHAR" property="gsrhDnBy" />
+    <result column="GSRH_DN_DATE" jdbcType="VARCHAR" property="gsrhDnDate" />
+    <result column="GSRH_DN_TIME" jdbcType="VARCHAR" property="gsrhDnTime" />
+    <result column="GSRH_DN_FLAG" jdbcType="VARCHAR" property="gsrhDnFlag" />
+    <result column="GSRH_GET_STATUS" jdbcType="VARCHAR" property="gsrhGetStatus" />
+    <result column="GSRH_DN_ID" jdbcType="VARCHAR" property="gsrhDnId" />
+    <result column="GSRH_TIME" jdbcType="VARCHAR" property="gsrhTime" />
+    <result column="GSRH_SPECIAL" jdbcType="VARCHAR" property="gsrhSpecial" />
+    <result column="GSRH_CRE_TIME" jdbcType="VARCHAR" property="gsrhCreTime" />
+    <result column="GSRH_CHECK_DATE" jdbcType="VARCHAR" property="gsrhCheckDate" />
+    <result column="GSRH_SOURCE" jdbcType="VARCHAR" property="gsrhSource" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    CLIENT, GSRH_BR_ID, GSRH_VOUCHER_ID, GSRH_DATE, GSRH_TYPE, GSRH_ADDR, GSRH_TOTAL_AMT, 
+    GSRH_TOTAL_QTY, GSRH_EMP, GSRH_STATUS, GSRH_FLAG, GSRH_POID, GSRH_PATTERN, GSRH_DN_BY, 
+    GSRH_DN_DATE, GSRH_DN_TIME, GSRH_DN_FLAG, GSRH_GET_STATUS, GSRH_DN_ID, GSRH_TIME, 
+    GSRH_SPECIAL, GSRH_CRE_TIME, GSRH_CHECK_DATE, GSRH_SOURCE
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="com.gys.entity.GaiaSdReplenishHKey" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from GAIA_SD_REPLENISH_H
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and GSRH_BR_ID = #{gsrhBrId,jdbcType=VARCHAR}
+      and GSRH_VOUCHER_ID = #{gsrhVoucherId,jdbcType=VARCHAR}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="com.gys.entity.GaiaSdReplenishHKey">
+    delete from GAIA_SD_REPLENISH_H
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and GSRH_BR_ID = #{gsrhBrId,jdbcType=VARCHAR}
+      and GSRH_VOUCHER_ID = #{gsrhVoucherId,jdbcType=VARCHAR}
+  </delete>
+  <insert id="insert" keyColumn="CLIENT" keyProperty="client" parameterType="com.gys.entity.GaiaSdReplenishH" useGeneratedKeys="true">
+    insert into GAIA_SD_REPLENISH_H (GSRH_BR_ID, GSRH_VOUCHER_ID, GSRH_DATE, 
+      GSRH_TYPE, GSRH_ADDR, GSRH_TOTAL_AMT, 
+      GSRH_TOTAL_QTY, GSRH_EMP, GSRH_STATUS, 
+      GSRH_FLAG, GSRH_POID, GSRH_PATTERN, 
+      GSRH_DN_BY, GSRH_DN_DATE, GSRH_DN_TIME, 
+      GSRH_DN_FLAG, GSRH_GET_STATUS, GSRH_DN_ID, 
+      GSRH_TIME, GSRH_SPECIAL, GSRH_CRE_TIME, 
+      GSRH_CHECK_DATE, GSRH_SOURCE)
+    values (#{gsrhBrId,jdbcType=VARCHAR}, #{gsrhVoucherId,jdbcType=VARCHAR}, #{gsrhDate,jdbcType=VARCHAR}, 
+      #{gsrhType,jdbcType=VARCHAR}, #{gsrhAddr,jdbcType=VARCHAR}, #{gsrhTotalAmt,jdbcType=DECIMAL}, 
+      #{gsrhTotalQty,jdbcType=DECIMAL}, #{gsrhEmp,jdbcType=VARCHAR}, #{gsrhStatus,jdbcType=VARCHAR}, 
+      #{gsrhFlag,jdbcType=VARCHAR}, #{gsrhPoid,jdbcType=VARCHAR}, #{gsrhPattern,jdbcType=VARCHAR}, 
+      #{gsrhDnBy,jdbcType=VARCHAR}, #{gsrhDnDate,jdbcType=VARCHAR}, #{gsrhDnTime,jdbcType=VARCHAR}, 
+      #{gsrhDnFlag,jdbcType=VARCHAR}, #{gsrhGetStatus,jdbcType=VARCHAR}, #{gsrhDnId,jdbcType=VARCHAR}, 
+      #{gsrhTime,jdbcType=VARCHAR}, #{gsrhSpecial,jdbcType=VARCHAR}, #{gsrhCreTime,jdbcType=VARCHAR}, 
+      #{gsrhCheckDate,jdbcType=VARCHAR}, #{gsrhSource,jdbcType=VARCHAR})
+  </insert>
+  <insert id="insertSelective" keyColumn="CLIENT" keyProperty="client" parameterType="com.gys.entity.GaiaSdReplenishH" useGeneratedKeys="true">
+    insert into GAIA_SD_REPLENISH_H
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="gsrhBrId != null">
+        GSRH_BR_ID,
+      </if>
+      <if test="gsrhVoucherId != null">
+        GSRH_VOUCHER_ID,
+      </if>
+      <if test="gsrhDate != null">
+        GSRH_DATE,
+      </if>
+      <if test="gsrhType != null">
+        GSRH_TYPE,
+      </if>
+      <if test="gsrhAddr != null">
+        GSRH_ADDR,
+      </if>
+      <if test="gsrhTotalAmt != null">
+        GSRH_TOTAL_AMT,
+      </if>
+      <if test="gsrhTotalQty != null">
+        GSRH_TOTAL_QTY,
+      </if>
+      <if test="gsrhEmp != null">
+        GSRH_EMP,
+      </if>
+      <if test="gsrhStatus != null">
+        GSRH_STATUS,
+      </if>
+      <if test="gsrhFlag != null">
+        GSRH_FLAG,
+      </if>
+      <if test="gsrhPoid != null">
+        GSRH_POID,
+      </if>
+      <if test="gsrhPattern != null">
+        GSRH_PATTERN,
+      </if>
+      <if test="gsrhDnBy != null">
+        GSRH_DN_BY,
+      </if>
+      <if test="gsrhDnDate != null">
+        GSRH_DN_DATE,
+      </if>
+      <if test="gsrhDnTime != null">
+        GSRH_DN_TIME,
+      </if>
+      <if test="gsrhDnFlag != null">
+        GSRH_DN_FLAG,
+      </if>
+      <if test="gsrhGetStatus != null">
+        GSRH_GET_STATUS,
+      </if>
+      <if test="gsrhDnId != null">
+        GSRH_DN_ID,
+      </if>
+      <if test="gsrhTime != null">
+        GSRH_TIME,
+      </if>
+      <if test="gsrhSpecial != null">
+        GSRH_SPECIAL,
+      </if>
+      <if test="gsrhCreTime != null">
+        GSRH_CRE_TIME,
+      </if>
+      <if test="gsrhCheckDate != null">
+        GSRH_CHECK_DATE,
+      </if>
+      <if test="gsrhSource != null">
+        GSRH_SOURCE,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="gsrhBrId != null">
+        #{gsrhBrId,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhVoucherId != null">
+        #{gsrhVoucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDate != null">
+        #{gsrhDate,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhType != null">
+        #{gsrhType,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhAddr != null">
+        #{gsrhAddr,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhTotalAmt != null">
+        #{gsrhTotalAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="gsrhTotalQty != null">
+        #{gsrhTotalQty,jdbcType=DECIMAL},
+      </if>
+      <if test="gsrhEmp != null">
+        #{gsrhEmp,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhStatus != null">
+        #{gsrhStatus,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhFlag != null">
+        #{gsrhFlag,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhPoid != null">
+        #{gsrhPoid,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhPattern != null">
+        #{gsrhPattern,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnBy != null">
+        #{gsrhDnBy,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnDate != null">
+        #{gsrhDnDate,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnTime != null">
+        #{gsrhDnTime,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnFlag != null">
+        #{gsrhDnFlag,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhGetStatus != null">
+        #{gsrhGetStatus,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnId != null">
+        #{gsrhDnId,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhTime != null">
+        #{gsrhTime,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhSpecial != null">
+        #{gsrhSpecial,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhCreTime != null">
+        #{gsrhCreTime,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhCheckDate != null">
+        #{gsrhCheckDate,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhSource != null">
+        #{gsrhSource,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.GaiaSdReplenishH">
+    update GAIA_SD_REPLENISH_H
+    <set>
+      <if test="gsrhDate != null">
+        GSRH_DATE = #{gsrhDate,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhType != null">
+        GSRH_TYPE = #{gsrhType,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhAddr != null">
+        GSRH_ADDR = #{gsrhAddr,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhTotalAmt != null">
+        GSRH_TOTAL_AMT = #{gsrhTotalAmt,jdbcType=DECIMAL},
+      </if>
+      <if test="gsrhTotalQty != null">
+        GSRH_TOTAL_QTY = #{gsrhTotalQty,jdbcType=DECIMAL},
+      </if>
+      <if test="gsrhEmp != null">
+        GSRH_EMP = #{gsrhEmp,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhStatus != null">
+        GSRH_STATUS = #{gsrhStatus,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhFlag != null">
+        GSRH_FLAG = #{gsrhFlag,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhPoid != null">
+        GSRH_POID = #{gsrhPoid,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhPattern != null">
+        GSRH_PATTERN = #{gsrhPattern,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnBy != null">
+        GSRH_DN_BY = #{gsrhDnBy,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnDate != null">
+        GSRH_DN_DATE = #{gsrhDnDate,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnTime != null">
+        GSRH_DN_TIME = #{gsrhDnTime,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnFlag != null">
+        GSRH_DN_FLAG = #{gsrhDnFlag,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhGetStatus != null">
+        GSRH_GET_STATUS = #{gsrhGetStatus,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhDnId != null">
+        GSRH_DN_ID = #{gsrhDnId,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhTime != null">
+        GSRH_TIME = #{gsrhTime,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhSpecial != null">
+        GSRH_SPECIAL = #{gsrhSpecial,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhCreTime != null">
+        GSRH_CRE_TIME = #{gsrhCreTime,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhCheckDate != null">
+        GSRH_CHECK_DATE = #{gsrhCheckDate,jdbcType=VARCHAR},
+      </if>
+      <if test="gsrhSource != null">
+        GSRH_SOURCE = #{gsrhSource,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and GSRH_BR_ID = #{gsrhBrId,jdbcType=VARCHAR}
+      and GSRH_VOUCHER_ID = #{gsrhVoucherId,jdbcType=VARCHAR}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.gys.entity.GaiaSdReplenishH">
+    update GAIA_SD_REPLENISH_H
+    set GSRH_DATE = #{gsrhDate,jdbcType=VARCHAR},
+      GSRH_TYPE = #{gsrhType,jdbcType=VARCHAR},
+      GSRH_ADDR = #{gsrhAddr,jdbcType=VARCHAR},
+      GSRH_TOTAL_AMT = #{gsrhTotalAmt,jdbcType=DECIMAL},
+      GSRH_TOTAL_QTY = #{gsrhTotalQty,jdbcType=DECIMAL},
+      GSRH_EMP = #{gsrhEmp,jdbcType=VARCHAR},
+      GSRH_STATUS = #{gsrhStatus,jdbcType=VARCHAR},
+      GSRH_FLAG = #{gsrhFlag,jdbcType=VARCHAR},
+      GSRH_POID = #{gsrhPoid,jdbcType=VARCHAR},
+      GSRH_PATTERN = #{gsrhPattern,jdbcType=VARCHAR},
+      GSRH_DN_BY = #{gsrhDnBy,jdbcType=VARCHAR},
+      GSRH_DN_DATE = #{gsrhDnDate,jdbcType=VARCHAR},
+      GSRH_DN_TIME = #{gsrhDnTime,jdbcType=VARCHAR},
+      GSRH_DN_FLAG = #{gsrhDnFlag,jdbcType=VARCHAR},
+      GSRH_GET_STATUS = #{gsrhGetStatus,jdbcType=VARCHAR},
+      GSRH_DN_ID = #{gsrhDnId,jdbcType=VARCHAR},
+      GSRH_TIME = #{gsrhTime,jdbcType=VARCHAR},
+      GSRH_SPECIAL = #{gsrhSpecial,jdbcType=VARCHAR},
+      GSRH_CRE_TIME = #{gsrhCreTime,jdbcType=VARCHAR},
+      GSRH_CHECK_DATE = #{gsrhCheckDate,jdbcType=VARCHAR},
+      GSRH_SOURCE = #{gsrhSource,jdbcType=VARCHAR}
+    where CLIENT = #{client,jdbcType=VARCHAR}
+      and GSRH_BR_ID = #{gsrhBrId,jdbcType=VARCHAR}
+      and GSRH_VOUCHER_ID = #{gsrhVoucherId,jdbcType=VARCHAR}
+  </update>
+
+  <select id="getAllReplenishes" parameterType="com.gys.entity.data.xhl.dto.ReplenishDto" resultType="com.gys.entity.data.xhl.vo.ReplenishVo">
+
+  SELECT
+    CLIENT	client,
+    TJ_DATE	tjDate,
+    count( 0 ) num
+    from GAIA_XHL_D
+    <where>
+      <if test="clients!=null  " >
+        CLIENT in <foreach collection="clients" index="index" open="(" item="item" separator="," close=")">
+      #{item}
+    </foreach>
+      </if>
+      <if test="beginDate!=null and beginDate!= '' ">
+       and  TJ_DATE &gt;= #{beginDate}
+      </if>
+      <if test="endDate!=null and endDate!= '' ">
+      and   TJ_DATE &lt;= #{endDate}
+      </if>
+    </where>
+        group by CLIENT,TJ_DATE
+
+  </select>
+
+  <select id="getMonthReplenishes" parameterType="com.gys.entity.data.xhl.dto.ReplenishDto" resultType="com.gys.entity.data.xhl.vo.ReplenishVo">
+
+    SELECT
+    CLIENT	client,
+    TJ_DATE	tjDate,
+    count( 0 ) num,
+    WEEK(TJ_DATE) weekNum,
+    Month(TJ_DATE) monthNum,
+    Year ( TJ_DATE ) yearNum
+    from GAIA_XHL_D
+    <where>
+      <if test="clients!=null  " >
+        CLIENT in <foreach collection="clients" index="index" open="(" item="item" separator="," close=")">
+        #{item}
+      </foreach>
+      </if>
+      <if test="beginDate!=null and beginDate!= '' ">
+        and  TJ_DATE &gt;= #{beginDate}
+      </if>
+      <if test="endDate!=null and endDate!= '' ">
+        and   TJ_DATE &lt;= #{endDate}
+      </if>
+    </where>
+    group by CLIENT, Month(TJ_DATE)
+  </select>
+
+  <select id="getWeekReplenishes" parameterType="com.gys.entity.data.xhl.dto.ReplenishDto" resultType="com.gys.entity.data.xhl.vo.ReplenishVo">
+
+    SELECT
+    CLIENT	client,
+    TJ_DATE	tjDate,
+    count( 0 ) num,
+    WEEK(TJ_DATE) weekNum,
+    Year ( TJ_DATE ) yearNum
+    from GAIA_XHL_D
+    <where>
+      <if test="clients!=null  " >
+        CLIENT in <foreach collection="clients" index="index" open="(" item="item" separator="," close=")">
+        #{item}
+      </foreach>
+      </if>
+      <if test="beginDate!=null and beginDate!= '' ">
+        and  TJ_DATE &gt;= #{beginDate}
+      </if>
+      <if test="endDate!=null and endDate!= '' ">
+        and   TJ_DATE &lt;= #{endDate}
+      </if>
+    </where>
+    group by CLIENT,WEEK(TJ_DATE)
+  </select>
+</mapper>

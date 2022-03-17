@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.GaiaCommodityInventoryHMapper">
+
+    <select id="summaryList" resultType="com.gys.entity.data.commodityInventoryReport.CommoditySummaryOutData">
+        SELECT
+        DATE_FORMAT( cih.BILL_DATE, "%Y/%m/%d" ) billDate,
+        province.AREA_NAME prov,
+        city.AREA_NAME city,
+        cih.CLIENT client,
+        f.FRANC_NAME clientName,
+        cih.BILL_CODE billCode,
+        DATE_FORMAT( cih.FINISH_TIME, "%Y/%m/%d" ) finishTime,
+        IFNULL( cih.PUSH_STORE_NUM, 0 ) + IFNULL( cih.PUSH_ROUTE_NUM, 0 ) pushNum,
+        cih.ITEMS_QTY itemsQty,
+        cih.GOODS_QTY goodsQty,
+        cih.STORE_QTY storeQty,
+        cid.SUGGESTION_RETURN_COST suggestReturnCost,
+        cid.REAL_RETURN_COST realReturnCost,
+        CASE
+        cih.`STATUS`
+        WHEN '0' THEN
+        '待处理'
+        WHEN '1' THEN
+        '已完成'
+        WHEN '2' THEN
+        '已失效'
+        END `status`,
+        IFNULL( cih.PUSH_STORE_NUM, 0 ) pushStoreNum,
+        IFNULL( cih.PUSH_ROUTE_NUM, 0 ) pushRouteNum,
+        cid.pushSuccessStoreNum pushSuccessStoreNum,
+        cid.REAL_RETURN_QTY pushSuccessGoodsQty,
+        CASE
+        cih.IS_EXPORT
+        WHEN '0' THEN
+        '否'
+        WHEN '1' THEN
+        '是'
+        END isExport
+        FROM
+        GAIA_COMMODITY_INVENTORY_H cih
+        LEFT JOIN GAIA_FRANCHISEE f ON cih.CLIENT = f.CLIENT
+        LEFT JOIN GAIA_AREA province ON f.FRANC_PROV = province.AREA_ID
+        LEFT JOIN GAIA_AREA city ON f.FRANC_CITY = city.AREA_ID
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        BILL_CODE,
+        sum( SUGGESTION_RETURN_COST ) SUGGESTION_RETURN_COST,
+        sum( REAL_RETURN_COST ) REAL_RETURN_COST,
+        sum( REAL_RETURN_QTY ) REAL_RETURN_QTY,
+        sum( `STATUS` ) pushSuccessStoreNum
+        FROM
+        (
+        SELECT
+        CLIENT,
+        BILL_CODE,
+        STO_CODE,
+        sum( SUGGESTION_RETURN_COST ) SUGGESTION_RETURN_COST,
+        sum(IF( `STATUS` = '1', SUGGESTION_RETURN_COST, 0 )) REAL_RETURN_COST,
+        sum(IF( `STATUS` = '1', 1, 0 )) REAL_RETURN_QTY,
+        IF( sum(IF( `STATUS` = '1', 1, 0 )) > 0, 1, 0) `STATUS`
+        FROM
+        GAIA_COMMODITY_INVENTORY_D
+        GROUP BY
+        CLIENT,
+        BILL_CODE,
+        STO_CODE
+        ) cid
+        GROUP BY
+        CLIENT,
+        BILL_CODE
+        ) cid ON cih.CLIENT = cid.CLIENT
+        AND cih.BILL_CODE = cid.BILL_CODE
+        <where>
+            <if test="clientList!=null and clientList.size()>0">
+                and cih.CLIENT in(
+                <foreach collection="clientList" separator="," item="item">
+                    #{item}
+                </foreach>
+                )
+            </if>
+            <if test="provinceList != null and provinceList.size() != 0">
+                AND province.AREA_ID IN
+                <foreach collection="provinceList" item="province" index="index" open="(" close=")" separator=",">
+                    #{province}
+                </foreach>
+            </if>
+
+            <if test="cityList != null and cityList.size() != 0">
+                AND city.AREA_ID IN
+                <foreach collection="cityList" item="city" index="index" open="(" close=")" separator=",">
+                    #{city}
+                </foreach>
+            </if>
+            <if test="billCode!=null and billCode!=''">
+                and cih.BILL_CODE like concat('%',#{billCode},'%')
+            </if>
+            <if test="startBillDate != null and startBillDate != ''">
+                and DATE_FORMAT(cih.BILL_DATE,"%Y%m%d") &gt;= #{startBillDate}
+            </if>
+            <if test="endBillDate != null and endBillDate != ''">
+                and DATE_FORMAT(cih.BILL_DATE,"%Y%m%d") &lt;= #{endBillDate}
+            </if>
+            <if test="startFinishDate != null and startFinishDate != ''">
+                and DATE_FORMAT(cih.FINISH_TIME,"%Y%m%d") &gt;= #{startFinishDate}
+            </if>
+            <if test="endFinishDate != null and endFinishDate != ''">
+                and DATE_FORMAT(cih.FINISH_TIME,"%Y%m%d") &lt;= #{endFinishDate}
+            </if>
+        </where>
+    </select>
+</mapper>

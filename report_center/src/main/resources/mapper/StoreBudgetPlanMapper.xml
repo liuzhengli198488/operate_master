@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.StoreBudgetPlanMapper">
+    <select id="findStoreBudgePlanByDate" resultType="java.util.Map">
+        SELECT
+        tb.saleDate,
+        count( tb.stoCode ) stoCount,
+        CONCAT(round(tb.stoTaxRate, 2),'') stoTaxRate,
+        CONCAT(round(tb.stoTaxRate, 2),'%') stoTaxRates,
+        CONCAT(round(sum( tb.movPrices ), 2 ), '') movPrices,
+        CONCAT(round(sum( tb.amt ), 2 ), '') amt,
+        CONCAT(round(sum( tb.amountReceivable ), 2), '') amountReceivable,
+        CONCAT(round(sum( tb.grossProfitMargin ), 2), '') grossProfitMargin,
+        CONCAT(round(sum( tb.grossProfitRate )*100, 2),'') grossProfitRate,
+        CONCAT(round(sum( tb.grossProfitRate )*100, 2),'%') grossProfitRates,
+        CONCAT(round(sum( tb.discountAmt ), 2), '') discountAmt,
+        CONCAT(round(tb.gsdStoReBate, 2),'') gsdStoReBate,
+        CONCAT(round(tb.gsdStoReBate, 2),'%') gsdStoReBates
+        FROM
+        (
+        SELECT
+        tab.saleDate,
+        tab.stoCode,
+        tab.stoName,
+        tab.stoTaxRate,
+        tab.movPrices,
+        tab.amt,
+        tab.amountReceivable,
+        ( tab.amountReceivable - tab.movPrices ) grossProfitMargin,
+        ( tab.amountReceivable - tab.movPrices )/ tab.amountReceivable grossProfitRate,
+        tab.amt - tab.amountReceivable discountAmt,
+        tab.gsdStoReBate,
+        tab.gsdBeginDate,
+        tab.gsdEndDate
+        FROM
+        (
+        SELECT
+        sd.GSSD_DATE saleDate,
+        sd.GSSD_BR_ID stoCode,
+        gasd.STO_NAME stoName,
+        gasd.STO_TAX_RATE stoTaxRate,
+        sd.movPrices,
+        sd.amt,
+        CASE
+
+        WHEN sd.GSSD_DATE <![CDATA[ >= ]]> gsd.GSD_BEGIN_DATE
+        AND sd.GSSD_DATE <![CDATA[ <= ]]> gsd.GSD_END_DATE
+        AND gsd.GSD_STO_REBATE != '' THEN
+        sd.amt *(
+        gsd.GSD_STO_REBATE + 0
+        )/ 100 ELSE sd.amt
+        END amountReceivable,
+        gsd.GSD_STO_REBATE gsdStoReBate,
+        gsd.GSD_BEGIN_DATE gsdBeginDate,
+        gsd.GSD_END_DATE gsdEndDate
+        FROM
+        (
+        SELECT
+        gssd.CLIENT,
+        gssd.GSSD_DATE,
+        gssd.GSSD_BR_ID,
+        ifnull( sum( gssd.GSSD_MOV_PRICES ), 0 ) movPrices,
+        ifnull( sum( gssd.GSSD_AMT ), 0 ) amt
+        FROM
+        GAIA_SD_SALE_D gssd
+        WHERE
+        gssd.CLIENT = #{client}
+        <if test="startDate != null and startDate != ''">
+            and gssd.GSSD_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and gssd.GSSD_DATE &lt;= #{endDate}
+        </if>
+        <if test="stoCodeArr != null and stoCodeArr.length > 0">
+            and gssd.GSSD_BR_ID in
+            <foreach collection="stoCodeArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        gssd.GSSD_DATE,
+        gssd.GSSD_BR_ID
+        ) sd
+        LEFT JOIN GAIA_STORE_DISCOUNT gsd ON sd.CLIENT = gsd.CLIENT
+        AND sd.GSSD_BR_ID = gsd.STO_CODE
+        LEFT JOIN GAIA_STORE_DATA gasd ON sd.CLIENT = gasd.CLIENT
+        AND sd.GSSD_BR_ID = gasd.STO_CODE
+        <where>
+            <if test="stoTaxRate != null and stoTaxRate != ''">
+                and gasd.STO_TAX_RATE = #{stoTaxRate}
+            </if>
+            <if test="stoRebate != null and stoRebate != ''">
+                and gsd.GSD_STO_REBATE = #{stoRebate}
+            </if>
+        </where>
+        ) tab
+        ORDER BY
+        tab.stoCode,
+        tab.saleDate
+        ) tb
+        GROUP BY
+        tb.saleDate
+        ORDER BY
+        tb.saleDate
+    </select>
+
+    <select id="findStoreBudgePlanByTotal" resultType="java.util.Map">
+        select count(*) as stoCount
+        from (
+                 SELECT GSSD_BR_ID
+                 FROM GAIA_SD_SALE_D
+                 WHERE client = #{client}
+                   AND GSSD_DATE &gt;= #{startDate}
+                   AND GSSD_DATE &lt;= #{endDate}
+                 GROUP BY GSSD_BR_ID
+             ) a
+    </select>
+
+    <select id="findStoreBudgePlanByStoCodeAndDate" resultType="java.util.Map">
+        SELECT
+        tab.saleDate,
+        tab.stoCode,
+        tab.stoName,
+        CONCAT(round(tab.stoTaxRate, 2), '')stoTaxRate,
+        CONCAT(round(tab.stoTaxRate, 2), '%')stoTaxRates,
+        CONCAT(round(tab.movPrices, 2), '') movPrices,
+        CONCAT(round(tab.amt, 2), '') amt,
+        CONCAT(round(tab.amountReceivable, 2), '') amountReceivable,
+        CONCAT(round(( tab.amountReceivable - tab.movPrices ), 2 ), '') grossProfitMargin,
+        CONCAT(round(( tab.amountReceivable - tab.movPrices )*100/ tab.amountReceivable, 2 ), '') grossProfitRate,
+        CONCAT(round(( tab.amountReceivable - tab.movPrices )*100/ tab.amountReceivable, 2 ), '%') grossProfitRates,
+        CONCAT(round((tab.amt - tab.amountReceivable), 2), '') discountAmt,
+        CONCAT(round(tab.gsdStoReBate, 2), '') gsdStoReBate,
+        CONCAT(round(tab.gsdStoReBate, 2), '%') gsdStoReBates,
+        tab.gsdBeginDate,
+        tab.gsdEndDate
+        FROM
+        (
+        SELECT
+        sd.GSSD_DATE saleDate,
+        sd.GSSD_BR_ID stoCode,
+        gasd.STO_NAME stoName,
+        gasd.STO_TAX_RATE stoTaxRate,
+        sd.movPrices,
+        sd.amt,
+        CASE
+
+        WHEN sd.GSSD_DATE <![CDATA[ >= ]]> gsd.GSD_BEGIN_DATE AND sd.GSSD_DATE <![CDATA[ <= ]]> gsd.GSD_END_DATE
+        AND gsd.GSD_STO_REBATE != '' THEN
+        sd.amt *(
+        gsd.GSD_STO_REBATE+ 0
+        )/ 100 ELSE sd.amt
+        END amountReceivable,
+        gsd.GSD_STO_REBATE gsdStoReBate,
+        gsd.GSD_BEGIN_DATE gsdBeginDate,
+        gsd.GSD_END_DATE gsdEndDate
+        FROM
+        (
+        SELECT
+        gssd.CLIENT,
+        gssd.GSSD_DATE,
+        gssd.GSSD_BR_ID,
+        ifnull( sum( gssd.GSSD_MOV_PRICES ), 0 ) movPrices,
+        ifnull( sum( gssd.GSSD_AMT ), 0 ) amt
+        FROM
+        GAIA_SD_SALE_D gssd
+        WHERE
+        gssd.CLIENT = #{client}
+        <if test="startDate != null and startDate != ''">
+            and gssd.GSSD_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and gssd.GSSD_DATE &lt;= #{endDate}
+        </if>
+        <if test="stoCodeArr != null and stoCodeArr.length > 0">
+            and gssd.GSSD_BR_ID in
+            <foreach collection="stoCodeArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        gssd.GSSD_DATE,
+        gssd.GSSD_BR_ID
+        ) sd
+        LEFT JOIN GAIA_STORE_DISCOUNT gsd ON sd.CLIENT = gsd.CLIENT
+        AND sd.GSSD_BR_ID = gsd.STO_CODE
+        LEFT JOIN GAIA_STORE_DATA gasd ON sd.CLIENT = gasd.CLIENT
+        AND sd.GSSD_BR_ID = gasd.STO_CODE
+        <where>
+            <if test="stoTaxRate != null and stoTaxRate != ''">
+                and gasd.STO_TAX_RATE = #{stoTaxRate}
+            </if>
+            <if test="stoRebate != null and stoRebate != ''">
+                and gsd.GSD_STO_REBATE = #{stoRebate}
+            </if>
+        </where>
+        ) tab
+        ORDER BY
+        tab.stoCode,
+        tab.saleDate
+    </select>
+    <select id="selectStoreDiscountSummary" resultType="java.util.Map"
+            parameterType="com.gys.entity.data.StoreBudgetPlanInData">
+        SELECT
+        tab.saleDate,
+        tab.stoCode,
+        tab.stoName,
+        CONCAT(round(tab.stoTaxRate, 2), '') stoTaxRate,
+        CONCAT(round(tab.stoTaxRate, 2), '%') stoTaxRates,
+        CONCAT(round(tab.movPrices, 2), '') movPrices,
+        CONCAT(round(tab.amt, 2), '') amt,
+        CONCAT(round(tab.amountReceivable, 2), '') amountReceivable,
+        CONCAT(round(( tab.amountReceivable - tab.movPrices ), 2 ), '') grossProfitMargin,
+        CONCAT(round(( tab.amountReceivable - tab.movPrices )*100/ tab.amountReceivable, 2 ), '') grossProfitRate,
+        CONCAT(round(( tab.amountReceivable - tab.movPrices )*100/ tab.amountReceivable, 2 ), '%') grossProfitRates,
+        CONCAT(round((tab.amt - tab.amountReceivable), 2), '') discountAmt,
+        CONCAT(round(tab.gsdStoReBate, 2), '') gsdStoReBate,
+        CONCAT(round(tab.gsdStoReBate, 2), '%') gsdStoReBates,
+        tab.gsdBeginDate,
+        tab.gsdEndDate,
+        tab.CLIENT,
+        tab.STO_ATTRIBUTE stoAttribute,
+        tab.STO_IF_DTP stoIfDtp,
+        tab.STO_IF_MEDICALCARE stoIfMedical,
+        tab.STO_TAX_CLASS stoTaxClass,
+        datediff(tab.gsdEndDate,tab.gsdBeginDate) salesDays
+        FROM
+        (
+        SELECT
+        sd.GSSD_DATE saleDate,
+        sd.GSSD_BR_ID stoCode,
+        gasd.STO_NAME stoName,
+        gasd.STO_TAX_RATE stoTaxRate,
+        sd.movPrices,
+        sd.amt,
+        sd.CLIENT,
+        gasd.STO_ATTRIBUTE,
+        gasd.STO_IF_DTP,
+        gasd.STO_IF_MEDICALCARE,
+        gasd.STO_TAX_CLASS,
+        CASE
+
+        WHEN sd.GSSD_DATE <![CDATA[ >= ]]> gsd.GSD_BEGIN_DATE AND sd.GSSD_DATE <![CDATA[ <= ]]> gsd.GSD_END_DATE
+        AND gsd.GSD_STO_REBATE != '' THEN
+        sd.amt *(
+        gsd.GSD_STO_REBATE+ 0
+        )/ 100 ELSE sd.amt
+        END amountReceivable,
+        gsd.GSD_STO_REBATE gsdStoReBate,
+        gsd.GSD_BEGIN_DATE gsdBeginDate,
+        gsd.GSD_END_DATE gsdEndDate
+        FROM
+        (
+        SELECT
+        gssd.CLIENT,
+        gssd.GSSD_DATE,
+        gssd.GSSD_BR_ID,
+        ifnull( sum( gssd.GSSD_MOV_PRICES ), 0 ) movPrices,
+        ifnull( sum( gssd.GSSD_AMT ), 0 ) amt
+        FROM
+        GAIA_SD_SALE_D gssd
+        WHERE
+        gssd.CLIENT = #{client}
+        <if test="startDate != null and startDate != ''">
+            and gssd.GSSD_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and gssd.GSSD_DATE &lt;= #{endDate}
+        </if>
+        <if test="cusSelfCodeList != null and cusSelfCodeList.length > 0">
+            and gssd.GSSD_BR_ID in
+            <foreach collection="cusSelfCodeList" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        gssd.GSSD_DATE,
+        gssd.GSSD_BR_ID
+        ) sd
+        LEFT JOIN GAIA_STORE_DISCOUNT gsd ON sd.CLIENT = gsd.CLIENT
+        AND sd.GSSD_BR_ID = gsd.STO_CODE
+        LEFT JOIN GAIA_STORE_DATA gasd ON sd.CLIENT = gasd.CLIENT
+        AND sd.GSSD_BR_ID = gasd.STO_CODE
+        <where>
+            <if test="stoTaxRate != null and stoTaxRate != ''">
+                and gasd.STO_TAX_RATE = #{stoTaxRate}
+            </if>
+            <if test="stoRebate != null and stoRebate != ''">
+                and gsd.GSD_STO_REBATE = #{stoRebate}
+            </if>
+            <if test="stoGssgTypes!=null and stoGssgTypes.size">
+                AND EXISTS (SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE gasd.CLIENT = gssg.CLIENT AND gasd.STO_CODE =
+                gssg.GSSG_BR_ID
+                AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+                <foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator=",">
+                    (#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+                </foreach>
+                )
+            </if>
+            <if test="stoAttributes!=null and stoAttributes.size">
+                AND gasd.STO_ATTRIBUTE IN
+                <foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator=",">
+                    #{stoAttribute}
+                </foreach>
+            </if>
+            <if test="stoAttribute==''">
+                AND gasd.STO_ATTRIBUTE IS NOT NULL AND gasd.STO_ATTRIBUTE != ''
+            </if>
+            <if test="stoIfMedicals!=null and stoIfMedicals.size">
+                AND gasd.STO_IF_MEDICALCARE IN
+                <foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator=",">
+                    #{stoIfMedical}
+                </foreach>
+            </if>
+            <if test="stoIfMedical==''">
+                AND gasd.STO_IF_MEDICALCARE IS NOT NULL AND gasd.STO_IF_MEDICALCARE != ''
+            </if>
+            <if test="stoTaxClasss!=null and stoTaxClasss.size">
+                AND gasd.STO_TAX_CLASS IN
+                <foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator=",">
+                    #{stoTaxClass}
+                </foreach>
+            </if>
+            <if test="stoTaxClass==''">
+                AND gasd.STO_TAX_CLASS IS NOT NULL AND gasd.STO_TAX_CLASS != ''
+            </if>
+            <if test="stoIfDtps!=null and stoIfDtps.size">
+                AND gasd.STO_IF_DTP IN
+                <foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator=",">
+                    #{stoIfDtp}
+                </foreach>
+            </if>
+            <if test="stoIfDtp==''">
+                AND gasd.STO_IF_DTP IS NOT NULL AND gasd.STO_IF_DTP != ''
+            </if>
+        </where>
+        ) tab
+        ORDER BY
+        tab.stoCode,
+        tab.saleDate
+
+    </select>
+</mapper>

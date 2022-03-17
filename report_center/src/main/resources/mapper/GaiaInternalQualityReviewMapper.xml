@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaInternalQualityReviewMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaInternalQualityReview">
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="VOUCHER_ID" jdbcType="VARCHAR" property="voucherId" />
+    <result column="REVIEW_CONTENT" jdbcType="VARCHAR" property="reviewContent" />
+    <result column="REVIEW_QUALITY" jdbcType="VARCHAR" property="reviewQuality" />
+    <result column="SUGGEST" jdbcType="VARCHAR" property="suggest" />
+    <result column="EFFECT_CONTENT" jdbcType="VARCHAR" property="effectContent" />
+    <result column="REVIEW_SCOPE" jdbcType="VARCHAR" property="reviewScope" />
+    <result column="REVIEW_TARGET" jdbcType="VARCHAR" property="reviewTarget" />
+    <result column="REVIEW_TIME" jdbcType="TIMESTAMP" property="reviewTime" />
+    <result column="REVIEW_BASE" jdbcType="VARCHAR" property="reviewBase" />
+    <result column="REVIEW_USER" jdbcType="VARCHAR" property="reviewUser" />
+    <result column="REVIEW_ORG" jdbcType="VARCHAR" property="reviewOrg" />
+    <result column="TRIAL_DEP" jdbcType="VARCHAR" property="trialDep" />
+    <result column="IS_DELETE" jdbcType="INTEGER" property="isDelete" />
+    <result column="CREATE_USER" jdbcType="VARCHAR" property="createUser" />
+    <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="UPDATE_USER" jdbcType="VARCHAR" property="updateUser" />
+    <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    ID, CLIENT, VOUCHER_ID, REVIEW_CONTENT, REVIEW_QUALITY, SUGGEST, EFFECT_CONTENT, 
+    REVIEW_SCOPE, REVIEW_TARGET, REVIEW_TIME, REVIEW_BASE, REVIEW_USER, REVIEW_ORG, TRIAL_DEP, 
+    IS_DELETE, CREATE_USER, CREATE_TIME, UPDATE_USER, UPDATE_TIME
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_INTERNAL_QUALITY_REVIEW
+    where ID = #{id,jdbcType=BIGINT}
+  </select>
+  <!--多条件查询-->
+  <select id="getItem"  resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_INTERNAL_QUALITY_REVIEW
+    <where>
+      CLIENT = #{inData.client} and IS_DELETE = 0
+      <if test="inData.id != null and inData.id != ''">
+        and ID = #{inData.id}
+      </if>
+      <if test="inData.voucherId != null and inData.voucherId != ''">
+        and VOUCHER_ID = #{inData.voucherId}
+      </if>
+      <if test="inData.startDate != null and inData.startDate != ''">
+        and REVIEW_TIME &gt;= #{inData.startDate}
+      </if>
+      <if test="inData.endDate != null and inData.endDate != ''">
+        and REVIEW_TIME &lt;= #{inData.endDate}
+      </if>
+    </where>
+  </select>
+  <insert id="insertSelective" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.GaiaInternalQualityReview" useGeneratedKeys="true">
+    insert into GAIA_INTERNAL_QUALITY_REVIEW
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        CLIENT,
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID,
+      </if>
+      <if test="reviewContent != null">
+        REVIEW_CONTENT,
+      </if>
+      <if test="reviewQuality != null">
+        REVIEW_QUALITY,
+      </if>
+      <if test="suggest != null">
+        SUGGEST,
+      </if>
+      <if test="effectContent != null">
+        EFFECT_CONTENT,
+      </if>
+      <if test="reviewScope != null">
+        REVIEW_SCOPE,
+      </if>
+      <if test="reviewTarget != null">
+        REVIEW_TARGET,
+      </if>
+      <if test="reviewTime != null">
+        REVIEW_TIME,
+      </if>
+      <if test="reviewBase != null">
+        REVIEW_BASE,
+      </if>
+      <if test="reviewUser != null">
+        REVIEW_USER,
+      </if>
+      <if test="reviewOrg != null">
+        REVIEW_ORG,
+      </if>
+      <if test="trialDep != null">
+        TRIAL_DEP,
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE,
+      </if>
+      <if test="createUser != null">
+        CREATE_USER,
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME,
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER,
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null">
+        #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewContent != null">
+        #{reviewContent,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewQuality != null">
+        #{reviewQuality,jdbcType=VARCHAR},
+      </if>
+      <if test="suggest != null">
+        #{suggest,jdbcType=VARCHAR},
+      </if>
+      <if test="effectContent != null">
+        #{effectContent,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewScope != null">
+        #{reviewScope,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewTarget != null">
+        #{reviewTarget,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewTime != null">
+        #{reviewTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="reviewBase != null">
+        #{reviewBase,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewUser != null">
+        #{reviewUser,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewOrg != null">
+        #{reviewOrg,jdbcType=VARCHAR},
+      </if>
+      <if test="trialDep != null">
+        #{trialDep,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null">
+        #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.GaiaInternalQualityReview">
+    update GAIA_INTERNAL_QUALITY_REVIEW
+    <set>
+      <if test="client != null">
+        CLIENT = #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewContent != null">
+        REVIEW_CONTENT = #{reviewContent,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewQuality != null">
+        REVIEW_QUALITY = #{reviewQuality,jdbcType=VARCHAR},
+      </if>
+      <if test="suggest != null">
+        SUGGEST = #{suggest,jdbcType=VARCHAR},
+      </if>
+      <if test="effectContent != null">
+        EFFECT_CONTENT = #{effectContent,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewScope != null">
+        REVIEW_SCOPE = #{reviewScope,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewTarget != null">
+        REVIEW_TARGET = #{reviewTarget,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewTime != null">
+        REVIEW_TIME = #{reviewTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="reviewBase != null">
+        REVIEW_BASE = #{reviewBase,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewUser != null">
+        REVIEW_USER = #{reviewUser,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewOrg != null">
+        REVIEW_ORG = #{reviewOrg,jdbcType=VARCHAR},
+      </if>
+      <if test="trialDep != null">
+        TRIAL_DEP = #{trialDep,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createUser != null">
+        CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where ID = #{id,jdbcType=BIGINT}
+  </update>
+
+</mapper>

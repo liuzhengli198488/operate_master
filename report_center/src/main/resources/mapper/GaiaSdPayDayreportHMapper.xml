@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdPayDayreportHMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdPayDayreportH">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSPDH_VOUCHER_ID" jdbcType="VARCHAR" property="gspdhVoucherId" />
+    <id column="GSPDH_BR_ID" jdbcType="VARCHAR" property="gspdhBrId" />
+    <result column="GSPDH_SALE_DATE" jdbcType="VARCHAR" property="gspdhSaleDate" />
+    <result column="GSPDH_CHECK_DATE" jdbcType="VARCHAR" property="gspdhCheckDate" />
+    <result column="GSPDH_CHECK_TIME" jdbcType="VARCHAR" property="gspdhCheckTime" />
+    <result column="GSPDH_EMP" jdbcType="VARCHAR" property="gspdhEmp" />
+    <result column="GSPDHTOTAL_SALES_AMT" jdbcType="DECIMAL" property="gspdhtotalSalesAmt" />
+    <result column="GSPDHTOTAL_INPUT_AMT" jdbcType="DECIMAL" property="gspdhtotalInputAmt" />
+    <result column="GSPDH_STATUS" jdbcType="VARCHAR" property="gspdhStatus" />
+    <result column="GSPDH_ACCOUNTING_FLAG" jdbcType="VARCHAR" property="gspdhAccountingFlag" />
+    <result column="GSPDH_ACCOUNTING_NO" jdbcType="VARCHAR" property="gspdhAccountingNo" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, GSPDH_VOUCHER_ID, GSPDH_BR_ID, GSPDH_SALE_DATE, GSPDH_CHECK_DATE, GSPDH_CHECK_TIME, 
+    GSPDH_EMP, GSPDHTOTAL_SALES_AMT, GSPDHTOTAL_INPUT_AMT, GSPDH_STATUS, GSPDH_ACCOUNTING_FLAG, 
+    GSPDH_ACCOUNTING_NO
+  </sql>
+    <select id="selectPayDayReport" resultMap="BaseResultMap">
+      SELECT
+        h.CLIENT,
+        h.GSPDH_VOUCHER_ID,
+        CONCAT( h.GSPDH_BR_ID, '(', IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ), ')' ) GSPDH_BR_ID,
+        h.GSPDH_SALE_DATE,
+        h.GSPDHTOTAL_INPUT_AMT,
+        h.GSPDHTOTAL_SALES_AMT + GSPDHTOTAL_CARD_AMT AS GSPDHTOTAL_SALES_AMT,
+        CONCAT( h.GSPDH_EMP, '(',  us.USER_NAM , ')' ) GSPDH_EMP
+      FROM
+        GAIA_SD_PAY_DAYREPORT_H h
+          LEFT JOIN GAIA_STORE_DATA sto ON h.CLIENT = sto.CLIENT
+          AND h.GSPDH_BR_ID = sto.STO_CODE
+          LEFT JOIN GAIA_USER_DATA us ON h.CLIENT = us.CLIENT
+          AND h.GSPDH_EMP = us.USER_ID
+      WHERE
+        h.GSPDH_SALE_DATE &gt;= #{startDate}
+        AND h.GSPDH_SALE_DATE &lt;= #{endDate}
+        AND h.GSPDH_BR_ID =#{stoCode}
+        AND h.CLIENT = #{client}
+    </select>
+</mapper>

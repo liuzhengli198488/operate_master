@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaWmsYaojianMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaWmsYaojian">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="WM_GYS_BH" jdbcType="VARCHAR" property="wmGysBh" />
+    <result column="WM_SP_BM" jdbcType="VARCHAR" property="wmSpBm" />
+    <result column="WM_PH" jdbcType="VARCHAR" property="wmPh" />
+    <result column="WM_YSR" jdbcType="VARCHAR" property="wmYsr" />
+    <result column="WM_XGRQ" jdbcType="VARCHAR" property="wmXgrq" />
+    <result column="WM_XGSJ" jdbcType="VARCHAR" property="wmXgsj" />
+    <result column="WM_XGR_ID" jdbcType="VARCHAR" property="wmXgrId" />
+    <result column="WM_XGR" jdbcType="VARCHAR" property="wmXgr" />
+    <result column="WM_TPDZ" jdbcType="VARCHAR" property="wmTpdz" />
+    <result column="WM_TPZS" jdbcType="VARCHAR" property="wmTpzs" />
+    <result column="PRO_SITE" jdbcType="VARCHAR" property="proSite" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    ID, CLIENT, WM_GYS_BH, WM_SP_BM, WM_PH, WM_YSR, WM_XGRQ, WM_XGSJ, WM_XGR_ID, WM_XGR, 
+    WM_TPDZ, WM_TPZS, PRO_SITE
+  </sql>
+
+  <select id="getPictureUrl" resultType="java.lang.String">
+    select WM_TPDZ
+    from GAIA_WMS_YAOJIAN
+    where CLIENT = #{client}
+      <if test="supplierCoder != null and supplierCoder != ''">
+        and WM_GYS_BH = #{supplierCoder}
+      </if>
+    <if test="proCode != null and proCode != ''">
+      and WM_SP_BM = #{proCode}
+    </if>
+    <if test="batchNo != null and batchNo != ''">
+      and WM_PH = #{batchNo}
+    </if>
+  </select>
+
+</mapper>

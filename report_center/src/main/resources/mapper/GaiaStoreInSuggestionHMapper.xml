@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaStoreInSuggestionHMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaStoreInSuggestionH">
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="STO_CODE" jdbcType="VARCHAR" property="stoCode" />
+    <result column="STO_NAME" jdbcType="VARCHAR" property="stoName" />
+    <result column="OUT_STO_CODE" jdbcType="VARCHAR" property="outStoCode" />
+    <result column="OUT_STO_NAME" jdbcType="VARCHAR" property="outStoName" />
+    <result column="BILL_CODE" jdbcType="VARCHAR" property="billCode" />
+    <result column="OUT_BILL_CODE" jdbcType="VARCHAR" property="outBillCode" />
+    <result column="BILL_DATE" jdbcType="TIMESTAMP" property="billDate" />
+    <result column="INVALID_DATE" jdbcType="TIMESTAMP" property="invalidDate" />
+    <result column="STATUS" jdbcType="INTEGER" property="status" />
+    <result column="ITEMS_QTY" jdbcType="INTEGER" property="itemsQty" />
+    <result column="FINISH_TIME" jdbcType="TIMESTAMP" property="finishTime" />
+    <result column="IS_DELETE" jdbcType="INTEGER" property="isDelete" />
+    <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="CREATE_USER" jdbcType="VARCHAR" property="createUser" />
+    <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+    <result column="UPDATE_USER" jdbcType="VARCHAR" property="updateUser" />
+    <result column="export_before_confirm" jdbcType="INTEGER" property="exportBeforeConfirm" />
+    <result column="export_after_confirm" jdbcType="INTEGER" property="exportAfterConfirm" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    ID, CLIENT, STO_CODE, STO_NAME, OUT_STO_CODE, OUT_STO_NAME, BILL_CODE, OUT_BILL_CODE, 
+    BILL_DATE, INVALID_DATE, `STATUS`, ITEMS_QTY, FINISH_TIME, IS_DELETE, CREATE_TIME, 
+    CREATE_USER, UPDATE_TIME, UPDATE_USER, export_before_confirm, export_after_confirm
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from GAIA_STORE_IN_SUGGESTION_H
+    where ID = #{id,jdbcType=BIGINT}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    delete from GAIA_STORE_IN_SUGGESTION_H
+    where ID = #{id,jdbcType=BIGINT}
+  </delete>
+  <insert id="insert" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.GaiaStoreInSuggestionH" useGeneratedKeys="true">
+    insert into GAIA_STORE_IN_SUGGESTION_H (CLIENT, STO_CODE, STO_NAME, 
+      OUT_STO_CODE, OUT_STO_NAME, BILL_CODE, 
+      OUT_BILL_CODE, BILL_DATE, INVALID_DATE, 
+      `STATUS`, ITEMS_QTY, FINISH_TIME, 
+      IS_DELETE, CREATE_TIME, CREATE_USER, 
+      UPDATE_TIME, UPDATE_USER, export_before_confirm, 
+      export_after_confirm)
+    values (#{client,jdbcType=VARCHAR}, #{stoCode,jdbcType=VARCHAR}, #{stoName,jdbcType=VARCHAR}, 
+      #{outStoCode,jdbcType=VARCHAR}, #{outStoName,jdbcType=VARCHAR}, #{billCode,jdbcType=VARCHAR}, 
+      #{outBillCode,jdbcType=VARCHAR}, #{billDate,jdbcType=TIMESTAMP}, #{invalidDate,jdbcType=TIMESTAMP}, 
+      #{status,jdbcType=INTEGER}, #{itemsQty,jdbcType=INTEGER}, #{finishTime,jdbcType=TIMESTAMP}, 
+      #{isDelete,jdbcType=INTEGER}, #{createTime,jdbcType=TIMESTAMP}, #{createUser,jdbcType=VARCHAR}, 
+      #{updateTime,jdbcType=TIMESTAMP}, #{updateUser,jdbcType=VARCHAR}, #{exportBeforeConfirm,jdbcType=INTEGER}, 
+      #{exportAfterConfirm,jdbcType=INTEGER})
+  </insert>
+  <insert id="insertSelective" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.GaiaStoreInSuggestionH" useGeneratedKeys="true">
+    insert into GAIA_STORE_IN_SUGGESTION_H
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        CLIENT,
+      </if>
+      <if test="stoCode != null">
+        STO_CODE,
+      </if>
+      <if test="stoName != null">
+        STO_NAME,
+      </if>
+      <if test="outStoCode != null">
+        OUT_STO_CODE,
+      </if>
+      <if test="outStoName != null">
+        OUT_STO_NAME,
+      </if>
+      <if test="billCode != null">
+        BILL_CODE,
+      </if>
+      <if test="outBillCode != null">
+        OUT_BILL_CODE,
+      </if>
+      <if test="billDate != null">
+        BILL_DATE,
+      </if>
+      <if test="invalidDate != null">
+        INVALID_DATE,
+      </if>
+      <if test="status != null">
+        `STATUS`,
+      </if>
+      <if test="itemsQty != null">
+        ITEMS_QTY,
+      </if>
+      <if test="finishTime != null">
+        FINISH_TIME,
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE,
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME,
+      </if>
+      <if test="createUser != null">
+        CREATE_USER,
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME,
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER,
+      </if>
+      <if test="exportBeforeConfirm != null">
+        export_before_confirm,
+      </if>
+      <if test="exportAfterConfirm != null">
+        export_after_confirm,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="stoCode != null">
+        #{stoCode,jdbcType=VARCHAR},
+      </if>
+      <if test="stoName != null">
+        #{stoName,jdbcType=VARCHAR},
+      </if>
+      <if test="outStoCode != null">
+        #{outStoCode,jdbcType=VARCHAR},
+      </if>
+      <if test="outStoName != null">
+        #{outStoName,jdbcType=VARCHAR},
+      </if>
+      <if test="billCode != null">
+        #{billCode,jdbcType=VARCHAR},
+      </if>
+      <if test="outBillCode != null">
+        #{outBillCode,jdbcType=VARCHAR},
+      </if>
+      <if test="billDate != null">
+        #{billDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="invalidDate != null">
+        #{invalidDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="status != null">
+        #{status,jdbcType=INTEGER},
+      </if>
+      <if test="itemsQty != null">
+        #{itemsQty,jdbcType=INTEGER},
+      </if>
+      <if test="finishTime != null">
+        #{finishTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="isDelete != null">
+        #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="exportBeforeConfirm != null">
+        #{exportBeforeConfirm,jdbcType=INTEGER},
+      </if>
+      <if test="exportAfterConfirm != null">
+        #{exportAfterConfirm,jdbcType=INTEGER},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.GaiaStoreInSuggestionH">
+    update GAIA_STORE_IN_SUGGESTION_H
+    <set>
+      <if test="client != null">
+        CLIENT = #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="stoCode != null">
+        STO_CODE = #{stoCode,jdbcType=VARCHAR},
+      </if>
+      <if test="stoName != null">
+        STO_NAME = #{stoName,jdbcType=VARCHAR},
+      </if>
+      <if test="outStoCode != null">
+        OUT_STO_CODE = #{outStoCode,jdbcType=VARCHAR},
+      </if>
+      <if test="outStoName != null">
+        OUT_STO_NAME = #{outStoName,jdbcType=VARCHAR},
+      </if>
+      <if test="billCode != null">
+        BILL_CODE = #{billCode,jdbcType=VARCHAR},
+      </if>
+      <if test="outBillCode != null">
+        OUT_BILL_CODE = #{outBillCode,jdbcType=VARCHAR},
+      </if>
+      <if test="billDate != null">
+        BILL_DATE = #{billDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="invalidDate != null">
+        INVALID_DATE = #{invalidDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="status != null">
+        `STATUS` = #{status,jdbcType=INTEGER},
+      </if>
+      <if test="itemsQty != null">
+        ITEMS_QTY = #{itemsQty,jdbcType=INTEGER},
+      </if>
+      <if test="finishTime != null">
+        FINISH_TIME = #{finishTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="exportBeforeConfirm != null">
+        export_before_confirm = #{exportBeforeConfirm,jdbcType=INTEGER},
+      </if>
+      <if test="exportAfterConfirm != null">
+        export_after_confirm = #{exportAfterConfirm,jdbcType=INTEGER},
+      </if>
+    </set>
+    where ID = #{id,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.gys.entity.GaiaStoreInSuggestionH">
+    update GAIA_STORE_IN_SUGGESTION_H
+    set CLIENT = #{client,jdbcType=VARCHAR},
+      STO_CODE = #{stoCode,jdbcType=VARCHAR},
+      STO_NAME = #{stoName,jdbcType=VARCHAR},
+      OUT_STO_CODE = #{outStoCode,jdbcType=VARCHAR},
+      OUT_STO_NAME = #{outStoName,jdbcType=VARCHAR},
+      BILL_CODE = #{billCode,jdbcType=VARCHAR},
+      OUT_BILL_CODE = #{outBillCode,jdbcType=VARCHAR},
+      BILL_DATE = #{billDate,jdbcType=TIMESTAMP},
+      INVALID_DATE = #{invalidDate,jdbcType=TIMESTAMP},
+      `STATUS` = #{status,jdbcType=INTEGER},
+      ITEMS_QTY = #{itemsQty,jdbcType=INTEGER},
+      FINISH_TIME = #{finishTime,jdbcType=TIMESTAMP},
+      IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      export_before_confirm = #{exportBeforeConfirm,jdbcType=INTEGER},
+      export_after_confirm = #{exportAfterConfirm,jdbcType=INTEGER}
+    where ID = #{id,jdbcType=BIGINT}
+  </update>
+
+  <select id="getOne" parameterType="com.gys.entity.data.suggestion.dto.UpdateExportDto" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_STORE_IN_SUGGESTION_H
+    <where>
+      <if test="clientId!=null and clientId!='' ">
+        and  CLIENT=#{clientId}
+      </if>
+      <if test="storeId!=null and storeId!='' ">
+        and STO_CODE=#{storeId}
+      </if>
+      <if test="id!=null and id!='' ">
+        and BILL_CODE=#{id}
+      </if>
+    </where>
+    limit 1
+  </select>
+</mapper>

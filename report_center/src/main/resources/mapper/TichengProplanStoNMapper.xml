@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.TichengProplanStoNMapper">
+
+    <select id="selectStoreByPlanIdAndClient" resultType="com.gys.common.data.StoreSimpleInfoWithPlan">
+        SELECT
+            DISTINCT
+            gsd.STO_CODE stoCode,
+            IF(gsd.STO_SHORT_NAME IS NULL OR gsd.STO_SHORT_NAME = '', gsd.STO_NAME, gsd.STO_SHORT_NAME) stoShortName
+        FROM `GAIA_TICHENG_PROPLAN_STO_N` gtpsn
+        INNER JOIN GAIA_STORE_DATA gsd ON gtpsn.CLIENT = gsd.CLIENT AND gtpsn.STO_CODE = gsd.STO_CODE
+        WHERE gtpsn.CLIENT = #{client}
+        <if test="planId!=null">
+            AND gtpsn.PID = #{planId}
+        </if>
+        AND gtpsn.DELETE_FLAG = '0'
+    </select>
+
+</mapper>

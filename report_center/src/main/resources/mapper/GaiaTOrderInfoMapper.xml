@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTOrderInfoMapper">
+  <select id="orderQuery" parameterType="com.gys.report.entity.WebOrderQueryBean"
+          resultType="com.gys.report.entity.WebOrderDataDto">
+    select
+    info.STO_CODE stoCode,
+    sd.STO_NAME stoName,
+    info.PlATFORMS platform,
+    info.PLATFORMS_ORDER_ID platformOrderId,
+    info.ORDER_ID orderId,
+    left(info.CREATE_TIME,10) createDate,
+    if(info.STATUS=3,left(info.UPDATE_TIME,10),null) finishDate,
+    info.STATUS status,
+    ROUND(info.ORIGINAL_PRICE,2) platformOriginalPrice,
+    ROUND(info.ORDER_INFO,2) platformZkPrice,
+    ROUND(info.SHIPPING_FEE,2) platformShippingFee,
+    ROUND((info.CUSTOMER_PAY-info.SHIPPING_FEE-info.TOTAL_PRICE),2) platformUseFee,
+    ROUND(info.TOTAL_PRICE,2) platformActualPrice,
+    ROUND(info.CUSTOMER_PAY,2) customerPay,
+    h.GSSH_BILL_NO saleOrderId,
+    h.GSSH_DATE saleDate,
+    ROUND(h.GSSH_NORMAL_AMT,2) saleTotalAmt,
+    ROUND(h.GSSH_YS_AMT,2) saleActualPrice,
+    ROUND(h.GSSH_ZK_AMT,2) saleZkPrice
+    from GAIA_T_ORDER_INFO info  left join GAIA_SD_SALE_H h on info.ORDER_ID = h.GSSH_REGISTER_VOUCHER_ID
+    left join GAIA_STORE_DATA sd on info.STO_CODE= sd.STO_CODE and info.CLIENT = sd.CLIENT
+    where info.CLIENT=#{client} and h.GSSH_BILL_NO_RETURN is null
+    <if test="stoCodeList != null">
+      and sd.STO_CODE in
+      <foreach collection="stoCodeList" item="item" separator="," open="(" close=")">
+          #{item}
+      </foreach>
+    </if>
+    <if test="platform !=null and platform !='' ">
+      and info.PlATFORMS = #{platform}
+    </if>
+    <if test="createStartDate != null and createStartDate !='' ">
+      and left(info.CREATE_TIME, 10) <![CDATA[ >= ]]> #{createStartDate}
+    </if>
+    <if test="createEndDate != null and createEndDate !='' ">
+      and left(info.CREATE_TIME, 10) <![CDATA[ <= ]]> #{createEndDate}
+    </if>
+    <if test="platformOrderId != null and platformOrderId !='' ">
+      and info.PLATFORMS_ORDER_ID like concat('%',#{platformOrderId},'%')
+    </if>
+    <if test="orderId != null and orderId !='' ">
+      and info.ORDER_ID like concat('%',#{orderId},'%')
+    </if>
+    <if test="saleOrderId != null and saleOrderId !='' ">
+      and h.GSSH_BILL_NO like concat('%',#{saleOrderId},'%')
+    </if>
+    GROUP BY info.ORDER_ID
+  </select>
+  <select id="orderDetailQuery" parameterType="com.gys.report.entity.WebOrderQueryBean"
+          resultType="com.gys.report.entity.WebOrderDetailDataDto">
+    select
+    info.PLATFORMS_ORDER_ID platformOrderId,
+    pInfo.ORDER_ID orderId,
+    d.GSSD_BILL_NO saleOrderId,
+    pInfo.MEDICINE_CODE proId,
+    pb.PRO_COMMONNAME proCommonName,
+    pb.PRO_SPECS proSpec,
+    pb.PRO_UNIT unit,
+    pb.PRO_FACTORY_NAME factoryName,
+    pb.PRO_PLACE place,
+    d.GSSD_BATCH_NO batchNo,
+    d.GSSD_VALID_DATE validateDate,
+    ROUND(pInfo.QUANTITY,2) num,
+    ROUND(pInfo.PRICE,2) platformSinglePrice,
+    ROUND(d.GSSD_PRC1,2) saleTotalAmt,
+    ROUND((d.GSSD_PRC2*d.GSSD_QTY),2) saleActualPrice,
+    ROUND(d.GSSD_ZK_AMT,2) saleZkPrice,
+    ROUND(d.GSSD_PRC2,2) saleSinglePrice,
+    info.PlATFORMS platform,
+    left(info.CREATE_TIME,10) createDate
+    from GAIA_T_ORDER_PRO_INFO pInfo
+    LEFT JOIN GAIA_T_ORDER_INFO info on pInfo.ORDER_ID=info.ORDER_ID
+    LEFT JOIN GAIA_PRODUCT_BUSINESS pb on pb.PRO_SELF_CODE=pInfo.MEDICINE_CODE and pb.CLIENT=pInfo.CLIENT and pb.PRO_SITE=info.STO_CODE
+    LEFT JOIN GAIA_SD_SALE_H h on h.GSSH_REGISTER_VOUCHER_ID= pInfo.ORDER_ID
+    LEFT JOIN GAIA_SD_SALE_D d on d.GSSD_BILL_NO= h.GSSH_BILL_NO and pInfo.MEDICINE_CODE=d.GSSD_PRO_ID and info.CLIENT=d.CLIENT
+    where pInfo.CLIENT=#{client} and h.GSSH_BILL_NO_RETURN is null
+    <if test="proIdList != null">
+      and pInfo.MEDICINE_CODE in
+      <foreach collection="proIdList" item="item" separator="," open="(" close=")">
+        #{item}
+      </foreach>
+    </if>
+    <if test="platform !=null and platform !='' ">
+      and info.PlATFORMS = #{platform}
+    </if>
+    <if test="createStartDate != null and createStartDate !='' ">
+      and left(info.CREATE_TIME, 10) <![CDATA[ >= ]]> #{createStartDate}
+    </if>
+    <if test="createEndDate != null and createEndDate !='' ">
+      and left(info.CREATE_TIME, 10) <![CDATA[ <= ]]> #{createEndDate}
+    </if>
+    <if test="platformOrderId != null and platformOrderId !='' ">
+      and info.PLATFORMS_ORDER_ID like concat('%',#{platformOrderId},'%')
+    </if>
+    <if test="orderId != null and orderId !='' ">
+      and info.ORDER_ID like concat('%',#{orderId},'%')
+    </if>
+    <if test="saleOrderId != null and saleOrderId !='' ">
+      and h.GSSH_BILL_NO like concat('%',#{saleOrderId},'%')
+    </if>
+    GROUP BY info.ORDER_ID
+  </select>
+</mapper>

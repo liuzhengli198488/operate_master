@@ -1,0 +1,732 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.SaleReportMapper">
+    <select id="selectNosaleReportList" parameterType="com.gys.common.data.SaleReportInData"
+            resultType="com.gys.common.data.NoSaleItemOutData">
+        SELECT *  from  (SELECT
+            a.MAT_PRO_CODE proCode,
+            c.PRO_COMMONNAME proName,
+            c.PRO_SPECS proSpecs,
+            c.PRO_FACTORY_NAME factoryName,
+            c.PRO_UNIT proUnit,
+            ( CASE WHEN c.PRO_IF_MED = '1' THEN '是' WHEN c.PRO_MED_ID IS NOT NULL THEN '是' ELSE '否' END ) isMedOrNot,
+            SUM(e.stockQty) stockQty,
+            SUM(e.costAmt) costAmt,
+            d.gssdQty
+        FROM GAIA_MATERIAL_ASSESS a
+        LEFT JOIN GAIA_STORE_DATA b ON a.CLIENT = b.CLIENT AND a.MAT_ASSESS_SITE = b.STO_CODE
+        LEFT JOIN GAIA_PRODUCT_BUSINESS c ON a.MAT_ASSESS_SITE = c.PRO_SITE AND a.CLIENT = c.CLIENT AND a.MAT_PRO_CODE = c.PRO_SELF_CODE
+        LEFT JOIN (SELECT GSSD_PRO_ID,SUM(GSSD_QTY) gssdQty FROM GAIA_SD_SALE_D WHERE CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSD_BR_ID = #{stoCode}
+        </if>
+        AND GSSD_DATE >= REPLACE ( date_sub( curdate( ), INTERVAL #{noSaleDay} DAY ), '-', '' )
+        GROUP BY GSSD_PRO_ID) d ON d.GSSD_PRO_ID = a.MAT_PRO_CODE and d.gssdQty <![CDATA[<=]]> #{saleNum}
+        LEFT JOIN (SELECT a.MAT_PRO_CODE proCode,MAT_ASSESS_SITE,
+        SUM(CASE WHEN b.STO_CODE IS NULL THEN ( a.MAT_TOTAL_AMT + a.MAT_RATE_AMT ) ELSE ( a.MAT_ADD_AMT + a.MAT_ADD_TAX )/a.MAT_TOTAL_QTY * c.GSS_QTY END) costAmt,
+        SUM(CASE WHEN b.STO_CODE IS NULL THEN a.MAT_TOTAL_QTY ELSE c.GSS_QTY END) stockQty
+        FROM GAIA_MATERIAL_ASSESS a
+        LEFT JOIN GAIA_STORE_DATA b ON a.CLIENT = b.CLIENT AND a.MAT_ASSESS_SITE = b.STO_CODE
+        LEFT JOIN GAIA_SD_STOCK c ON a.CLIENT = c.CLIENT AND a.MAT_ASSESS_SITE = c.GSS_BR_ID AND a.MAT_PRO_CODE = c.GSS_PRO_ID
+        WHERE a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND a.MAT_ASSESS_SITE = #{stoCode}
+        </if>
+        AND MAT_PRO_CODE NOT IN (SELECT GSSD_PRO_ID FROM (SELECT a.GSSD_PRO_ID,SUM( a.GSSD_QTY ) gssdQty FROM GAIA_SD_SALE_D a
+        LEFT JOIN GAIA_SD_SALE_H b ON a.CLIENT = b.CLIENT AND a.GSSD_BR_ID = b.GSSH_BR_ID AND a.GSSD_BILL_NO = b.GSSH_BILL_NO AND a.GSSD_DATE = b.GSSH_DATE
+        WHERE a.CLIENT = #{clientId}
+            <if test="stoCode != null and stoCode != ''">
+                AND a.GSSD_BR_ID = #{stoCode}
+            </if>
+          AND b.GSSH_HIDE_FLAG = '0' AND a.GSSD_DATE >= REPLACE ( date_sub( curdate( ), INTERVAL #{noSaleDay} DAY ), '-', '' )
+        GROUP BY a.GSSD_PRO_ID ) a WHERE a.gssdQty <![CDATA[>]]> #{saleNum} ) GROUP BY MAT_ASSESS_SITE,MAT_PRO_CODE ) e ON a.MAT_PRO_CODE = e.proCode AND a.MAT_ASSESS_SITE = e.MAT_ASSESS_SITE
+        WHERE a.CLIENT = #{clientId}
+          <if test="stoCode != null and stoCode != ''">
+           AND a.MAT_ASSESS_SITE = #{stoCode}
+          </if>
+          <if test="isMedOrNot != null and isMedOrNot != ''">
+              <choose>
+                  <when test="isMedOrNot = '1'">
+                      AND c.PRO_IF_MED = '1' OR ( c.PRO_IF_MED IS NULL AND c.PRO_MED_ID IS NOT NULL )
+                  </when>
+                  <otherwise>
+                      AND c.PRO_IF_MED = '0' OR ( c.PRO_IF_MED IS NULL AND c.PRO_MED_ID IS NULL )
+                  </otherwise>
+              </choose>
+          </if>
+          AND MAT_PRO_CODE NOT IN (SELECT GSSD_PRO_ID FROM (
+           SELECT
+               a.GSSD_PRO_ID,SUM(a.GSSD_QTY) gssdQty,max(a.GSSD_DATE) gssdDate
+           FROM
+               GAIA_SD_SALE_D a
+               LEFT JOIN GAIA_SD_SALE_H b ON a.CLIENT = b.CLIENT
+               AND a.GSSD_BR_ID = b.GSSH_BR_ID
+               AND a.GSSD_BILL_NO = b.GSSH_BILL_NO
+               AND a.GSSD_DATE = b.GSSH_DATE
+           WHERE
+               a.CLIENT = #{clientId}
+             AND b.GSSH_HIDE_FLAG = '0'
+             <if test="stoCode != null and stoCode != ''">
+                and a.GSSD_BR_ID = #{stoCode}
+             </if>
+             AND a.GSSD_DATE >= REPLACE ( date_sub( curdate(), INTERVAL #{noSaleDay} DAY ), '-', '' )
+           GROUP BY
+               a.GSSD_PRO_ID ) a WHERE a.gssdQty <![CDATA[>]]> #{saleNum}
+        )
+        GROUP BY MAT_PRO_CODE
+        ) b WHERE b.stockQty != 0
+        order by b.proCode DESC
+    </select>
+    <select id="selectMedicalInsuranceList" parameterType="com.gys.common.data.MedicalInsuranceInData"
+            resultType="com.gys.common.data.MedicalInsuranceOutData">
+        SELECT PRO_SELF_CODE proCode,
+               PRO_NAME proName,PRO_COMMONNAME proCommonName,
+               PRO_FACTORY_NAME factoryName,PRO_SPECS proSpecs,
+               '' as changeRatio,'' as material,d.cardQty,d.salePayQty,PRO_MED_ID proMedId,
+               PRO_DEPICT proDepict
+        FROM GAIA_PRODUCT_BUSINESS a
+        LEFT JOIN (SELECT IFNULL(e.cardQty,0) cardQty ,a.GSSD_PRO_ID,(d.totalQty - IFNULL(e.cardQty,0)) salePayQty from GAIA_SD_SALE_D a
+        LEFT JOIN GAIA_SD_SALE_H b ON a.CLIENT = b.CLIENT AND a.GSSD_BR_ID = b.GSSH_BR_ID and a.GSSD_BILL_NO = b.GSSH_BILL_NO
+        left join GAIA_PRODUCT_BUSINESS c ON a.CLIENT = c.CLIENT and a.GSSD_BR_ID = c.PRO_SITE AND a.GSSD_PRO_ID = c.PRO_SELF_CODE
+        LEFT JOIN (
+            SELECT sum(GSSD_QTY) totalQty,a.GSSD_PRO_ID FROM GAIA_SD_SALE_D a
+            LEFT JOIN GAIA_SD_SALE_H b ON a.CLIENT = b.CLIENT AND a.GSSD_BR_ID = b.GSSH_BR_ID and a.GSSD_BILL_NO = b.GSSH_BILL_NO
+            WHERE a.CLIENT = #{clientId} AND b.GSSH_HIDE_FLAG = '0'
+            <if test="stoCode != null and stoCode != ''">
+               AND GSSD_BR_ID = #{stoCode}
+            </if>
+            AND GSSD_DATE <![CDATA[>=]]> #{startDate} and GSSD_DATE <![CDATA[<=]]> #{endDate} group by a.GSSD_PRO_ID) d on a.GSSD_PRO_ID = d.GSSD_PRO_ID
+        LEFT JOIN (
+        SELECT sum( GSSD_QTY ) cardQty,c.GSSD_PRO_ID
+        from GAIA_SD_SALE_PAY_MSG a
+        LEFT JOIN GAIA_SD_SALE_H b ON a.CLIENT = b.CLIENT
+        AND a.GSSPM_BR_ID = b.GSSH_BR_ID
+        AND a.GSSPM_BILL_NO = b.GSSH_BILL_NO
+        AND a.GSSPM_DATE = b.GSSH_DATE
+        LEFT JOIN GAIA_SD_SALE_D c ON a.CLIENT = c.CLIENT
+        AND a.GSSPM_BR_ID = c.GSSD_BR_ID
+        AND a.GSSPM_BILL_NO = c.GSSD_BILL_NO
+        WHERE a.CLIENT = #{clientId} AND a.GSSPM_ID = '4000'
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSD_BR_ID = #{stoCode}
+        </if>
+        AND GSSD_DATE <![CDATA[>=]]> #{startDate} and GSSD_DATE <![CDATA[<=]]> #{endDate}
+        AND b.GSSH_HIDE_FLAG = '0'
+        GROUP BY c.GSSD_PRO_ID ) e ON a.GSSD_PRO_ID = e.GSSD_PRO_ID
+        WHERE a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND a.GSSD_BR_ID = #{stoCode}
+        </if>
+          and a.GSSD_DATE <![CDATA[>=]]> #{startDate} and a.GSSD_DATE <![CDATA[<=]]> #{endDate} AND b.GSSH_HIDE_FLAG = '0'
+          and ((c.PRO_MED_ID IS NOT NULL and c.PRO_IF_MED IS NULL AND c.PRO_MED_ID != '') or (c.PRO_IF_MED = '1'))
+        group by a.GSSD_PRO_ID ) d ON a.PRO_SELF_CODE = d.GSSD_PRO_ID
+        WHERE a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+          AND a.PRO_SITE = #{stoCode}
+        </if>
+        AND ((a.PRO_MED_ID IS NOT NULL and a.PRO_IF_MED IS NULL AND a.PRO_MED_ID != '') or (a.PRO_IF_MED = '1'))
+        GROUP BY PRO_SELF_CODE
+    </select>
+    <select id="selectMaterialQtyByType" parameterType="com.gys.common.data.MedicalInsuranceInData"
+            resultType="com.gys.common.data.MaterialTypeQtyOutData">
+        SELECT MAT_PRO_CODE proCode,SUM(MAT_QTY) totalQty from GAIA_MATERIAL_DOC
+        WHERE CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+           AND MAT_SITE_CODE = #{stoCode}
+        </if>
+        and MAT_DOC_DATE <![CDATA[>=]]> #{startDate}
+        AND MAT_DOC_DATE <![CDATA[<=]]> #{endDate} and MAT_TYPE in
+        <foreach collection="matType" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+        GROUP BY MAT_PRO_CODE
+    </select>
+    <select id="selectStockQty" parameterType="com.gys.common.data.MedicalInsuranceInData"
+            resultType="com.gys.common.data.MaterialTypeQtyOutData">
+        SELECT SUM(MAT_TOTAL_QTY) totalQty,MAT_PRO_CODE proCode
+        FROM GAIA_MATERIAL_ASSESS_H
+        WHERE CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND MAT_ASSESS_SITE = #{stoCode}
+        </if>
+          and CONCAT(MAT_ASSESS_YEAR,MAT_ASSESS_MONTH) = left(#{endDate}, 6)
+        GROUP BY MAT_PRO_CODE
+    </select>
+<!--    0901-->
+    <select id="selectNosaleReportListByStore" resultType="java.util.Map">
+        SELECT
+        ifnull(sum( kucun.qty ), 0.00) qtySum,
+        ifnull(sum( kucun.costAmt ), 0.00) costAmt,
+        ifnull( sum( sale.gssdQty ), 0.00 ) gssdQty,
+        kucun.proCode,
+        pb.PRO_NAME proName,
+        pb.PRO_COMMONNAME proCommonName,
+        pb.PRO_SPECS proSpecs,
+        pb.PRO_FACTORY_NAME factoryName,
+        pb.PRO_UNIT proUnit,
+        concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+        concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+        concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+        ( CASE WHEN pb.PRO_IF_MED = '1' THEN '是' WHEN pb.PRO_MED_ID IS NOT NULL THEN '是' ELSE '否' END ) isMedOrNot,
+        <if test="inventoryStore != null and inventoryStore.size() > 0">
+            <foreach collection="inventoryStore" item="item" separator=",">
+                CONVERT(sum( CASE WHEN kucun.brId =#{item.siteCode} THEN kucun.qty ELSE 0.00 END ),DECIMAL(16,2)) AS #{item.columnCode}
+            </foreach>
+        </if>,
+        IFNULL(IFNULL(doc.inDate,doc1.qcInDate),'') inDate,
+        IF(IFNULL(IFNULL(doc.inDate,doc1.qcInDate),'') != '',DATEDIFF(now(),IFNULL(doc.inDate,doc1.qcInDate)),'') as days,
+        pb.PRO_SLAE_CLASS AS saleClass,
+        pb.PRO_POSITION AS proPosition,
+        pb.PRO_SCLASS AS prosClass,
+        case pb.PRO_NO_PURCHASE
+        when '1' then '是'
+        when '0' then '否'
+        end AS purchase,
+        pb.PRO_ZDY1 AS zdy1,
+        pb.PRO_ZDY2 AS zdy2,
+        pb.PRO_ZDY3 AS zdy3,
+        pb.PRO_ZDY4 AS zdy4,
+        pb.PRO_ZDY5 AS zdy5
+        FROM
+        (
+        SELECT
+        sb.CLIENT clientId,
+        sb.GSS_BR_ID brId,
+        sb.GSS_PRO_ID proCode,
+        sum( sb.GSS_QTY ) qty,
+        sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ sum( ass.MAT_TOTAL_QTY )* sum( sb.GSS_QTY ) AS costAmt,
+        'store' site
+        FROM
+        GAIA_SD_STOCK sb
+        LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE )
+        WHERE
+        sb.CLIENT = #{clientId}
+        <if test="inventoryStore != null and inventoryStore.size > 0">
+            and sb.GSS_BR_ID  in
+            <foreach collection="inventoryStore" item="item" index="index" open="(" separator="," close=")">
+                #{item.siteCode}
+            </foreach>
+        </if>
+
+        <if test="proArr != null and proArr.length > 0">
+            and sb.GSS_PRO_ID IN
+            <foreach collection="proArr" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        sb.CLIENT,
+        sb.GSS_BR_ID,
+        sb.GSS_PRO_ID UNION ALL
+        SELECT
+        kc.CLIENT clientId,
+        kc.PRO_SITE brId,
+        kc.WM_SP_BM proCode,
+        sum( kc.WM_KCSL ) qty,
+        sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY )* sum( kc.WM_KCSL ) AS costAmt,
+        'dc' site
+        FROM
+        GAIA_WMS_KUCEN kc
+        LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+        WHERE
+        kc.CLIENT = #{clientId}
+        <if test="inventoryStore != null and inventoryStore.size > 0">
+            and kc.PRO_SITE   in
+            <foreach collection="inventoryStore" item="item" index="index" open="(" separator="," close=")">
+                #{item.siteCode}
+            </foreach>
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+            and kc.WM_SP_BM IN
+            <foreach collection="proArr" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        kc.CLIENT,
+        kc.PRO_SITE,
+        kc.WM_SP_BM
+        ) kucun
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = kucun.clientId
+        AND pb.PRO_SITE = kucun.brId
+        AND pb.PRO_SELF_CODE = kucun.proCode
+        LEFT JOIN ( SELECT * FROM(
+        SELECT 	PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        UNION ALL
+        SELECT  PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        UNION ALL
+        SELECT  PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        ) proClass  GROUP BY classId
+        ) pc ON pc.classId = pb.PRO_CLASS
+        LEFT JOIN (
+        SELECT
+        b.GSSD_BR_ID,
+        b.GSSD_PRO_ID,
+        SUM( b.GSSD_QTY ) gssdQty
+        FROM
+        GAIA_SD_SALE_H a
+        LEFT JOIN GAIA_SD_SALE_D b ON a.CLIENT = b.CLIENT
+        AND a.GSSH_BR_ID = b.GSSD_BR_ID
+        AND a.GSSH_BILL_NO = b.GSSD_BILL_NO
+        AND a.GSSH_DATE = b.GSSD_DATE
+        WHERE
+        a.CLIENT = #{clientId}
+        AND a.GSSH_HIDE_FLAG = '0'
+        AND b.GSSD_DATE >= REPLACE ( date_sub( curdate( ), INTERVAL #{noSaleDay} DAY ), '-', '' )
+        GROUP BY
+        b.GSSD_BR_ID,
+        b.GSSD_PRO_ID
+        ) sale ON sale.GSSD_BR_ID = kucun.brId AND sale.GSSD_PRO_ID = kucun.ProCode
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        MAT_SITE_CODE,
+        MAT_PRO_CODE,
+        MAX(MAT_DOC_DATE) inDate
+        FROM
+        GAIA_MATERIAL_DOC
+        WHERE
+        MAT_TYPE IN ( 'PD', 'CD', 'ND')
+        AND CLIENT = #{clientId}
+        <if test="inventoryStore != null and inventoryStore.size > 0">
+            and MAT_SITE_CODE  in
+            <foreach collection="inventoryStore" item="item" index="index" open="(" separator="," close=")">
+                #{item.siteCode}
+            </foreach>
+        </if>
+        GROUP BY
+        MAT_PRO_CODE,
+        MAT_SITE_CODE
+        ORDER BY
+        MAT_PRO_CODE,
+        MAT_SITE_CODE,
+        MAT_DOC_DATE desc
+        ) doc on doc.CLIENT = kucun.clientId and doc.MAT_PRO_CODE = kucun.proCode and doc.MAT_SITE_CODE = kucun.brId
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        MAT_SITE_CODE,
+        MAT_PRO_CODE,
+        MAX(MAT_DOC_DATE) qcInDate
+        FROM
+        GAIA_MATERIAL_DOC
+        WHERE
+        MAT_TYPE = 'QC'
+        AND CLIENT = #{clientId}
+        <if test="inventoryStore != null and inventoryStore.size > 0">
+            and MAT_SITE_CODE  in
+            <foreach collection="inventoryStore" item="item" index="index" open="(" separator="," close=")">
+                #{item.siteCode}
+            </foreach>
+        </if>
+        GROUP BY
+        MAT_PRO_CODE,
+        MAT_SITE_CODE
+        ORDER BY
+        MAT_PRO_CODE,
+        MAT_SITE_CODE,
+        MAT_DOC_DATE desc
+        ) doc1 on doc1.CLIENT = kucun.clientId and doc1.MAT_PRO_CODE = kucun.proCode and doc1.MAT_SITE_CODE = kucun.brId
+        <where>
+            <if test="classArrs != null and classArrs.size > 0">
+                and pb.PRO_CLASS  in
+                <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="isMedOrNot != null and isMedOrNot != ''">
+                <choose>
+                    <when test="isMedOrNot == '1'.toString() ">
+                        AND (pb.PRO_IF_MED = '1' OR ( pb.PRO_IF_MED IS NULL AND pb.PRO_MED_ID IS NOT NULL ))
+                    </when>
+                    <otherwise>
+                        AND (pb.PRO_IF_MED = '0' OR ( pb.PRO_IF_MED IS NULL AND pb.PRO_MED_ID IS NULL ))
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="zdy1 != null and zdy1.length > 0">
+                and pb.PRO_ZDY1 in
+                <foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy2 != null and zdy2.length > 0">
+                and pb.PRO_ZDY2 in
+                <foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy3 != null and zdy3.length > 0">
+                and pb.PRO_ZDY3 in
+                <foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy4 != null and zdy4.length > 0">
+                and pb.PRO_ZDY4 in
+                <foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy5 != null and zdy5.length > 0">
+                and pb.PRO_ZDY5 in
+                <foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="saleClass != null and saleClass.length > 0">
+                and pb.PRO_SLAE_CLASS in
+                <foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="proPosition != null and proPosition.length > 0">
+                and pb.PRO_POSITION in
+                <foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="prosClass != null and prosClass.length > 0">
+                and pb.PRO_SCLASS in
+                <foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="purchase != null and purchase != ''">
+                and pb.PRO_NO_PURCHASE = #{purchase}
+            </if>
+        </where>
+        GROUP BY
+        kucun.ProCode
+        HAVING
+        qtySum != 0
+        AND ( gssdQty &lt;= #{saleNum} OR gssdQty IS NULL )
+        ORDER BY
+        kucun.ProCode
+
+    </select>
+<!--0901-->
+    <select id="selectNosaleReportListByDc" resultType="java.util.Map">
+        SELECT
+        kucun.proCode proCode,
+        ifnull( sum( kucun.qty ), 0.00 ) qtySum,
+        ifnull( sum( kucun.costAmt ), 0.00 ) costAmt,
+        ifnull( sum( md.gssdQty ), 0.00 ) gssdQty,
+        pb.PRO_NAME proName,
+        pb.PRO_COMMONNAME proCommonName,
+        pb.PRO_SPECS proSpecs,
+        pb.PRO_FACTORY_NAME factoryName,
+        pb.PRO_UNIT proUnit,
+        concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+        concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+        concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+        ( CASE WHEN pb.PRO_IF_MED = '1' THEN '是' WHEN pb.PRO_MED_ID IS NOT NULL THEN '是' ELSE '否' END ) isMedOrNot,
+        <if test="inventoryStore != null and inventoryStore.size() > 0">
+            <foreach collection="inventoryStore" item="item" separator=",">
+                CONVERT(sum( CASE WHEN kucun.brId =#{item.siteCode} THEN kucun.qty ELSE 0.00 END ),DECIMAL(16,2)) AS #{item.columnCode}
+            </foreach>
+        </if>,
+        IFNULL(MAX(bi.BAT_CREATE_DATE),'') as inDate,
+        IF(IFNULL(MAX(bi.BAT_CREATE_DATE),'') != '',DATEDIFF(now(),MAX(bi.BAT_CREATE_DATE)),'') as days,
+        pb.PRO_SLAE_CLASS as saleClass,
+        pb.PRO_POSITION as proPosition,
+        pb.PRO_SCLASS AS prosClass,
+        case pb.PRO_NO_PURCHASE
+        when '1' then '是'
+        when '0' then '否'
+        end AS purchase,
+        pb.PRO_ZDY1 AS zdy1,
+        pb.PRO_ZDY2 AS zdy2,
+        pb.PRO_ZDY3 AS zdy3,
+        pb.PRO_ZDY4 AS zdy4,
+        pb.PRO_ZDY5 AS zdy5
+        FROM
+        (
+        SELECT
+        sb.CLIENT clientId,
+        sb.GSS_BR_ID brId,
+        sb.GSS_PRO_ID proCode,
+        sum( sb.GSS_QTY ) qty,
+        sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ sum( ass.MAT_TOTAL_QTY )* sum( sb.GSS_QTY ) AS costAmt,
+        'store' site
+        FROM
+        GAIA_SD_STOCK sb
+        LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE )
+        WHERE
+        sb.CLIENT = #{clientId}
+
+        <if test="dcCode != null and dcCode != ''">
+            and sb.GSS_BR_ID  = #{dcCode}
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+            and sb.GSS_PRO_ID IN
+            <foreach collection="proArr" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        sb.CLIENT,
+        sb.GSS_BR_ID,
+        sb.GSS_PRO_ID UNION ALL
+        SELECT
+        kc.CLIENT clientId,
+        kc.PRO_SITE brId,
+        kc.WM_SP_BM proCode,
+        sum( kc.WM_KCSL ) qty,
+        sum( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ sum( ass.MAT_TOTAL_QTY )* sum( kc.WM_KCSL ) AS costAmt,
+        'dc' site
+        FROM
+        GAIA_WMS_KUCEN kc
+        LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+        WHERE
+        kc.CLIENT = #{clientId}
+        <if test="dcCode != null and dcCode != ''">
+            and kc.PRO_SITE  = #{dcCode}
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+            and kc.WM_SP_BM IN
+            <foreach collection="proArr" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY
+        kc.CLIENT,
+        kc.PRO_SITE,
+        kc.WM_SP_BM
+        ) kucun
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = kucun.clientId
+        AND pb.PRO_SITE = kucun.brId
+        AND pb.PRO_SELF_CODE = kucun.proCode
+        LEFT JOIN ( SELECT * FROM(
+        SELECT 	PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        UNION ALL
+        SELECT  PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        UNION ALL
+        SELECT  PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        ) proClass  GROUP BY classId
+        ) pc ON pc.classId = pb.PRO_CLASS
+        LEFT JOIN (
+        SELECT
+        MAT_SITE_CODE,
+        MAT_PRO_CODE,
+        sum( MAT_QTY ) gssdQty
+        FROM
+        GAIA_MATERIAL_DOC
+        WHERE
+        ClIENT = #{clientId}
+        AND MAT_TYPE IN('PD','XD')
+        AND MAT_POST_DATE >= REPLACE ( date_sub( curdate( ), INTERVAL #{noSaleDay} DAY ), '-', '' )
+        GROUP BY
+        MAT_SITE_CODE,
+        MAT_PRO_CODE
+        ) md ON md.MAT_SITE_CODE = kucun.brId
+        AND md.MAT_PRO_CODE = kucun.proCode
+        LEFT JOIN (
+            select
+                CLIENT,
+                BAT_PRO_CODE,
+                BAT_SITE_CODE,
+                BAT_CREATE_DATE
+            from GAIA_BATCH_INFO
+        ) bi ON bi.CLIENT = kucun.clientId  and bi.BAT_PRO_CODE = kucun.proCode and bi.BAT_SITE_CODE = kucun.brId
+        <where>
+            <if test="classArrs != null and classArrs.size > 0">
+                and pb.PRO_CLASS  in
+                <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="isMedOrNot != null and isMedOrNot != ''">
+                <choose>
+                    <when test="isMedOrNot == '1'.toString() ">
+                        AND (pb.PRO_IF_MED = #{isMedOrNot} OR ( pb.PRO_IF_MED IS NULL AND pb.PRO_MED_ID IS NOT NULL ))
+                    </when>
+                    <otherwise>
+                        AND (pb.PRO_IF_MED = '0' OR ( pb.PRO_IF_MED IS NULL AND pb.PRO_MED_ID IS NULL ))
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="zdy1 != null and zdy1.length > 0">
+                and pb.PRO_ZDY1 in
+                <foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy2 != null and zdy2.length > 0">
+                and pb.PRO_ZDY2 in
+                <foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy3 != null and zdy3.length > 0">
+                and pb.PRO_ZDY3 in
+                <foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy4 != null and zdy4.length > 0">
+                and pb.PRO_ZDY4 in
+                <foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="zdy5 != null and zdy5.length > 0">
+                and pb.PRO_ZDY5 in
+                <foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="saleClass != null and saleClass.length > 0">
+                and pb.PRO_SLAE_CLASS in
+                <foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="proPosition != null and proPosition.length > 0">
+                and pb.PRO_POSITION in
+                <foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="prosClass != null and prosClass.length > 0">
+                and pb.PRO_SCLASS in
+                <foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="purchase != null and purchase != ''">
+                and pb.PRO_NO_PURCHASE = #{purchase}
+            </if>
+        </where>
+        GROUP BY
+        kucun.ProCode
+        HAVING
+        qtySum != 0
+        AND ( gssdQty &lt;= #{saleNum} OR gssdQty IS NULL )
+        ORDER BY
+        kucun.ProCode
+    </select>
+    <select id="selectStoreInfoBySale" parameterType="com.gys.entity.data.productSaleAnalyse.ProductSaleAnalyseInData" resultType="com.gys.entity.data.productSaleAnalyse.StoreInfoOutData">
+        SELECT
+        IFNULL(c.STO_PROVINCE,'') provinceId,
+        d.AREA_NAME province,
+        IFNULL(c.STO_CITY,'') cityId,
+        e.AREA_NAME city,
+        a.CLIENT clientId,
+        b.FRANC_NAME clientName,
+        a.GSSD_BR_ID stoCode,
+        c.STO_SHORT_NAME stoName,
+        IFNULL(f.GSSG_ID,'') stoType,
+        g.GSSG_ID_NAME stoTypeName
+        FROM
+        GAIA_SD_SALE_D a
+        LEFT JOIN GAIA_FRANCHISEE b ON a.CLIENT = b.CLIENT
+        LEFT JOIN GAIA_STORE_DATA c ON a.CLIENT = c.CLIENT
+        AND a.GSSD_BR_ID = c.STO_CODE
+        LEFT JOIN GAIA_AREA d ON d.AREA_ID = c.STO_PROVINCE
+        LEFT JOIN GAIA_AREA e ON c.STO_CITY = e.AREA_ID
+        AND c.STO_PROVINCE = e.PARENT_ID
+        LEFT JOIN GAIA_SD_STORES_GROUP f ON a.CLIENT = f.CLIENT
+        AND a.GSSD_BR_ID = f.GSSG_BR_ID
+        AND f.GSSG_TYPE = 'DX0001'
+        LEFT JOIN GAIA_SD_STORES_GROUP_SET g ON g.CLIENT = a.CLIENT
+        AND g.GSSG_TYPE = 'DX0001'
+        AND f.GSSG_ID = g.GSSG_ID
+        WHERE
+        a.GSSD_DATE <![CDATA[>=]]> REPLACE ( date_sub( #{endDate}, INTERVAL #{analyseDay} DAY ), '-', '' )
+        AND a.GSSD_DATE <![CDATA[<=]]> #{endDate}
+        GROUP BY
+        a.CLIENT,
+        a.GSSD_BR_ID
+    </select>
+    <select id="selectStoNumByClient" resultType="com.gys.entity.data.productSaleAnalyse.StoreInfoOutData" parameterType="com.gys.entity.data.productSaleAnalyse.ProductSaleAnalyseInData">
+        SELECT count(1) stoNum,a.* from(SELECT IFNULL(STO_PROVINCE,'') provinceId,IFNULL(STO_CITY,'') cityId,CLIENT clientId, STO_CODE stoCode FROM GAIA_STORE_DATA
+        WHERE STO_STATUS = '0'
+        <if test="provinces != null and provinces.length > 0">
+            AND STO_PROVINCE in
+            <foreach collection="provinces" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="citise != null and citise.length > 0">
+            AND STO_CITY in
+            <foreach collection="citise" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="clientIds != null and clientIds.length > 0">
+            AND CLIENT in
+            <foreach collection="clientIds" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="storeIds != null and storeIds.length > 0">
+            AND
+            <foreach collection="storeIds" item="item" index="index" separator="OR" >
+                CLIENT = substring_index(#{item},'-',1) and STO_CODE = substring_index(#{item},'-',-1)
+            </foreach>
+        </if>
+        GROUP BY STO_PROVINCE,STO_CITY,CLIENT,STO_CODE) a
+        <if test="dimension == '1'.toString()">
+            GROUP BY a.provinceId
+        </if>
+        <if test="dimension == '2'.toString()">
+            GROUP BY a.provinceId,a.cityId
+        </if>
+        <if test="dimension == '3'.toString()">
+            GROUP BY a.provinceId,a.cityId,a.clientId
+        </if>
+        <if test="dimension == '4'.toString()">
+            GROUP BY a.provinceId,a.cityId,a.clientId,a.stoCode
+        </if>
+    </select>
+    <select id="selectStoreType" resultType="java.util.Map">
+        select GSSG_ID gssgId,GSSG_ID_NAME gssgName from GAIA_SD_STORES_GROUP_SET where GSSG_TYPE = 'DX0001' group by GSSG_ID ORDER BY GSSG_ID ASC
+    </select>
+</mapper>

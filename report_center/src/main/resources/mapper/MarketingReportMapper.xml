@@ -1,0 +1,740 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.MarketingReportMapper">
+
+    <!--本月活动-->
+    <select id="getTotalCount" resultType="String">
+        SELECT
+            push.count + myCreate.count
+        FROM
+            (
+            SELECT
+                count(*) count
+            FROM
+                GAIA_SD_MARKETING_CLIENT A
+                LEFT JOIN GAIA_SD_MARKETING_STO B ON A.ID = B.MARKETING_ID
+            WHERE
+                A.GSM_STARTD <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                AND A.GSM_STARTD <![CDATA[<=]]> #{queryDate}
+                AND A.CLIENT = #{clientId}
+            ) push,
+            (
+            SELECT
+                count(*) count
+            FROM
+                (
+                SELECT
+                    *
+                FROM
+                    GAIA_SD_PROM_HEAD ph
+                WHERE
+                    ph.GSPH_STATUS = '1'
+                    AND ph.GSPH_TYPE NOT IN ( 'PROM_HYJ', 'PROM_HYRJ', 'PROM_HYRZ' )
+                    AND ph.CLIENT = #{clientId}
+                    AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                    AND ph.GSPH_END_DATE <![CDATA[<=]]> #{queryDate}
+                    AND ph.GSPH_MARKETID <![CDATA[<=]]> 0
+                GROUP BY
+                    ph.GSPH_MARKETID
+                ORDER BY
+                    ph.GSPH_BEGIN_DATE DESC
+                ) a
+            ) myCreate
+    </select>
+    <!--<select id="getTotalCount" resultType="String">
+        SELECT
+            count(*)
+        FROM
+            GAIA_SD_MARKETING_CLIENT A
+            LEFT JOIN GAIA_SD_MARKETING_STO B ON A.ID = B.MARKETING_ID
+        WHERE
+            A.GSM_STARTD <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01')
+            AND A.GSM_STARTD <![CDATA[<=]]> #{queryDate}
+            AND A.CLIENT = #{clientId}
+            <if test="brId != null and brId != ''">
+            AND B.STO_CODE = #{brId}
+            </if>
+    </select>-->
+
+    <!--<select id="getTotalCount" resultType="String">
+        SELECT
+            count( DISTINCT GSM_THENID )
+        FROM
+            GAIA_SD_MARKETING_BASIC
+        WHERE
+            GSM_RELE = '1'
+            AND GSM_CREATE_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01')
+            AND GSM_CREATE_DATE <![CDATA[<=]]> #{queryDate}
+            AND GSM_CREATE_CLIENT = #{clientId}
+    </select>-->
+
+    <!--<select id="getTotalCount" resultType="String">
+        SELECT count(*) FROM (
+        SELECT
+            count(*)
+        FROM
+            GAIA_SD_PROM_HEAD ph
+        WHERE
+            ph.CLIENT = #{clientId}
+            <if test="brId != null and brId != ''">
+            AND ph.GSPH_BR_ID = #{brId}
+            </if>
+            AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01')
+            AND ph.GSPH_BEGIN_DATE <![CDATA[<=]]> #{queryDate}
+            GROUP BY ph.GSPH_VOUCHER_ID ) a
+    </select>-->
+
+
+    <!--推送条数-->
+    <select id="getPushCount" resultType="String">
+        SELECT
+        COUNT( DISTINCT GSM_THENID )
+        FROM GAIA_SD_MARKETING_CLIENT WHERE GSM_STARTD <![CDATA[>=]]> DATE_FORMAT(#{queryDate}, '%Y%m01')
+        AND GSM_ENDD <![CDATA[<=]]> #{queryDate} AND CLIENT = #{clientId}
+    </select>
+
+   <!-- <select id="getPushCount" resultType="String">
+    SELECT count(*) FROM (
+        SELECT
+            count(*)
+        FROM
+            GAIA_SD_PROM_HEAD ph
+        WHERE
+            ph.GSPH_MARKETID > 0
+            AND ph.CLIENT = #{clientId}
+            <if test="brId != null and brId != ''">
+            AND ph.GSPH_BR_ID = #{brId}
+            </if>
+            AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01')
+            AND ph.GSPH_BEGIN_DATE <![CDATA[<=]]> #{queryDate}
+            GROUP BY ph.GSPH_VOUCHER_ID ) a
+    </select>-->
+
+
+    <!--开展条数-->
+    <select id="getDevCount" resultType="String">
+        SELECT count(*) FROM (
+            SELECT *
+             FROM GAIA_SD_PROM_HEAD ph
+            WHERE
+                ph.GSPH_STATUS = '1'
+                AND ph.GSPH_TYPE NOT IN ( 'PROM_HYJ', 'PROM_HYRJ', 'PROM_HYRZ' )
+                AND ph.CLIENT = #{clientId}
+                <if test="brId != null and brId != ''">
+                AND ph.GSPH_BR_ID = #{brId}
+                </if>
+                AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                AND ph.GSPH_END_DATE <![CDATA[<=]]> #{queryDate}
+                <!--AND ph.GSPH_MARKETID <![CDATA[<=]]> 0-->
+            GROUP BY
+                ph.GSPH_MARKETID
+            ORDER BY
+                ph.GSPH_BEGIN_DATE DESC) a
+    </select>
+
+    <!--<select id="getDevCount" resultType="String">
+    SELECT count(*) FROM (
+        SELECT
+            count(*)
+        FROM
+            GAIA_SD_PROM_HEAD ph
+        WHERE
+            ph.GSPH_MARKETID > 0
+            AND ph.GSPH_STATUS = '1'
+            AND ph.CLIENT = #{clientId}
+            <if test="brId != null and brId != ''">
+            AND ph.GSPH_BR_ID = #{brId}
+            </if>
+            AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01')
+            AND ph.GSPH_BEGIN_DATE <![CDATA[<=]]> #{queryDate}
+            GROUP BY ph.GSPH_VOUCHER_ID ) a
+    </select>-->
+
+
+    <!--门店数-->
+    <select id="getStoreCount" resultType="String">
+        SELECT count(*) storeCount FROM GAIA_STORE_DATA WHERE CLIENT = #{clientId} AND STO_STATUS = '0'
+    </select>
+
+    <!--销售天数-->
+    <select id="getSaleDayCount" resultType="String">
+        SELECT
+                count(*) saleDayCount
+            FROM
+                (
+                SELECT
+                    GSSH_BR_ID,
+                    GSSH_DATE
+                FROM
+                    GAIA_SD_SALE_H
+                WHERE
+                    CLIENT = #{clientId}
+                    <if test="brId != null and brId != ''">
+                    AND GSSH_BR_ID = #{brId}
+                    </if>
+                    AND GSSH_DATE <![CDATA[>=]]> DATE_FORMAT(#{queryDate}, '%Y%m01')
+                    AND GSSH_DATE <![CDATA[<=]]> #{queryDate}
+                GROUP BY
+                    CLIENT,
+                    GSSH_BR_ID,
+                    GSSH_DATE
+                ) a
+    </select>
+
+    <select id="getSaleAmount" resultType="com.gys.entity.data.marketing.MarketingReportListOutData">
+        SELECT
+            thisMonth.amt / 10000  thisMonthAmt,
+            lastMonth.amt / 10000  lastMonthAmt,
+            lastYear.amt / 10000 lastYearAmt,
+			case when thisMonth.amt is null and lastMonth.amt is null then 0
+			     when thisMonth.amt is not null and lastMonth.amt is null then 1
+			     when thisMonth.amt is null and lastMonth.amt is not null then -1
+			     else (thisMonth.amt - lastMonth.amt ) / lastMonth.amt end lastMonthProportion,
+            case when thisMonth.amt is null and lastYear.amt is null then 0
+                 when thisMonth.amt is not null and lastYear.amt is null then 1
+                 when thisMonth.amt is null and lastYear.amt is not null then -1
+                 else (thisMonth.amt - lastYear.amt ) / lastYear.amt end lastYearProportion
+        FROM
+            (
+            SELECT
+                sum( d.GSSD_AMT ) amt
+            FROM
+                GAIA_SD_SALE_D d
+                LEFT JOIN GAIA_SD_SALE_H h ON (
+                    d.CLIENT = h.CLIENT
+                    AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                    AND d.GSSD_DATE = h.GSSH_DATE
+                    AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                )
+            WHERE
+                h.GSSH_HIDE_FLAG = '0'
+                AND d.CLIENT = #{clientId}
+                <if test="brId != null and brId != ''">
+                AND d.GSSD_BR_ID = #{brId}
+                </if>
+                AND d.GSSD_DATE <![CDATA[>=]]> #{startDate}
+                AND d.GSSD_DATE <![CDATA[<=]]> #{endDate}
+            ) thisMonth,
+            (
+            SELECT
+                sum( d.GSSD_AMT ) amt
+            FROM
+                GAIA_SD_SALE_D d
+                LEFT JOIN GAIA_SD_SALE_H h ON (
+                    d.CLIENT = h.CLIENT
+                    AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                    AND d.GSSD_DATE = h.GSSH_DATE
+                    AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                )
+            WHERE
+                h.GSSH_HIDE_FLAG = '0'
+                AND d.CLIENT = #{clientId}
+                <if test="brId != null and brId != ''">
+                AND d.GSSD_BR_ID = #{brId}
+                </if>
+                AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT(DATE_SUB(#{startDate}, INTERVAL 1 MONTH),'%Y%m%d')
+                AND d.GSSD_DATE <![CDATA[<=]]> DATE_FORMAT(DATE_SUB(#{endDate}, INTERVAL 1 MONTH),'%Y%m%d')
+            ) lastMonth,
+            (
+            SELECT
+                sum( d.GSSD_AMT ) amt
+            FROM
+                GAIA_SD_SALE_D d
+                LEFT JOIN GAIA_SD_SALE_H h ON (
+                    d.CLIENT = h.CLIENT
+                    AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                    AND d.GSSD_DATE = h.GSSH_DATE
+                    AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                )
+            WHERE
+                h.GSSH_HIDE_FLAG = '0'
+                AND d.CLIENT = #{clientId}
+                <if test="brId != null and brId != ''">
+                AND d.GSSD_BR_ID = #{brId}
+                </if>
+                AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT(DATE_SUB(#{startDate},INTERVAL 1 YEAR),'%Y%m%d')
+                AND d.GSSD_DATE <![CDATA[<=]]> DATE_FORMAT(DATE_SUB(#{endDate},INTERVAL 1 YEAR),'%Y%m%d')
+            ) lastYear
+    </select>
+
+
+    <select id="getSaleAmountList" resultType="com.gys.entity.data.marketing.MarketingReportListOutData">
+        SELECT
+            list.activityName,
+            list.activityBeginDate,
+            list.activityEndDate,
+            list.marketId,
+            list.thisMonthPromotionAmt,
+            list.lastMonthPromotionAmt,
+            list.lastYearPromotionAmt,
+            count.thisMonthCount thisMonthPromotionQty,
+            count.lastMonthCount lastMonthPromotionQty,
+            count.lastYearCount lastYearPromotionQty,
+            list.lastMonthPromotionProp,
+            list.lastYearPromotionProp,
+            count.lastMonthPromotionCountProp lastMonthPromotionQtyProp,
+            count.lastYearPromotionCountProp lastYearPromotionQtyProp
+        FROM
+            (
+            SELECT
+                a.activityName,
+                a.activityBeginDate,
+                a.activityEndDate,
+                a.marketId,
+                sum( a.thisMonthPromotionAmt ) / 10000 thisMonthPromotionAmt,
+                sum( a.lastMonthPromotionAmt ) / 10000 lastMonthPromotionAmt,
+                sum( a.lastYearPromotionAmt ) / 10000 lastYearPromotionAmt,
+            CASE
+                    WHEN sum( a.thisMonthPromotionAmt ) = 0
+                    AND sum( a.lastMonthPromotionAmt ) = 0 THEN
+                        0
+                        WHEN sum( a.thisMonthPromotionAmt ) != 0
+                        AND sum( a.lastMonthPromotionAmt ) = 0 THEN
+                            1
+                            WHEN sum( a.thisMonthPromotionAmt ) = 0
+                            AND sum( a.lastMonthPromotionAmt ) != 0 THEN
+                                - 1 ELSE (
+                                    sum( a.thisMonthPromotionAmt ) - sum( a.lastMonthPromotionAmt )) / sum( a.lastMonthPromotionAmt )
+                            END lastMonthPromotionProp,
+        CASE
+                WHEN sum( a.thisMonthPromotionAmt ) = 0
+                AND sum( a.lastYearPromotionAmt ) = 0 THEN
+                    0
+                    WHEN sum( a.thisMonthPromotionAmt ) != 0
+                    AND sum( a.lastYearPromotionAmt ) = 0 THEN
+                        1
+                        WHEN sum( a.thisMonthPromotionAmt ) = 0
+                        AND sum( a.lastYearPromotionAmt ) != 0 THEN
+                            - 1 ELSE (
+                                sum( a.thisMonthPromotionAmt ) - sum( a.lastYearPromotionAmt )) / sum( a.lastYearPromotionAmt )
+                        END lastYearPromotionProp
+        FROM
+            (
+            SELECT
+                ph.GSPH_VOUCHER_ID,
+                ph.GSPH_NAME activityName,
+                ph.GSPH_BEGIN_DATE activityBeginDate,
+                ph.GSPH_END_DATE activityEndDate,
+                ph.GSPH_MARKETID marketId,
+                IFNULL( thisMonth.GSSD_AMT, 0 ) thisMonthPromotionAmt,
+                IFNULL( lastMonth.GSSD_AMT, 0 ) lastMonthPromotionAmt,
+                IFNULL( lastYear.GSSD_AMT, 0 ) lastYearPromotionAmt
+            FROM
+                GAIA_SD_PROM_HEAD ph
+                LEFT JOIN GAIA_SD_PROM_UNITARY_SET pus ON ( ph.CLIENT = pus.CLIENT AND ph.GSPH_VOUCHER_ID = pus.GSPUS_VOUCHER_ID )
+                LEFT JOIN (
+                SELECT
+                    d.CLIENT,
+                    d.GSSD_BR_ID,
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_BILL_NO,
+                    SUM( d.GSSD_AMT ) GSSD_AMT,
+                    SUM( d.GSSD_QTY ) GSSD_QTY
+                FROM
+                    GAIA_SD_SALE_D d
+                    LEFT JOIN GAIA_SD_SALE_H h ON (
+                        d.CLIENT = h.CLIENT
+                        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                        AND d.GSSD_DATE = h.GSSH_DATE
+                        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                    )
+                WHERE
+                    h.GSSH_HIDE_FLAG = '0'
+                    AND d.CLIENT = #{clientId}
+                    <if test="brId != null and brId != ''">
+                    AND d.GSSD_BR_ID = #{brId}
+                    </if>
+                    AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                    AND d.GSSD_DATE <![CDATA[<=]]> #{queryDate}
+                GROUP BY
+                    d.GSSD_PM_ACTIVITY_ID
+                ) thisMonth ON ( thisMonth.CLIENT = ph.CLIENT AND thisMonth.GSSD_PM_ACTIVITY_ID = ph.GSPH_VOUCHER_ID )
+                LEFT JOIN (
+                SELECT
+                    d.CLIENT,
+                    d.GSSD_BR_ID,
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID,
+                    SUM( d.GSSD_AMT ) GSSD_AMT
+                FROM
+                    GAIA_SD_SALE_D d
+                    LEFT JOIN GAIA_SD_SALE_H h ON (
+                        d.CLIENT = h.CLIENT
+                        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                        AND d.GSSD_DATE = h.GSSH_DATE
+                        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                    )
+                WHERE
+                    h.GSSH_HIDE_FLAG = '0'
+                    AND d.CLIENT = #{clientId}
+                    <if test="brId != null and brId != ''">
+                    AND d.GSSD_BR_ID = #{brId}
+                    </if>
+                    AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{lastMonthLastDay}, '%Y%m01' )
+                    AND d.GSSD_DATE <![CDATA[<=]]> #{lastMonthLastDay}
+                GROUP BY
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID
+                ) lastMonth ON ( lastMonth.CLIENT = ph.CLIENT AND lastMonth.GSSD_PRO_ID = pus.GSPUS_PRO_ID )
+                LEFT JOIN (
+                SELECT
+                    d.CLIENT,
+                    d.GSSD_BR_ID,
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID,
+                    SUM( d.GSSD_AMT ) GSSD_AMT
+                FROM
+                    GAIA_SD_SALE_D d
+                    LEFT JOIN GAIA_SD_SALE_H h ON (
+                        d.CLIENT = h.CLIENT
+                        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                        AND d.GSSD_DATE = h.GSSH_DATE
+                        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                    )
+                WHERE
+                    h.GSSH_HIDE_FLAG = '0'
+                    AND d.CLIENT = #{clientId}
+                    <if test="brId != null and brId != ''">
+                    AND d.GSSD_BR_ID = #{brId}
+                    </if>
+                    AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{lastYearThisMonthLastDay}, '%Y%m01' )
+                    AND d.GSSD_DATE <![CDATA[<=]]> #{lastYearThisMonthLastDay}
+                GROUP BY
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID
+                ) lastYear ON ( lastYear.CLIENT = ph.CLIENT AND lastYear.GSSD_PRO_ID = pus.GSPUS_PRO_ID )
+            WHERE
+                ph.GSPH_STATUS = '1'
+                AND ph.GSPH_TYPE NOT IN ( 'PROM_HYJ', 'PROM_HYRJ', 'PROM_HYRZ' )
+                AND ph.CLIENT = #{clientId}
+                <if test="brId != null and brId != ''">
+                AND ph.GSPH_BR_ID = #{brId}
+                </if>
+                AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                AND ph.GSPH_END_DATE <![CDATA[<=]]> #{queryDate}
+            GROUP BY
+                ph.GSPH_VOUCHER_ID
+            ) a
+        GROUP BY
+            a.marketId
+            ) list
+            LEFT JOIN ((
+                SELECT
+                    b.marketId,
+                    count( DISTINCT b.thisMonthCount ) thisMonthCount,
+                    count( DISTINCT b.lastMonthCount ) lastMonthCount,
+                    count( DISTINCT b.lastYearCount ) lastYearCount,
+                    CASE
+                    WHEN count( DISTINCT b.thisMonthCount ) = 0
+                    AND count( DISTINCT b.lastMonthCount ) = 0 THEN
+                        0
+                        WHEN count( DISTINCT b.thisMonthCount ) != 0
+                        AND count( DISTINCT b.lastMonthCount ) = 0 THEN
+                            1
+                            WHEN count( DISTINCT b.thisMonthCount ) = 0
+                            AND count( DISTINCT b.lastMonthCount ) != 0 THEN
+                                - 1 ELSE (
+                                    count( DISTINCT b.thisMonthCount ) - count( DISTINCT b.lastMonthCount )) / count( DISTINCT b.lastMonthCount )
+                            END lastMonthPromotionCountProp,
+                    CASE
+                    WHEN count( DISTINCT b.thisMonthCount ) = 0
+                    AND count( DISTINCT b.lastYearCount ) = 0 THEN
+                        0
+                        WHEN count( DISTINCT b.thisMonthCount ) != 0
+                        AND count( DISTINCT b.lastYearCount ) = 0 THEN
+                            1
+                            WHEN count( DISTINCT b.thisMonthCount ) = 0
+                            AND count( DISTINCT b.lastYearCount ) != 0 THEN
+                                - 1 ELSE (
+                                    count( DISTINCT b.thisMonthCount ) - count( DISTINCT b.lastYearCount )) / count( DISTINCT b.lastYearCount )
+                            END lastYearPromotionCountProp
+                FROM
+                    (
+                    SELECT
+                        ph.GSPH_MARKETID marketId,
+                        thisMonth.GSSD_BILL_NO thisMonthCount,
+                        lastMonth.GSSD_BILL_NO lastMonthCount,
+                        lastYear.GSSD_BILL_NO lastYearCount
+                    FROM
+                        GAIA_SD_PROM_HEAD ph
+                        LEFT JOIN GAIA_SD_PROM_UNITARY_SET pus ON ( ph.CLIENT = pus.CLIENT AND ph.GSPH_VOUCHER_ID = pus.GSPUS_VOUCHER_ID )
+                        LEFT JOIN (
+                        SELECT
+                            d.CLIENT,
+                            d.GSSD_BR_ID,
+                            d.GSSD_PM_ACTIVITY_ID,
+                            d.GSSD_BILL_NO
+                        FROM
+                            GAIA_SD_SALE_D d
+                            LEFT JOIN GAIA_SD_SALE_H h ON (
+                                d.CLIENT = h.CLIENT
+                                AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                                AND d.GSSD_DATE = h.GSSH_DATE
+                                AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                            )
+                        WHERE
+                            h.GSSH_HIDE_FLAG = '0'
+                            AND d.CLIENT = #{clientId}
+                            <if test="brId != null and brId != ''">
+                            AND d.GSSD_BR_ID = #{brId}
+                            </if>
+                            AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                            AND d.GSSD_DATE <![CDATA[<=]]> #{queryDate}
+                        GROUP BY
+                            d.GSSD_PM_ACTIVITY_ID
+                        ) thisMonth ON ( thisMonth.CLIENT = ph.CLIENT AND thisMonth.GSSD_PM_ACTIVITY_ID = ph.GSPH_VOUCHER_ID )
+                        LEFT JOIN (
+                        SELECT
+                            d.CLIENT,
+                            d.GSSD_BR_ID,
+                            d.GSSD_BILL_NO,
+                            d.GSSD_PRO_ID
+                        FROM
+                            GAIA_SD_SALE_D d
+                            LEFT JOIN GAIA_SD_SALE_H h ON (
+                                d.CLIENT = h.CLIENT
+                                AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                                AND d.GSSD_DATE = h.GSSH_DATE
+                                AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                            )
+                        WHERE
+                            h.GSSH_HIDE_FLAG = '0'
+                            AND d.CLIENT = #{clientId}
+                            <if test="brId != null and brId != ''">
+                            AND d.GSSD_BR_ID = #{brId}
+                            </if>
+                            AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{lastMonthLastDay}, '%Y%m01' )
+                            AND d.GSSD_DATE <![CDATA[<=]]> #{lastMonthLastDay}
+                        GROUP BY
+                            d.GSSD_PM_ACTIVITY_ID,
+                            d.GSSD_PRO_ID
+                        ) lastMonth ON ( lastMonth.CLIENT = ph.CLIENT AND lastMonth.GSSD_PRO_ID = pus.GSPUS_PRO_ID )
+                        LEFT JOIN (
+                        SELECT
+                            d.CLIENT,
+                            d.GSSD_BR_ID,
+                            d.GSSD_PRO_ID,
+                            d.GSSD_BILL_NO
+                        FROM
+                            GAIA_SD_SALE_D d
+                            LEFT JOIN GAIA_SD_SALE_H h ON (
+                                d.CLIENT = h.CLIENT
+                                AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                                AND d.GSSD_DATE = h.GSSH_DATE
+                                AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                            )
+                        WHERE
+                            h.GSSH_HIDE_FLAG = '0'
+                            AND d.CLIENT = #{clientId}
+                            <if test="brId != null and brId != ''">
+                            AND d.GSSD_BR_ID = #{brId}
+                            </if>
+                            AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{lastYearThisMonthLastDay}, '%Y%m01' )
+                            AND d.GSSD_DATE <![CDATA[<=]]> #{lastYearThisMonthLastDay}
+                        GROUP BY
+                            d.GSSD_PM_ACTIVITY_ID,
+                            d.GSSD_PRO_ID
+                        ) lastYear ON ( lastYear.CLIENT = ph.CLIENT AND lastYear.GSSD_PRO_ID = pus.GSPUS_PRO_ID )
+                    WHERE
+                        ph.GSPH_STATUS = '1'
+                        AND ph.GSPH_TYPE NOT IN ( 'PROM_HYJ', 'PROM_HYRJ', 'PROM_HYRZ' )
+                        AND ph.CLIENT = #{clientId}
+                        <if test="brId != null and brId != ''">
+                        AND ph.GSPH_BR_ID = #{brId}
+                        </if>
+                        AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                        AND ph.GSPH_END_DATE <![CDATA[<=]]> #{queryDate}
+                    GROUP BY
+                        ph.GSPH_VOUCHER_ID
+                    ) b
+                GROUP BY
+                    b.marketId
+                )) count ON (list.marketId = count.marketId)
+    </select>
+
+    <!--<select id="getSaleAmountList" resultType="com.gys.entity.data.marketing.MarketingReportListOutData">
+        SELECT
+            activityName,
+            activityBeginDate,
+            activityEndDate,
+            marketId,
+            sum( thisMonthPromotionAmt ) / 10000 thisMonthPromotionAmt,
+            sum( lastMonthPromotionAmt ) / 10000 lastMonthPromotionAmt,
+            sum( lastYearPromotionAmt ) / 10000 lastYearPromotionAmt,
+            sum( thisMonthPromotionQty ) thisMonthPromotionQty,
+            sum( lastMonthPromotionQty ) lastMonthPromotionQty,
+            sum( lastYearPromotionQty ) lastYearPromotionQty,
+            CASE
+                    WHEN sum( thisMonthPromotionAmt ) = 0
+                    AND sum( lastMonthPromotionAmt ) = 0 THEN
+                        0
+                        WHEN sum( thisMonthPromotionAmt ) != 0
+                        AND sum( lastMonthPromotionAmt ) = 0 THEN
+                            1
+                            WHEN sum( thisMonthPromotionAmt ) = 0
+                            AND sum( lastMonthPromotionAmt ) != 0 THEN
+                                - 1 ELSE (
+                                    sum( thisMonthPromotionAmt ) - sum( lastMonthPromotionAmt )) / sum( lastMonthPromotionAmt )
+                            END lastMonthPromotionProp,
+            CASE
+                    WHEN sum( thisMonthPromotionAmt ) = 0
+                    AND sum( lastYearPromotionAmt ) = 0 THEN
+                        0
+                        WHEN sum( thisMonthPromotionAmt ) != 0
+                        AND sum( lastYearPromotionAmt ) = 0 THEN
+                            1
+                            WHEN sum( thisMonthPromotionAmt ) = 0
+                            AND sum( lastYearPromotionAmt ) != 0 THEN
+                                - 1 ELSE (
+                                    sum( thisMonthPromotionAmt ) - sum( lastYearPromotionAmt )) / sum( lastYearPromotionAmt )
+                            END lastYearPromotionProp,
+            CASE
+                    WHEN sum( thisMonthPromotionQty ) = 0
+                    AND sum( lastMonthPromotionQty ) = 0 THEN
+                        0
+                        WHEN sum( thisMonthPromotionQty ) != 0
+                        AND sum( lastMonthPromotionQty ) = 0 THEN
+                            1
+                            WHEN sum( thisMonthPromotionQty ) = 0
+                            AND sum( lastMonthPromotionQty ) != 0 THEN
+                                - 1 ELSE (
+                                    sum( thisMonthPromotionQty ) - sum( lastMonthPromotionQty )) / sum( lastMonthPromotionQty )
+                            END lastMonthPromotionQtyProp,
+            CASE
+                    WHEN sum( thisMonthPromotionQty ) = 0
+                    AND sum( lastYearPromotionQty ) = 0 THEN
+                        0
+                        WHEN sum( thisMonthPromotionQty ) != 0
+                        AND sum( lastYearPromotionQty ) = 0 THEN
+                            1
+                            WHEN sum( thisMonthPromotionQty ) = 0
+                            AND sum( lastYearPromotionQty ) != 0 THEN
+                                - 1 ELSE (
+                                    sum( thisMonthPromotionQty ) - sum( lastYearPromotionQty )) / sum( lastYearPromotionQty )
+                            END lastYearPromotionQtyProp
+        FROM
+            (
+            SELECT
+                ph.GSPH_VOUCHER_ID,
+                ph.GSPH_NAME activityName,
+                ph.GSPH_BEGIN_DATE activityBeginDate,
+                ph.GSPH_END_DATE activityEndDate,
+                ph.GSPH_MARKETID marketId,
+                IFNULL(thisMonth.GSSD_AMT, 0) thisMonthPromotionAmt,
+                IFNULL(lastMonth.GSSD_AMT, 0) lastMonthPromotionAmt,
+                IFNULL(lastYear.GSSD_AMT, 0) lastYearPromotionAmt,
+                IFNULL(thisMonth.GSSD_QTY, 0) thisMonthPromotionQty,
+                IFNULL(lastMonth.GSSD_QTY, 0) lastMonthPromotionQty,
+                IFNULL(lastYear.GSSD_QTY, 0) lastYearPromotionQty
+            FROM
+                GAIA_SD_PROM_HEAD ph
+                LEFT JOIN GAIA_SD_PROM_UNITARY_SET pus ON ( ph.CLIENT = pus.CLIENT AND ph.GSPH_VOUCHER_ID = pus.GSPUS_VOUCHER_ID )
+                LEFT JOIN (
+                SELECT
+                    d.CLIENT,
+                    d.GSSD_BR_ID,
+                    d.GSSD_PM_ACTIVITY_ID,
+                    SUM( d.GSSD_AMT ) GSSD_AMT,
+                    SUM( d.GSSD_QTY ) GSSD_QTY
+                FROM
+                    GAIA_SD_SALE_D d
+                    LEFT JOIN GAIA_SD_SALE_H h ON (
+                        d.CLIENT = h.CLIENT
+                        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                        AND d.GSSD_DATE = h.GSSH_DATE
+                        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                    )
+                WHERE
+                    h.GSSH_HIDE_FLAG = '0'
+                    AND d.CLIENT = #{clientId}
+                    AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                    AND d.GSSD_DATE <![CDATA[<=]]> #{queryDate}
+                GROUP BY
+                    d.GSSD_PM_ACTIVITY_ID
+                ) thisMonth ON ( thisMonth.CLIENT = ph.CLIENT AND thisMonth.GSSD_PM_ACTIVITY_ID = ph.GSPH_VOUCHER_ID )
+                LEFT JOIN (
+                SELECT
+                    d.CLIENT,
+                    d.GSSD_BR_ID,
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID,
+                    SUM( d.GSSD_AMT ) GSSD_AMT,
+                    SUM( d.GSSD_QTY ) GSSD_QTY
+                FROM
+                    GAIA_SD_SALE_D d
+                    LEFT JOIN GAIA_SD_SALE_H h ON (
+                        d.CLIENT = h.CLIENT
+                        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                        AND d.GSSD_DATE = h.GSSH_DATE
+                        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                    )
+                WHERE
+                    h.GSSH_HIDE_FLAG = '0'
+                    AND d.CLIENT = #{clientId}
+                    AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{lastMonthLastDay}, '%Y%m01' )
+                    AND d.GSSD_DATE <![CDATA[<=]]> #{lastMonthLastDay}
+                GROUP BY
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID
+                ) lastMonth ON ( lastMonth.CLIENT = ph.CLIENT AND lastMonth.GSSD_PRO_ID = pus.GSPUS_PRO_ID )
+                LEFT JOIN (
+                SELECT
+                    d.CLIENT,
+                    d.GSSD_BR_ID,
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID,
+                    SUM( d.GSSD_AMT ) GSSD_AMT,
+                    SUM( d.GSSD_QTY ) GSSD_QTY
+                FROM
+                    GAIA_SD_SALE_D d
+                    LEFT JOIN GAIA_SD_SALE_H h ON (
+                        d.CLIENT = h.CLIENT
+                        AND d.GSSD_BR_ID = h.GSSH_BR_ID
+                        AND d.GSSD_DATE = h.GSSH_DATE
+                        AND d.GSSD_BILL_NO = h.GSSH_BILL_NO
+                    )
+                WHERE
+                    h.GSSH_HIDE_FLAG = '0'
+                    AND d.CLIENT = #{clientId}
+                    AND d.GSSD_DATE <![CDATA[>=]]> DATE_FORMAT( #{lastYearThisMonthLastDay}, '%Y%m01' )
+                    AND d.GSSD_DATE <![CDATA[<=]]> #{lastYearThisMonthLastDay}
+                GROUP BY
+                    d.GSSD_PM_ACTIVITY_ID,
+                    d.GSSD_PRO_ID
+                ) lastYear ON ( lastYear.CLIENT = ph.CLIENT AND lastYear.GSSD_PRO_ID = pus.GSPUS_PRO_ID )
+            WHERE
+                ph.GSPH_STATUS = '1'
+                AND ph.GSPH_TYPE NOT IN ( 'PROM_HYJ', 'PROM_HYRJ', 'PROM_HYRZ' )
+                AND ph.CLIENT = #{clientId}
+                AND ph.GSPH_BEGIN_DATE <![CDATA[>=]]> DATE_FORMAT( #{queryDate}, '%Y%m01' )
+                AND ph.GSPH_END_DATE <![CDATA[<=]]> #{queryDate}
+            GROUP BY
+                ph.GSPH_VOUCHER_ID
+            ) a
+        GROUP BY
+            marketId
+        ORDER BY
+            activityBeginDate DESC
+    </select>-->
+
+    <select id="getMarketingPlan" resultType="com.gys.entity.data.marketing.MarketingReportOutData" parameterType="com.gys.entity.data.marketing.MarketingInDate">
+        select CLIENT client,GSPH_MARKETID gsphMarketid,count(1)stoQty,GSPH_NAME gsphName,GSPH_REMARKS gsphRemarks,DATE_FORMAT(GSPH_BEGIN_DATE,'%Y-%m-%d') gsphBeginDate,GSPH_VOUCHER_ID gsphVoucherId
+             ,DATE_FORMAT(GSPH_END_DATE,'%Y-%m-%d') gsphEndDate,DATE_FORMAT(DATE_ADD(GSPH_BEGIN_DATE,INTERVAL -1 MONTH),'%Y-%m-%d') sqStartTime,DATE_FORMAT(DATE_ADD(GSPH_END_DATE,INTERVAL -1 MONTH),'%Y-%m-%d') sqEndTime
+             ,DATE_FORMAT(DATE_ADD(GSPH_END_DATE,INTERVAL -1 YEAR),'%Y-%m-%d') tqEndTime,DATE_FORMAT(DATE_ADD(GSPH_BEGIN_DATE,INTERVAL -1 YEAR),'%Y-%m-%d') tqStartTime
+             ,GSPH_BEGIN_TIME gsphBeginTime,GSPH_END_TIME gsphEndTime
+        from GAIA_SD_PROM_HEAD where CLIENT = #{clientId} and GSPH_MARKETID =#{gsphMarketid} GROUP BY CLIENT,GSPH_MARKETID
+    </select>
+
+    <select id="listMarketingStores" resultType="hashmap" parameterType="com.gys.entity.data.marketing.MarketingInDate">
+        select t1.STO_CODE stoCode ,t1.STO_NAME stoName,t1.STO_SHORT_NAME stoShortName from (SELECT A.*
+        FROM GAIA_STORE_DATA A
+        WHERE A.CLIENT = #{clientId} AND CASE WHEN (
+                 SELECT COUNT(1) FROM GAIA_AUTHCONFI_DATA B
+                 INNER JOIN GAIA_GROUP_DATA C ON C.AUTH_GROUP_ID = B.AUTH_GROUP_ID AND C.CLIENT = B.CLIENT
+                 WHERE B.CLIENT = #{clientId}  AND B.AUTHCONFI_USER = #{userId} AND C.AUTH_GROUP_ISADMIN = 'Y' ) = 0
+                 THEN A.STO_CODE IN ( SELECT AUTHOBJ_SITE FROM GAIA_AUTHCONFI_DATA
+                                            WHERE CLIENT = #{clientId}  AND AUTHCONFI_USER = #{userId} ) ELSE TRUE END) t1
+        INNER JOIN ( select CLIENT,GSPH_BR_ID from GAIA_SD_PROM_HEAD where CLIENT= #{clientId}  and GSPH_MARKETID = #{gsphMarketid} GROUP BY GSPH_BR_ID) t2 on t1.CLIENT = t2.CLIENT and t1.STO_CODE = t2.GSPH_BR_ID
+    </select>
+
+</mapper>

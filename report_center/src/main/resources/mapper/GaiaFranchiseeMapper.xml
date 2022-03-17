@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaFranchiseeMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaFranchisee">
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="FRANC_NAME" jdbcType="VARCHAR" property="francName" />
+    <result column="FRANC_NO" jdbcType="VARCHAR" property="francNo" />
+    <result column="FRANC_LEGAL_PERSON" jdbcType="VARCHAR" property="francLegalPerson" />
+    <result column="FRANC_QUA" jdbcType="VARCHAR" property="francQua" />
+    <result column="FRANC_ADDR" jdbcType="VARCHAR" property="francAddr" />
+    <result column="FRANC_CRE_DATE" jdbcType="VARCHAR" property="francCreDate" />
+    <result column="FRANC_CRE_TIME" jdbcType="VARCHAR" property="francCreTime" />
+    <result column="FRANC_CRE_ID" jdbcType="VARCHAR" property="francCreId" />
+    <result column="FRANC_MODI_DATE" jdbcType="VARCHAR" property="francModiDate" />
+    <result column="FRANC_MODI_TIME" jdbcType="VARCHAR" property="francModiTime" />
+    <result column="FRANC_MODI_ID" jdbcType="VARCHAR" property="francModiId" />
+    <result column="FRANC_LOGO" jdbcType="VARCHAR" property="francLogo" />
+    <result column="FRANC_TYPE1" jdbcType="VARCHAR" property="francType1" />
+    <result column="FRANC_TYPE2" jdbcType="VARCHAR" property="francType2" />
+    <result column="FRANC_TYPE3" jdbcType="VARCHAR" property="francType3" />
+    <result column="FRANC_ASS" jdbcType="VARCHAR" property="francAss" />
+    <result column="FRANC_PROV" jdbcType="VARCHAR" property="francProv" />
+    <result column="FRANC_CITY" jdbcType="VARCHAR" property="francCity" />
+    <result column="FRANC_STATUS" jdbcType="VARCHAR" property="francStatus" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    CLIENT, FRANC_NAME, FRANC_NO, FRANC_LEGAL_PERSON, FRANC_QUA, FRANC_ADDR, FRANC_CRE_DATE, 
+    FRANC_CRE_TIME, FRANC_CRE_ID, FRANC_MODI_DATE, FRANC_MODI_TIME, FRANC_MODI_ID, FRANC_LOGO, 
+    FRANC_TYPE1, FRANC_TYPE2, FRANC_TYPE3, FRANC_ASS, FRANC_PROV, FRANC_CITY, FRANC_STATUS, 
+    LAST_UPDATE_TIME
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from GAIA_FRANCHISEE
+    where CLIENT = #{client,jdbcType=VARCHAR}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.String">
+    delete from GAIA_FRANCHISEE
+    where CLIENT = #{client,jdbcType=VARCHAR}
+  </delete>
+  <insert id="insert" keyColumn="CLIENT" keyProperty="client" parameterType="com.gys.entity.GaiaFranchisee" useGeneratedKeys="true">
+    insert into GAIA_FRANCHISEE (FRANC_NAME, FRANC_NO, FRANC_LEGAL_PERSON, 
+      FRANC_QUA, FRANC_ADDR, FRANC_CRE_DATE, 
+      FRANC_CRE_TIME, FRANC_CRE_ID, FRANC_MODI_DATE, 
+      FRANC_MODI_TIME, FRANC_MODI_ID, FRANC_LOGO, 
+      FRANC_TYPE1, FRANC_TYPE2, FRANC_TYPE3, 
+      FRANC_ASS, FRANC_PROV, FRANC_CITY, 
+      FRANC_STATUS, LAST_UPDATE_TIME)
+    values (#{francName,jdbcType=VARCHAR}, #{francNo,jdbcType=VARCHAR}, #{francLegalPerson,jdbcType=VARCHAR}, 
+      #{francQua,jdbcType=VARCHAR}, #{francAddr,jdbcType=VARCHAR}, #{francCreDate,jdbcType=VARCHAR}, 
+      #{francCreTime,jdbcType=VARCHAR}, #{francCreId,jdbcType=VARCHAR}, #{francModiDate,jdbcType=VARCHAR}, 
+      #{francModiTime,jdbcType=VARCHAR}, #{francModiId,jdbcType=VARCHAR}, #{francLogo,jdbcType=VARCHAR}, 
+      #{francType1,jdbcType=VARCHAR}, #{francType2,jdbcType=VARCHAR}, #{francType3,jdbcType=VARCHAR}, 
+      #{francAss,jdbcType=VARCHAR}, #{francProv,jdbcType=VARCHAR}, #{francCity,jdbcType=VARCHAR}, 
+      #{francStatus,jdbcType=VARCHAR}, #{lastUpdateTime,jdbcType=TIMESTAMP})
+  </insert>
+  <insert id="insertSelective" keyColumn="CLIENT" keyProperty="client" parameterType="com.gys.entity.GaiaFranchisee" useGeneratedKeys="true">
+    insert into GAIA_FRANCHISEE
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="francName != null">
+        FRANC_NAME,
+      </if>
+      <if test="francNo != null">
+        FRANC_NO,
+      </if>
+      <if test="francLegalPerson != null">
+        FRANC_LEGAL_PERSON,
+      </if>
+      <if test="francQua != null">
+        FRANC_QUA,
+      </if>
+      <if test="francAddr != null">
+        FRANC_ADDR,
+      </if>
+      <if test="francCreDate != null">
+        FRANC_CRE_DATE,
+      </if>
+      <if test="francCreTime != null">
+        FRANC_CRE_TIME,
+      </if>
+      <if test="francCreId != null">
+        FRANC_CRE_ID,
+      </if>
+      <if test="francModiDate != null">
+        FRANC_MODI_DATE,
+      </if>
+      <if test="francModiTime != null">
+        FRANC_MODI_TIME,
+      </if>
+      <if test="francModiId != null">
+        FRANC_MODI_ID,
+      </if>
+      <if test="francLogo != null">
+        FRANC_LOGO,
+      </if>
+      <if test="francType1 != null">
+        FRANC_TYPE1,
+      </if>
+      <if test="francType2 != null">
+        FRANC_TYPE2,
+      </if>
+      <if test="francType3 != null">
+        FRANC_TYPE3,
+      </if>
+      <if test="francAss != null">
+        FRANC_ASS,
+      </if>
+      <if test="francProv != null">
+        FRANC_PROV,
+      </if>
+      <if test="francCity != null">
+        FRANC_CITY,
+      </if>
+      <if test="francStatus != null">
+        FRANC_STATUS,
+      </if>
+      <if test="lastUpdateTime != null">
+        LAST_UPDATE_TIME,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="francName != null">
+        #{francName,jdbcType=VARCHAR},
+      </if>
+      <if test="francNo != null">
+        #{francNo,jdbcType=VARCHAR},
+      </if>
+      <if test="francLegalPerson != null">
+        #{francLegalPerson,jdbcType=VARCHAR},
+      </if>
+      <if test="francQua != null">
+        #{francQua,jdbcType=VARCHAR},
+      </if>
+      <if test="francAddr != null">
+        #{francAddr,jdbcType=VARCHAR},
+      </if>
+      <if test="francCreDate != null">
+        #{francCreDate,jdbcType=VARCHAR},
+      </if>
+      <if test="francCreTime != null">
+        #{francCreTime,jdbcType=VARCHAR},
+      </if>
+      <if test="francCreId != null">
+        #{francCreId,jdbcType=VARCHAR},
+      </if>
+      <if test="francModiDate != null">
+        #{francModiDate,jdbcType=VARCHAR},
+      </if>
+      <if test="francModiTime != null">
+        #{francModiTime,jdbcType=VARCHAR},
+      </if>
+      <if test="francModiId != null">
+        #{francModiId,jdbcType=VARCHAR},
+      </if>
+      <if test="francLogo != null">
+        #{francLogo,jdbcType=VARCHAR},
+      </if>
+      <if test="francType1 != null">
+        #{francType1,jdbcType=VARCHAR},
+      </if>
+      <if test="francType2 != null">
+        #{francType2,jdbcType=VARCHAR},
+      </if>
+      <if test="francType3 != null">
+        #{francType3,jdbcType=VARCHAR},
+      </if>
+      <if test="francAss != null">
+        #{francAss,jdbcType=VARCHAR},
+      </if>
+      <if test="francProv != null">
+        #{francProv,jdbcType=VARCHAR},
+      </if>
+      <if test="francCity != null">
+        #{francCity,jdbcType=VARCHAR},
+      </if>
+      <if test="francStatus != null">
+        #{francStatus,jdbcType=VARCHAR},
+      </if>
+      <if test="lastUpdateTime != null">
+        #{lastUpdateTime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.GaiaFranchisee">
+    update GAIA_FRANCHISEE
+    <set>
+      <if test="francName != null">
+        FRANC_NAME = #{francName,jdbcType=VARCHAR},
+      </if>
+      <if test="francNo != null">
+        FRANC_NO = #{francNo,jdbcType=VARCHAR},
+      </if>
+      <if test="francLegalPerson != null">
+        FRANC_LEGAL_PERSON = #{francLegalPerson,jdbcType=VARCHAR},
+      </if>
+      <if test="francQua != null">
+        FRANC_QUA = #{francQua,jdbcType=VARCHAR},
+      </if>
+      <if test="francAddr != null">
+        FRANC_ADDR = #{francAddr,jdbcType=VARCHAR},
+      </if>
+      <if test="francCreDate != null">
+        FRANC_CRE_DATE = #{francCreDate,jdbcType=VARCHAR},
+      </if>
+      <if test="francCreTime != null">
+        FRANC_CRE_TIME = #{francCreTime,jdbcType=VARCHAR},
+      </if>
+      <if test="francCreId != null">
+        FRANC_CRE_ID = #{francCreId,jdbcType=VARCHAR},
+      </if>
+      <if test="francModiDate != null">
+        FRANC_MODI_DATE = #{francModiDate,jdbcType=VARCHAR},
+      </if>
+      <if test="francModiTime != null">
+        FRANC_MODI_TIME = #{francModiTime,jdbcType=VARCHAR},
+      </if>
+      <if test="francModiId != null">
+        FRANC_MODI_ID = #{francModiId,jdbcType=VARCHAR},
+      </if>
+      <if test="francLogo != null">
+        FRANC_LOGO = #{francLogo,jdbcType=VARCHAR},
+      </if>
+      <if test="francType1 != null">
+        FRANC_TYPE1 = #{francType1,jdbcType=VARCHAR},
+      </if>
+      <if test="francType2 != null">
+        FRANC_TYPE2 = #{francType2,jdbcType=VARCHAR},
+      </if>
+      <if test="francType3 != null">
+        FRANC_TYPE3 = #{francType3,jdbcType=VARCHAR},
+      </if>
+      <if test="francAss != null">
+        FRANC_ASS = #{francAss,jdbcType=VARCHAR},
+      </if>
+      <if test="francProv != null">
+        FRANC_PROV = #{francProv,jdbcType=VARCHAR},
+      </if>
+      <if test="francCity != null">
+        FRANC_CITY = #{francCity,jdbcType=VARCHAR},
+      </if>
+      <if test="francStatus != null">
+        FRANC_STATUS = #{francStatus,jdbcType=VARCHAR},
+      </if>
+      <if test="lastUpdateTime != null">
+        LAST_UPDATE_TIME = #{lastUpdateTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where CLIENT = #{client,jdbcType=VARCHAR}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.gys.entity.GaiaFranchisee">
+    update GAIA_FRANCHISEE
+    set FRANC_NAME = #{francName,jdbcType=VARCHAR},
+      FRANC_NO = #{francNo,jdbcType=VARCHAR},
+      FRANC_LEGAL_PERSON = #{francLegalPerson,jdbcType=VARCHAR},
+      FRANC_QUA = #{francQua,jdbcType=VARCHAR},
+      FRANC_ADDR = #{francAddr,jdbcType=VARCHAR},
+      FRANC_CRE_DATE = #{francCreDate,jdbcType=VARCHAR},
+      FRANC_CRE_TIME = #{francCreTime,jdbcType=VARCHAR},
+      FRANC_CRE_ID = #{francCreId,jdbcType=VARCHAR},
+      FRANC_MODI_DATE = #{francModiDate,jdbcType=VARCHAR},
+      FRANC_MODI_TIME = #{francModiTime,jdbcType=VARCHAR},
+      FRANC_MODI_ID = #{francModiId,jdbcType=VARCHAR},
+      FRANC_LOGO = #{francLogo,jdbcType=VARCHAR},
+      FRANC_TYPE1 = #{francType1,jdbcType=VARCHAR},
+      FRANC_TYPE2 = #{francType2,jdbcType=VARCHAR},
+      FRANC_TYPE3 = #{francType3,jdbcType=VARCHAR},
+      FRANC_ASS = #{francAss,jdbcType=VARCHAR},
+      FRANC_PROV = #{francProv,jdbcType=VARCHAR},
+      FRANC_CITY = #{francCity,jdbcType=VARCHAR},
+      FRANC_STATUS = #{francStatus,jdbcType=VARCHAR},
+      LAST_UPDATE_TIME = #{lastUpdateTime,jdbcType=TIMESTAMP}
+    where CLIENT = #{client,jdbcType=VARCHAR}
+  </update>
+
+  <select id="getClients" parameterType="java.lang.String" resultType="com.gys.entity.data.xhl.vo.ClientVo">
+    select
+    CLIENT  client,
+    FRANC_NAME francName
+    from GAIA_FRANCHISEE
+    where  CLIENT like  concat('%',#{client},'%') or FRANC_NAME like  concat('%',#{client},'%')
+  </select>
+
+  <update id="updateAll" parameterType="java.util.Map">
+    <foreach collection="list" separator=";" item="item">
+    <if test="(item.francAddr!=null and item.francAddr!='') or (item.francProv!=null and item.francProv!='') or item.francCity!=null and item.francCity!=''">
+      update GAIA_FRANCHISEE
+      <set>
+        <if test="item.francAddr!=null and item.francAddr!='' ">
+          FRANC_ADDR = #{item.francAddr},
+        </if>
+        <if test="item.francProv!=null and item.francProv!='' ">
+          FRANC_PROV = #{item.francProv},
+        </if>
+        <if test="item.francCity!=null and item.francCity!='' ">
+          FRANC_CITY = #{item.francCity},
+        </if>
+      </set>
+      where CLIENT = #{item.client}
+    </if>
+    </foreach>
+  </update>
+
+  <select id="getClientBaseInfo" resultType="com.gys.entity.data.xhl.vo.ClientBaseInfoVo">
+    SELECT
+      gf.CLIENT client,
+      gf.FRANC_NAME francName,
+      gf.FRANC_ADDR francAddr ,
+      ga1.AREA_NAME francProv,
+      ga1.AREA_ID    provId,
+      ga2.AREA_NAME francCity,
+      ga2.AREA_ID    cityId
+
+    FROM
+      GAIA_FRANCHISEE gf
+        LEFT JOIN GAIA_AREA ga1 ON gf.FRANC_PROV = ga1.AREA_ID
+        LEFT JOIN GAIA_AREA ga2 ON gf.FRANC_CITY = ga2.AREA_ID
+      WHERE (gf.FRANC_PROV is null OR gf.FRANC_PROV='')
+      and  (gf.FRANC_CITY is null  OR gf.FRANC_CITY='')
+      and gf.FRANC_STATUS='0'
+    order by  gf.CLIENT
+  </select>
+
+  <select id="getAllStores" parameterType="java.util.List" resultType="com.gys.entity.data.xhl.vo.StoreData">
+    select
+      CLIENT   client,
+      STO_CODE stoCode ,
+      STO_NAME stoName
+    from GAIA_STORE_DATA
+    <where>
+       and CLIENT in
+      <foreach collection="dto"  index="index" item="it" open="(" separator="," close=")">
+        #{it}
+      </foreach>
+      and STO_STATUS='0'
+    </where>
+  </select>
+
+  <select id="getClientsInfo" resultType="com.gys.entity.data.xhl.vo.ClientBaseInfoVo">
+    SELECT
+      gf.CLIENT client,
+      gf.FRANC_NAME francName,
+      gf.FRANC_ADDR francAddr ,
+      ga1.AREA_NAME francProv,
+      ga2.AREA_NAME francCity
+    FROM
+      GAIA_FRANCHISEE gf
+        LEFT JOIN GAIA_AREA ga1 ON gf.FRANC_PROV = ga1.AREA_ID
+        LEFT JOIN GAIA_AREA ga2 ON gf.FRANC_CITY = ga2.AREA_ID
+      <where>
+          and gf.CLIENT in
+        <foreach collection="dto" index="index" open="(" separator="," close=")" item="item">
+           #{item}
+        </foreach>
+      </where>
+  </select>
+</mapper>

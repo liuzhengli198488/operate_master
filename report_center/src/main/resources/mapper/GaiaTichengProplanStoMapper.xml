@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengProplanStoMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengProplanSto">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="STO_CODE" jdbcType="VARCHAR" property="stoCode" />
+    <result column="PID" jdbcType="BIGINT" property="pid" />
+    <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    ID, CLIENT, STO_CODE, PID, DELETE_FLAG, LAST_UPDATE_TIME
+  </sql>
+	<select id="selectSto" resultType="java.lang.String">
+      SELECT
+          STO_CODE stoCode
+      FROM
+          GAIA_TICHENG_PROPLAN_STO
+      WHERE
+          PID = #{id} and CLIENT = #{client} and DELETE_FLAG = '0'
+	    </select>
+
+    <select id="selectStoV3" resultType="java.lang.String">
+        SELECT
+            STO_CODE stoCode
+        FROM
+            GAIA_TICHENG_PROPLAN_STO_N
+        WHERE
+            PID = #{id} and CLIENT = #{client} and DELETE_FLAG = '0'
+    </select>
+</mapper>

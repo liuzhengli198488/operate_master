@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.GaiaCalDateMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaCalDate">
+        <id column="GCD_DATE" jdbcType="VARCHAR" property="gcdDate" />
+        <result column="GCD_YEAR" jdbcType="VARCHAR" property="gcdYear" />
+        <result column="GCD_QUARTER" jdbcType="VARCHAR" property="gcdQuarter" />
+        <result column="GCD_MONTH" jdbcType="VARCHAR" property="gcdMonth" />
+        <result column="GCD_WEEK" jdbcType="VARCHAR" property="gcdWeek" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        GCD_DATE, GCD_YEAR, GCD_QUARTER, GCD_MONTH, GCD_WEEK
+    </sql>
+
+    <select id="getByDate" parameterType="java.lang.String" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from GAIA_CAL_DT
+        where GCD_DATE = #{date,jdbcType=VARCHAR}
+    </select>
+</mapper>    

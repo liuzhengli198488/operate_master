@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.SupplierSummaryMapper">
+
+    <select id="querySaleManList" resultType="com.gys.entity.SupplierSaleMan">
+        SELECT
+        GSS_CODE gssCode,
+        GSS_NAME gssName
+        FROM
+        GAIA_SUPPLIER_SALESMAN
+        WHERE
+        CLIENT = #{client}
+        <if test="supplierCode!=null and supplierCode!=null">
+            AND SUP_SELF_CODE = #{supplierCode}
+        </if>
+        GROUP BY gssCode,gssName
+    </select>
+    <select id="getProductSalesBySupplier"
+            resultType="com.gys.report.entity.ProductSalesBySupplierWithSaleManOutData">
+        select
+        T.*,
+        gss.GSS_NAME gssName
+        from
+        (
+        SELECT
+        bi.BAT_SUPPLIER_SALESMAN gssCode,
+        gsbc.GSBC_PRO_ID proCode,
+        gsbc.GSBC_BATCH batch,
+        c.STO_CODE stoCode,
+        IFNULL(c.STO_SHORT_NAME,STO_NAME) stoName,
+        DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryDay,
+        bi.BAT_EXPIRY_DATE expiryDate,
+
+        bi.BAT_SUPPLIER_CODE supplierCode,
+        sup.SUP_NAME supplierName,
+        IFNULL( pb.PRO_NAME, pb.PRO_COMMONNAME ) proName,
+        pb.PRO_COMMONNAME proCommonName,
+        pb.PRO_DEPICT  proDepict,
+        pb.PRO_SPECS specs,
+        pb.PRO_UNIT unit,
+        pb.PRO_FACTORY_CODE factoryCode,
+        pb.PRO_FACTORY_NAME factoryName,
+        pb.PRO_MED_ID medProdctCode,
+        pb.PRO_IF_MED,
+        CASE
+        WHEN pb.PRO_IF_MED  = '1' THEN
+        '是'
+        WHEN pb.PRO_MED_ID IS NOT NULL THEN
+        '是' ELSE '否'
+        END ifMed,
+        concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+        concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+        concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+        pb.PRO_CLASS,
+        SUM(
+        CASE
+
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        IFNULL( gsbc.GSBC_QTY, 0 ) ELSE IFNULL( gsbc.GSBC_QTY, 0 )* - 1
+        END
+        ) qty,
+        pb.PRO_SLAE_CLASS AS saleClass,
+        pb.PRO_SCLASS AS prosClass,
+        case pb.PRO_NO_PURCHASE
+        when '1' then '是'
+        when '0' then '否'
+        end AS purchase,
+        pb.PRO_POSITION proPosition,
+        pb.PRO_ZDY1 AS zdy1,
+        pb.PRO_ZDY2 AS zdy2,
+        pb.PRO_ZDY3 AS zdy3,
+        pb.PRO_ZDY4 AS zdy4,
+        pb.PRO_ZDY5 AS zdy5
+        FROM
+        GAIA_SD_SALE_H gssh
+        LEFT JOIN GAIA_STORE_DATA c ON gssh.CLIENT = c.CLIENT AND gssh.GSSH_BR_ID = c.STO_CODE
+        LEFT JOIN GAIA_SD_BATCH_CHANGE gsbc ON (
+        gssh.CLIENT = gsbc.CLIENT
+        AND gssh.GSSH_BR_ID = gsbc.GSBC_BR_ID
+        AND gssh.GSSH_BILL_NO = gsbc.GSBC_VOUCHER_ID
+        AND gssh.GSSH_DATE = gsbc.GSBC_DATE
+        )
+        LEFT JOIN GAIA_BATCH_INFO bi ON ( bi.CLIENT = gsbc.CLIENT AND bi.BAT_PRO_CODE = gsbc.GSBC_PRO_ID AND bi.BAT_BATCH = gsbc.GSBC_BATCH )
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON ( pb.CLIENT = gsbc.CLIENT AND pb.PRO_SITE = gsbc.GSBC_BR_ID AND pb.PRO_SELF_CODE = gsbc.GSBC_PRO_ID )
+        LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON (bi.CLIENT = sup.CLIENT AND bi.BAT_SITE_CODE = sup.SUP_SITE AND bi.BAT_SUPPLIER_CODE = sup.SUP_SELF_CODE )
+
+        LEFT JOIN (
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS
+        )
+        proClass
+        GROUP BY
+        classId
+        ) pc ON pc.classId = pb.PRO_CLASS
+        WHERE
+        gssh.CLIENT = #{client}
+        AND gssh.GSSH_HIDE_FLAG = '0'
+        <if test="startDate != null and startDate != ''">
+            AND gssh.GSSH_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND gssh.GSSH_DATE &lt;= #{endDate}
+        </if>
+
+        <if test="proArr != null and proArr.size > 0">
+            and gsbc.GSBC_PRO_ID in
+            <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="supplierCode != null and supplierCode != ''">
+            AND  bi.BAT_SUPPLIER_CODE  = #{supplierCode}
+        </if>
+        <if test="factory != null and factory != ''">
+            AND (pb.PRO_FACTORY_CODE LIKE '%${factory}%' OR pb.PRO_FACTORY_NAME LIKE '%${factory}%')
+        </if>
+        <if test="brId != null and brId != ''">
+            AND c.STO_CODE  = #{brId}
+        </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and c.STO_CODE  in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="expiryDay != null and expiryDay !=''">
+            and DATEDIFF(date_format( bi.BAT_EXPIRY_DATE, '%Y-%m-%d' ),date_format( now(), '%Y-%m-%d' )) &lt;=#{expiryDay}
+        </if>
+        <if test="classArrs != null and classArrs.size > 0">
+            and pb.PRO_CLASS  in
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="medProdctStatus != null and medProdctStatus != ''">
+            <if test="medProdctStatus == '1'.toString() ">
+                AND ( pb.PRO_IF_MED = #{medProdctStatus} OR ifnull(pb.PRO_MED_ID,'') != '')
+            </if>
+            <if test="medProdctStatus == '0'.toString() ">
+                AND (pb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(pb.PRO_MED_ID,'') = '' AND ifnull(pb.PRO_IF_MED ,'') = ''))
+            </if>
+        </if>
+        <if test="zdy1 != null and zdy1.length > 0">
+            and pb.PRO_ZDY1 in
+            <foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy2 != null and zdy2.length > 0">
+            and pb.PRO_ZDY2 in
+            <foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy3 != null and zdy3.length > 0">
+            and pb.PRO_ZDY3 in
+            <foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy4 != null and zdy4.length > 0">
+            and pb.PRO_ZDY4 in
+            <foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy5 != null and zdy5.length > 0">
+            and pb.PRO_ZDY5 in
+            <foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="saleClass != null and saleClass.length > 0">
+            and pb.PRO_SLAE_CLASS in
+            <foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="proPosition != null and proPosition.length > 0">
+            and pb.PRO_POSITION in
+            <foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="prosClass != null and prosClass.length > 0">
+            and pb.PRO_SCLASS in
+            <foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="purchase != null and purchase != ''">
+            and pb.PRO_NO_PURCHASE = #{purchase}
+        </if>
+        <include refid="STORE_CATEGORY_CONDITION" />
+        GROUP BY
+        gssh.GSSH_BR_ID,
+        gsbc.GSBC_PRO_ID,
+        gsbc.GSBC_BATCH
+        ORDER BY
+        gssh.GSSH_BR_ID,
+        gsbc.GSBC_PRO_ID,
+        gsbc.GSBC_BATCH
+        )
+        T LEFT JOIN GAIA_SUPPLIER_SALESMAN gss ON T.supplierCode = gss.SUP_SELF_CODE AND T.gssCode = gss.GSS_CODE AND gss.client = #{client}
+        WHERE
+        T.supplierCode IS NOT NULL
+        <if test="gssCodeList !=null and gssCodeList.size>0">
+        AND T.gssCode IN
+            <foreach collection="gssCodeList" open="(" close=")" separator="," item="gssCode">
+            #{gssCode}
+            </foreach>
+        </if>
+    </select>
+
+    <sql id="STORE_CATEGORY_CONDITION" >
+        <trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+            <if test="stoGssgTypes!=null and stoGssgTypes.size">
+                EXISTS (
+                SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE c.CLIENT = gssg.CLIENT AND c.STO_CODE = gssg.GSSG_BR_ID
+                AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+                <foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+                    (#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+                </foreach>
+                )
+            </if>
+            <if test="stoAttributes!=null and stoAttributes.size">
+                OR c.STO_ATTRIBUTE IN
+                <foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+                    #{stoAttribute}
+                </foreach>
+            </if>
+            <if test="stoAttribute==''" >
+                OR c.STO_ATTRIBUTE IS NOT NULL AND c.STO_ATTRIBUTE != ''
+            </if>
+            <if test="stoIfMedicals!=null and stoIfMedicals.size">
+                OR c.STO_IF_MEDICALCARE IN
+                <foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+                    #{stoIfMedical}
+                </foreach>
+            </if>
+            <if test="stoIfMedical==''" >
+                OR c.STO_IF_MEDICALCARE IS NOT NULL AND c.STO_IF_MEDICALCARE != ''
+            </if>
+            <if test="stoTaxClasss!=null and stoTaxClasss.size">
+                OR c.STO_TAX_CLASS IN
+                <foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+                    #{stoTaxClass}
+                </foreach>
+            </if>
+            <if test="stoTaxClass==''" >
+                OR c.STO_TAX_CLASS IS NOT NULL AND c.STO_TAX_CLASS != ''
+            </if>
+            <if test="stoIfDtps!=null and stoIfDtps.size">
+                OR c.STO_IF_DTP IN
+                <foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+                    #{stoIfDtp}
+                </foreach>
+            </if>
+            <if test="stoIfDtp==''" >
+                OR c.STO_IF_DTP IS NOT NULL AND c.STO_IF_DTP != ''
+            </if>
+        </trim>
+    </sql>
+
+
+    <select id="querySaleManCodeList" resultType="java.lang.String">
+        SELECT
+        DISTINCT GSS_CODE
+        FROM
+        GAIA_SUPPLIER_SALESMAN
+        WHERE
+        CLIENT = #{client}
+        <if test="supplierCode!=null and supplierCode!=null">
+            AND SUP_SELF_CODE = #{supplierCode}
+        </if>
+        AND GSS_CODE is not null AND GSS_CODE != ''
+    </select>
+</mapper>

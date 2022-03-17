@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaMedicinalQualityRecordMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.wk.entity.GaiaMedicinalQualityRecord">
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="VOUCHER_ID" jdbcType="VARCHAR" property="voucherId" />
+    <result column="PRO_SELF_CODE" jdbcType="VARCHAR" property="proSelfCode" />
+    <result column="PRO_SPEC" jdbcType="VARCHAR" property="proSpec" />
+    <result column="PRO_UNIT" jdbcType="VARCHAR" property="proUnit" />
+    <result column="PRO_DOSAGE" jdbcType="VARCHAR" property="proDosage" />
+    <result column="FACTORY_NAME" jdbcType="VARCHAR" property="factoryName" />
+    <result column="PRO_NAME" jdbcType="VARCHAR" property="proName" />
+    <result column="PRO_STORAGE" jdbcType="VARCHAR" property="proStorage" />
+    <result column="FUNCTION_ATTEND" jdbcType="VARCHAR" property="functionAttend" />
+    <result column="CHEMICAL_NAME" jdbcType="VARCHAR" property="chemicalName" />
+    <result column="APPROVAL_NO" jdbcType="VARCHAR" property="approvalNo" />
+    <result column="PRO_ACCOUNT" jdbcType="VARCHAR" property="proAccount" />
+    <result column="QUALITY_REMARK" jdbcType="VARCHAR" property="qualityRemark" />
+    <result column="PRO_PACKAGE" jdbcType="VARCHAR" property="proPackage" />
+    <result column="QUALITY_QUERY" jdbcType="VARCHAR" property="qualityQuery" />
+    <result column="PRO_CATEGORY" jdbcType="VARCHAR" property="proCategory" />
+    <result column="PRO_EFFECTIVE" jdbcType="VARCHAR" property="proEffective" />
+    <result column="PURPOSE" jdbcType="VARCHAR" property="purpose" />
+    <result column="FIRST_IN_DATE" jdbcType="VARCHAR" property="firstInDate" />
+    <result column="INVENT_QUALITY" jdbcType="VARCHAR" property="inventQuality" />
+    <result column="QUALITY_COND" jdbcType="VARCHAR" property="qualityCond" />
+    <result column="CAUSE" jdbcType="VARCHAR" property="cause" />
+    <result column="HAND_REMARK" jdbcType="VARCHAR" property="handRemark" />
+    <result column="QUALITY_STAND" jdbcType="VARCHAR" property="qualityStand" />
+    <result column="BATCH_NO" jdbcType="VARCHAR" property="batchNo" />
+    <result column="STATUS" jdbcType="INTEGER" property="status" />
+    <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="CREATE_USER" jdbcType="VARCHAR" property="createUser" />
+    <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+    <result column="UPDATE_USER" jdbcType="VARCHAR" property="updateUser" />
+    <result column="REMARK" jdbcType="VARCHAR" property="remark" />
+    <result column="IS_DELETE" jdbcType="INTEGER" property="isDelete" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    ID, CLIENT, VOUCHER_ID, PRO_SELF_CODE, PRO_SPEC, PRO_UNIT, PRO_DOSAGE, FACTORY_NAME, 
+    PRO_NAME, PRO_STORAGE, FUNCTION_ATTEND, CHEMICAL_NAME, APPROVAL_NO, PRO_ACCOUNT, 
+    QUALITY_REMARK, PRO_PACKAGE, QUALITY_QUERY, PRO_CATEGORY, PRO_EFFECTIVE, PURPOSE, 
+    FIRST_IN_DATE, INVENT_QUALITY, QUALITY_COND, CAUSE, HAND_REMARK, QUALITY_STAND, BATCH_NO, 
+    `STATUS`, CREATE_TIME, CREATE_USER, UPDATE_TIME, UPDATE_USER, REMARK, IS_DELETE
+  </sql>
+  <update id="del" parameterType="com.gys.entity.wk.dto.MedicinalQualityRecordDelDto">
+    update GAIA_MEDICINAL_QUALITY_RECORD
+    set IS_DELETE='0',UPDATE_USER=#{updateUser},UPDATE_TIME=now()
+    <where>
+      ID  in <foreach collection="ids" open="(" index="index" separator="," close=")" item="item">
+        #{item}
+    </foreach>
+    </where>
+  </update>
+
+  <update id="updateList" parameterType="java.util.List" >
+    <foreach collection="dtos" item="item" index="index" separator=";">
+      update GAIA_MEDICINAL_QUALITY_RECORD
+      <set>
+        <if test="client != null">
+          CLIENT = #{client,jdbcType=VARCHAR},
+        </if>
+        <if test="voucherId != null">
+          VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+        </if>
+        <if test="proSelfCode != null">
+          PRO_SELF_CODE = #{proSelfCode,jdbcType=VARCHAR},
+        </if>
+        <if test="proSpec != null">
+          PRO_SPEC = #{proSpec,jdbcType=VARCHAR},
+        </if>
+        <if test="proUnit != null">
+          PRO_UNIT = #{proUnit,jdbcType=VARCHAR},
+        </if>
+        <if test="proDosage != null">
+          PRO_DOSAGE = #{proDosage,jdbcType=VARCHAR},
+        </if>
+        <if test="factoryName != null">
+          FACTORY_NAME = #{factoryName,jdbcType=VARCHAR},
+        </if>
+        <if test="proName != null">
+          PRO_NAME = #{proName,jdbcType=VARCHAR},
+        </if>
+        <if test="proStorage != null">
+          PRO_STORAGE = #{proStorage,jdbcType=VARCHAR},
+        </if>
+        <if test="functionAttend != null">
+          FUNCTION_ATTEND = #{functionAttend,jdbcType=VARCHAR},
+        </if>
+        <if test="chemicalName != null">
+          CHEMICAL_NAME = #{chemicalName,jdbcType=VARCHAR},
+        </if>
+        <if test="approvalNo != null">
+          APPROVAL_NO = #{approvalNo,jdbcType=VARCHAR},
+        </if>
+        <if test="proAccount != null">
+          PRO_ACCOUNT = #{proAccount,jdbcType=VARCHAR},
+        </if>
+        <if test="qualityRemark != null">
+          QUALITY_REMARK = #{qualityRemark,jdbcType=VARCHAR},
+        </if>
+        <if test="proPackage != null">
+          PRO_PACKAGE = #{proPackage,jdbcType=VARCHAR},
+        </if>
+        <if test="qualityQuery != null">
+          QUALITY_QUERY = #{qualityQuery,jdbcType=VARCHAR},
+        </if>
+        <if test="proCategory != null">
+          PRO_CATEGORY = #{proCategory,jdbcType=VARCHAR},
+        </if>
+        <if test="proEffective != null">
+          PRO_EFFECTIVE = #{proEffective,jdbcType=VARCHAR},
+        </if>
+        <if test="purpose != null">
+          PURPOSE = #{purpose,jdbcType=VARCHAR},
+        </if>
+        <if test="firstInDate != null">
+          FIRST_IN_DATE = #{firstInDate,jdbcType=VARCHAR},
+        </if>
+        <if test="inventQuality != null">
+          INVENT_QUALITY = #{inventQuality,jdbcType=VARCHAR},
+        </if>
+        <if test="qualityCond != null">
+          QUALITY_COND = #{qualityCond,jdbcType=VARCHAR},
+        </if>
+        <if test="cause != null">
+          CAUSE = #{cause,jdbcType=VARCHAR},
+        </if>
+        <if test="handRemark != null">
+          HAND_REMARK = #{handRemark,jdbcType=VARCHAR},
+        </if>
+        <if test="qualityStand != null">
+          QUALITY_STAND = #{qualityStand,jdbcType=VARCHAR},
+        </if>
+        <if test="batchNo != null">
+          BATCH_NO = #{batchNo,jdbcType=VARCHAR},
+        </if>
+        <if test="status != null">
+          `STATUS` = #{status,jdbcType=INTEGER},
+        </if>
+        <if test="createTime != null">
+          CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+        </if>
+        <if test="createUser != null">
+          CREATE_USER = #{createUser,jdbcType=VARCHAR},
+        </if>
+        <if test="updateTime != null">
+          UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+        </if>
+        <if test="updateUser != null">
+          UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+        </if>
+        <if test="remark != null">
+          REMARK = #{remark,jdbcType=VARCHAR},
+        </if>
+        <if test="isDelete != null">
+          IS_DELETE = #{isDelete,jdbcType=INTEGER},
+        </if>
+      </set>
+      where ID = #{id,jdbcType=BIGINT}
+    </foreach>
+  </update>
+
+  <insert id="addList" parameterType="java.util.List" >
+    insert into GAIA_MEDICINAL_QUALITY_RECORD
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        CLIENT,
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID,
+      </if>
+      <if test="proSelfCode != null">
+        PRO_SELF_CODE,
+      </if>
+      <if test="proSpec != null">
+        PRO_SPEC,
+      </if>
+      <if test="proUnit != null">
+        PRO_UNIT,
+      </if>
+      <if test="proDosage != null">
+        PRO_DOSAGE,
+      </if>
+      <if test="factoryName != null">
+        FACTORY_NAME,
+      </if>
+      <if test="proName != null">
+        PRO_NAME,
+      </if>
+      <if test="proStorage != null">
+        PRO_STORAGE,
+      </if>
+      <if test="functionAttend != null">
+        FUNCTION_ATTEND,
+      </if>
+      <if test="chemicalName != null">
+        CHEMICAL_NAME,
+      </if>
+      <if test="approvalNo != null">
+        APPROVAL_NO,
+      </if>
+      <if test="proAccount != null">
+        PRO_ACCOUNT,
+      </if>
+      <if test="qualityRemark != null">
+        QUALITY_REMARK,
+      </if>
+      <if test="proPackage != null">
+        PRO_PACKAGE,
+      </if>
+      <if test="qualityQuery != null">
+        QUALITY_QUERY,
+      </if>
+      <if test="proCategory != null">
+        PRO_CATEGORY,
+      </if>
+      <if test="proEffective != null">
+        PRO_EFFECTIVE,
+      </if>
+      <if test="purpose != null">
+        PURPOSE,
+      </if>
+      <if test="firstInDate != null">
+        FIRST_IN_DATE,
+      </if>
+      <if test="inventQuality != null">
+        INVENT_QUALITY,
+      </if>
+      <if test="qualityCond != null">
+        QUALITY_COND,
+      </if>
+      <if test="cause != null">
+        CAUSE,
+      </if>
+      <if test="handRemark != null">
+        HAND_REMARK,
+      </if>
+      <if test="qualityStand != null">
+        QUALITY_STAND,
+      </if>
+      <if test="batchNo != null">
+        BATCH_NO,
+      </if>
+      <if test="status != null">
+        `STATUS`,
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME,
+      </if>
+      <if test="createUser != null">
+        CREATE_USER,
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME,
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER,
+      </if>
+      <if test="remark != null">
+        REMARK,
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE,
+      </if>
+    </trim>
+     values
+    <foreach collection="dtos" item="item" separator=",">
+      (
+      <if test="item.client != null">
+        #{item.client,jdbcType=VARCHAR},
+      </if>
+      <if test="item.voucherId != null">
+        #{item.voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="item.empName != null">
+        #{item.empName,jdbcType=VARCHAR},
+      </if>
+      <if test="item.empId != null">
+        #{item.empId,jdbcType=VARCHAR},
+      </if>
+      <if test="item.checkOrg != null">
+        #{item.checkOrg,jdbcType=VARCHAR},
+      </if>
+      <if test="item.checkItem != null">
+        #{item.checkItem,jbcType=VARCHAR},
+      </if>
+      <if test="item.checkResult != null">
+        #{item.checkResult,jdbcType=VARCHAR},
+      </if>
+      <if test="item.checkDate != null">
+        #{item.checkDate,jdbcType=VARCHAR},
+      </if>
+      <if test="item.empGender != null">
+        #{item.empGender,jdbcType=VARCHAR},
+      </if>
+      <if test="item.empBirthday != null">
+        #{item.empBirthday,jdbcType=VARCHAR},
+      </if>
+      <if test="item.joinDate != null">
+        #{item.joinDate,jdbcType=VARCHAR},
+      </if>
+      <if test="item.measures != null">
+        #{item.measures,jdbcType=VARCHAR},
+      </if>
+      <if test="item.empPost != null">
+        #{item.empPost,jdbcType=VARCHAR},
+      </if>
+      <if test="item.empJob != null">
+        #{item.empJob,jdbcType=VARCHAR},
+      </if>
+      <if test="item.depName != null">
+        #{item.depName,jdbcType=VARCHAR},
+      </if>
+      <if test="item.empPosition != null">
+        #{item.empPosition,jdbcType=VARCHAR},
+      </if>
+      <if test="item.isDelete != null">
+        #{iitem.sDelete,jdbcType=INTEGER},
+      </if>
+      <if test="item.createTime != null">
+        #{item.createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="item.groupName != null">
+        #{item.groupName,jdbcType=VARCHAR},
+      </if>
+      <if test="item.updateTime != null">
+        #{item.updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="item.updateUser != null">
+        #{item.updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="item.remark != null">
+        #{item.remark,jdbcType=VARCHAR},
+      </if>
+      <if test="item.createUser != null">
+        #{item.createUser,jdbcType=VARCHAR},
+      </if>
+      )
+    </foreach>
+  </insert>
+  <select id="searchRecords" parameterType="com.gys.entity.wk.dto.MedicinalQualityRecordQueryDto" resultType="com.gys.entity.wk.vo.GaiaMedicinalQualityRecordVo">
+        select
+           ID id,
+           CLIENT client,
+           VOUCHER_ID voucherId,
+           PRO_SELF_CODE proSelfCode,
+           PRO_SPEC proSpec,
+           PRO_UNIT proUnit,
+           PRO_DOSAGE proDosage,
+           FACTORY_NAME factoryName,
+           PRO_NAME proName,
+           PRO_STORAGE proStorage,
+           CASE PRO_STORAGE
+           WHEN '1' THEN '常温'
+           WHEN '2' THEN '阴凉'
+           WHEN '3' THEN '冷藏'
+           ELSE '其他' END as proStorageName,
+           FUNCTION_ATTEND functionAttend,
+           CHEMICAL_NAME chemicalName,
+           APPROVAL_NO approvalNo,
+           PRO_ACCOUNT proAccount,
+           QUALITY_REMARK qualityRemark,
+           PRO_PACKAGE proPackage,
+           QUALITY_QUERY qualityQuery,
+           PRO_CATEGORY proCategory,
+           PRO_EFFECTIVE proEffective,
+           PURPOSE purpose,
+           FIRST_IN_DATE firstInDate,
+           INVENT_QUALITY inventQuality,
+           QUALITY_COND qualityCond,
+           CAUSE cause,
+           HAND_REMARK handRemark,
+           QUALITY_STAND qualityStand,
+           BATCH_NO batchNo,
+           `STATUS` status,
+           CREATE_TIME  createTime,
+           CREATE_USER createUser,
+           UPDATE_TIME updateTime,
+           UPDATE_USER updateUser,
+           REMARK remark,
+           IS_DELETE  isDelete ,
+           pc.PRO_CLASS_NAME proCategoryName
+    from GAIA_MEDICINAL_QUALITY_RECORD qd
+    left join  GAIA_PRODUCT_CLASS pc  on qd.PRO_CATEGORY=pc.PRO_CLASS_CODE
+    <where>
+      <if test="client != null and client !='' ">
+        and CLIENT = #{client}
+      </if>
+      <if test="voucherId != null and voucherId != '' ">
+        and  VOUCHER_ID like concat('%',#{voucherId},'%')
+      </if>
+      <if test="product != null and product != ''">
+        and  ( PRO_SELF_CODE like concat('%',#{product},'%')  or PRO_NAME like concat('%',#{product},'%'))
+      </if>
+      <if test="proDosage != null and proDosage != ''">
+        and  PRO_DOSAGE  like concat('%',#{proDosage},'%')
+      </if>
+      <if test="factoryName != null and factoryName != ''">
+        and  FACTORY_NAME  like concat('%',#{factoryName},'%')
+      </if>
+      <if test="proCategory != null and proCategory != '' ">
+        and  PRO_CATEGORY  like concat('%',#{proCategory},'%')
+      </if>
+      <if test="createUser != null and createUser != ''">
+        and  CREATE_USER  like concat('%',#{createUser},'%')
+      </if>
+       and IS_DELETE='1'
+    </where>
+  </select>
+
+  <select id="selectList" resultType="list" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_MEDICINAL_QUALITY_RECORD
+    where ID in <foreach collection="ids" open="(" item="item" separator="," close=")" >
+     #{item}
+  </foreach>
+  </select>
+</mapper>

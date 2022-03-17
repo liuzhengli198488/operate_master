@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.SalesStatisticsReportMapper">
+    <select id="queryBasicSaleData" parameterType="com.gys.common.data.SalesStatisticsReportInData" resultType="com.gys.common.data.SalesStatisticsReportOutData">
+        SELECT
+            a.GSSD_DATE as date,
+            a.CLIENT as clientId,
+            a.GSSD_BR_ID as stoCode,
+            a.GSSD_BILL_NO as billNo,
+            a.GSSD_PRO_ID as proSelfCode,
+            IFNULL(c.PRO_BIG_CLASS_CODE,'9') as proBigClassCode,
+            IFNULL(c.PRO_MID_CLASS_CODE,'999') as proMidClassCode,
+            IFNULL(c.PRO_CLASS_CODE,'99999') as proClassCode,
+            IFNULL(b.PRO_POSITION,'') as position,
+            sum( IFNULL(a.GSSD_QTY,0) ) AS saleQty,
+            sum( IFNULL(a.GSSD_AMT,0) ) AS saleAmt,
+            sum( IFNULL(a.GSSD_AMT - SIGN( a.GSSD_QTY )*( ABS( a.GSSD_ADD_AMT )+ ABS( a.GSSD_ADD_TAX )),0)) AS profit,
+            sum( IFNULL(a.GSSD_ZK_AMT,0) ) AS zkAmt,
+            sum( IFNULL(d.GSSPM_AMT,0) ) AS ebAmt
+        FROM GAIA_SD_SALE_D a
+        left join GAIA_PRODUCT_BUSINESS b on a.CLIENT=b.CLIENT and a.GSSD_BR_ID=b.PRO_SITE and a.GSSD_PRO_ID=b.PRO_SELF_CODE
+        left join GAIA_PRODUCT_CLASS c on b.PRO_CLASS=c.PRO_CLASS_CODE
+        left join GAIA_SD_SALE_PAY_MSG d on a.CLIENT=d.CLIENT and a.GSSD_BR_ID=d.GSSPM_BR_ID and a.GSSD_DATE=d.GSSPM_DATE and a.GSSD_BILL_NO=d.GSSPM_BILL_NO and d.GSSPM_ID = '4000'
+        where a.CLIENT=#{inData.clientId} and a.GSSD_DATE between #{inData.startDate} and #{inData.endDate}
+        <if test="inData.proClassBak != null">
+            and c.PRO_CLASS_CODE in
+            <foreach collection="inData.proClassBak" index="index" item="inData.proClassBak" open="(" separator="," close=")">
+                #{inData.proClassBak}
+            </foreach>
+        </if>
+        group by a.GSSD_DATE,a.CLIENT,a.GSSD_BR_ID,a.GSSD_BILL_NO,a.GSSD_PRO_ID,c.PRO_BIG_CLASS_CODE,c.PRO_MID_CLASS_CODE,c.PRO_CLASS_CODE,b.PRO_POSITION
+    </select>
+
+    <select id="queryProClass" resultType="map">
+        select PRO_BIG_CLASS_CODE as proClass,PRO_BIG_CLASS_NAME as proClassName from GAIA_PRODUCT_CLASS
+        union all
+        select PRO_MID_CLASS_CODE,PRO_MID_CLASS_NAME from GAIA_PRODUCT_CLASS
+        union all
+        select PRO_CLASS_CODE,PRO_CLASS_NAME from GAIA_PRODUCT_CLASS
+    </select>
+
+    <select id="queryProProsition" resultType="map">
+        select code,name from GAIA_DICTIONARY where type='ProPosition'
+    </select>
+
+    <select id="queryProfitInterval" parameterType="com.gys.common.data.SalesStatisticsReportInData" resultType="map">
+        with
+        xx as(select a.INTERVAL_TYPE,CONCAT(a.START_VALUE,'') as START_VALUE,CONCAT(a.END_VALUE,'') as END_VALUE
+          from GAIA_GROSS_MARGIN_INTERVAL a where a.START_VALUE is not null and a.CLIENT=#{inData.clientId})
+        SELECT xx.INTERVAL_TYPE as interbalType ,xx.START_VALUE as startValue,xx.END_VALUE as endValue,
+          CASE WHEN xx.INTERVAL_TYPE = (select MIN( INTERVAL_TYPE ) from xx) THEN CONCAT( ROUND( xx.END_VALUE ),'%', '以下' )
+          WHEN xx.INTERVAL_TYPE = (select MAX( INTERVAL_TYPE ) from xx) THEN CONCAT( ROUND( xx.START_VALUE ),'%', '以上' )
+          ELSE CONCAT( ROUND( xx.START_VALUE ), '%-', ROUND( xx.END_VALUE ), '%(含)' ) END as remark
+        FROM xx
+    </select>
+</mapper>

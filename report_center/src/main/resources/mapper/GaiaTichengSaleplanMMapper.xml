@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengSaleplanMMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengSaleplanM">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="PID" jdbcType="BIGINT" property="pid" />
+    <result column="MIN_DAILY_SALE_AMT" jdbcType="DECIMAL" property="minDailySaleAmt" />
+    <result column="MAX_DAILY_SALE_AMT" jdbcType="DECIMAL" property="maxDailySaleAmt" />
+    <result column="PRO_SALE_CLASS" jdbcType="VARCHAR" property="proSaleClass" />
+    <result column="MIN_PRO_MLL" jdbcType="DECIMAL" property="minProMll" />
+    <result column="MAX_PRO_MLL" jdbcType="DECIMAL" property="maxProMll" />
+    <result column="TICHENG_SCALE" jdbcType="DECIMAL" property="tichengScale" />
+    <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    ID, CLIENT, PID, MIN_DAILY_SALE_AMT, MAX_DAILY_SALE_AMT, PRO_SALE_CLASS, MIN_PRO_MLL, 
+    MAX_PRO_MLL, TICHENG_SCALE, DELETE_FLAG, LAST_UPDATE_TIME
+  </sql>
+</mapper>

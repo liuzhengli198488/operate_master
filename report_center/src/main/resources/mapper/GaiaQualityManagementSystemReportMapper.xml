@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaQualityManagementSystemReportMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.wk.entity.GaiaQualityManagementSystemReport">
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="VOUCHER_ID" jdbcType="VARCHAR" property="voucherId" />
+    <result column="TITLE" jdbcType="VARCHAR" property="title" />
+    <result column="REVIEW_RANGE" jdbcType="VARCHAR" property="reviewRange" />
+    <result column="UNQUALIFIED" jdbcType="VARCHAR" property="unqualified" />
+    <result column="CONCLUSION" jdbcType="VARCHAR" property="conclusion" />
+    <result column="APPROVE_USER" jdbcType="VARCHAR" property="approveUser" />
+    <result column="APPROVE_TIME" jdbcType="TIMESTAMP" property="approveTime" />
+    <result column="AUDIT" jdbcType="VARCHAR" property="audit" />
+    <result column="AUDIT_CONTENT" jdbcType="VARCHAR" property="auditContent" />
+    <result column="AUDIT_TARGET" jdbcType="VARCHAR" property="auditTarget" />
+    <result column="AUDIT_TIME" jdbcType="TIMESTAMP" property="auditTime" />
+    <result column="AUDIT_BASE" jdbcType="VARCHAR" property="auditBase" />
+    <result column="AUDIT_USER" jdbcType="VARCHAR" property="auditUser" />
+    <result column="AUDIT_LEADER" jdbcType="VARCHAR" property="auditLeader" />
+    <result column="CORRECT_CONTENT" jdbcType="VARCHAR" property="correctContent" />
+    <result column="IS_DELETE" jdbcType="INTEGER" property="isDelete" />
+    <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="CREATE_USER" jdbcType="VARCHAR" property="createUser" />
+    <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+    <result column="UPDATE_USER" jdbcType="VARCHAR" property="updateUser" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    ID, CLIENT, VOUCHER_ID, TITLE, REVIEW_RANGE, UNQUALIFIED, CONCLUSION, APPROVE_USER,
+    APPROVE_TIME, `AUDIT`, AUDIT_CONTENT, AUDIT_TARGET, AUDIT_TIME, AUDIT_BASE, AUDIT_USER, 
+    AUDIT_LEADER, CORRECT_CONTENT, IS_DELETE, CREATE_TIME, CREATE_USER, UPDATE_TIME, 
+    UPDATE_USER
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    where ID = #{id,jdbcType=BIGINT}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    delete from GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    where ID = #{id,jdbcType=BIGINT}
+  </delete>
+  <insert id="insert" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.wk.entity.GaiaQualityManagementSystemReport" useGeneratedKeys="true">
+    insert into GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT (CLIENT, VOUCHER_ID, TITLE, 
+      REVIEW_RANGE, UNQUALIFIED, CONCLUSION, 
+      APPROVE_USER, APPROVE_TIME, `AUDIT`, 
+      AUDIT_CONTENT, AUDIT_TARGET, AUDIT_TIME, 
+      AUDIT_BASE, AUDIT_USER, AUDIT_LEADER, 
+      CORRECT_CONTENT, IS_DELETE, CREATE_TIME, 
+      CREATE_USER, UPDATE_TIME, UPDATE_USER
+      )
+    values (#{client,jdbcType=VARCHAR}, #{voucherId,jdbcType=VARCHAR}, #{title,jdbcType=VARCHAR}, 
+      #{reviewRange,jdbcType=VARCHAR}, #{unqualified,jdbcType=VARCHAR}, #{conclusion,jdbcType=VARCHAR}, 
+      #{approveUser,jdbcType=VARCHAR}, #{approveTime,jdbcType=TIMESTAMP}, #{audit,jdbcType=VARCHAR}, 
+      #{auditContent,jdbcType=VARCHAR}, #{auditTarget,jdbcType=VARCHAR}, #{auditTime,jdbcType=TIMESTAMP}, 
+      #{auditBase,jdbcType=VARCHAR}, #{auditUser,jdbcType=VARCHAR}, #{auditLeader,jdbcType=VARCHAR}, 
+      #{correctContent,jdbcType=VARCHAR}, #{isDelete,jdbcType=INTEGER}, #{createTime,jdbcType=TIMESTAMP}, 
+      #{createUser,jdbcType=VARCHAR}, #{updateTime,jdbcType=TIMESTAMP}, #{updateUser,jdbcType=VARCHAR}
+      )
+  </insert>
+  <insert id="insertSelective" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.wk.entity.GaiaQualityManagementSystemReport" useGeneratedKeys="true">
+    insert into GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        CLIENT,
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID,
+      </if>
+      <if test="title != null">
+        TITLE,
+      </if>
+      <if test="reviewRange != null">
+        REVIEW_RANGE,
+      </if>
+      <if test="unqualified != null">
+        UNQUALIFIED,
+      </if>
+      <if test="conclusion != null">
+        CONCLUSION,
+      </if>
+      <if test="approveUser != null">
+        APPROVE_USER,
+      </if>
+      <if test="approveTime != null">
+        APPROVE_TIME,
+      </if>
+      <if test="audit != null">
+        `AUDIT`,
+      </if>
+      <if test="auditContent != null">
+        AUDIT_CONTENT,
+      </if>
+      <if test="auditTarget != null">
+        AUDIT_TARGET,
+      </if>
+      <if test="auditTime != null">
+        AUDIT_TIME,
+      </if>
+      <if test="auditBase != null">
+        AUDIT_BASE,
+      </if>
+      <if test="auditUser != null">
+        AUDIT_USER,
+      </if>
+      <if test="auditLeader != null">
+        AUDIT_LEADER,
+      </if>
+      <if test="correctContent != null">
+        CORRECT_CONTENT,
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE,
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME,
+      </if>
+      <if test="createUser != null">
+        CREATE_USER,
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME,
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null">
+        #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="title != null">
+        #{title,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewRange != null">
+        #{reviewRange,jdbcType=VARCHAR},
+      </if>
+      <if test="unqualified != null">
+        #{unqualified,jdbcType=VARCHAR},
+      </if>
+      <if test="conclusion != null">
+        #{conclusion,jdbcType=VARCHAR},
+      </if>
+      <if test="approveUser != null">
+        #{approveUser,jdbcType=VARCHAR},
+      </if>
+      <if test="approveTime != null">
+        #{approveTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="audit != null">
+        #{audit,jdbcType=VARCHAR},
+      </if>
+      <if test="auditContent != null">
+        #{auditContent,jdbcType=VARCHAR},
+      </if>
+      <if test="auditTarget != null">
+        #{auditTarget,jdbcType=VARCHAR},
+      </if>
+      <if test="auditTime != null">
+        #{auditTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="auditBase != null">
+        #{auditBase,jdbcType=VARCHAR},
+      </if>
+      <if test="auditUser != null">
+        #{auditUser,jdbcType=VARCHAR},
+      </if>
+      <if test="auditLeader != null">
+        #{auditLeader,jdbcType=VARCHAR},
+      </if>
+      <if test="correctContent != null">
+        #{correctContent,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null">
+        #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.wk.entity.GaiaQualityManagementSystemReport">
+    update GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    <set>
+      <if test="client != null">
+        CLIENT = #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="title != null">
+        TITLE = #{title,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewRange != null">
+        REVIEW_RANGE = #{reviewRange,jdbcType=VARCHAR},
+      </if>
+      <if test="unqualified != null">
+        UNQUALIFIED = #{unqualified,jdbcType=VARCHAR},
+      </if>
+      <if test="conclusion != null">
+        CONCLUSION = #{conclusion,jdbcType=VARCHAR},
+      </if>
+      <if test="approveUser != null">
+        APPROVE_USER = #{approveUser,jdbcType=VARCHAR},
+      </if>
+      <if test="approveTime != null">
+        APPROVE_TIME = #{approveTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="audit != null">
+        `AUDIT` = #{audit,jdbcType=VARCHAR},
+      </if>
+      <if test="auditContent != null">
+        AUDIT_CONTENT = #{auditContent,jdbcType=VARCHAR},
+      </if>
+      <if test="auditTarget != null">
+        AUDIT_TARGET = #{auditTarget,jdbcType=VARCHAR},
+      </if>
+      <if test="auditTime != null">
+        AUDIT_TIME = #{auditTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="auditBase != null">
+        AUDIT_BASE = #{auditBase,jdbcType=VARCHAR},
+      </if>
+      <if test="auditUser != null">
+        AUDIT_USER = #{auditUser,jdbcType=VARCHAR},
+      </if>
+      <if test="auditLeader != null">
+        AUDIT_LEADER = #{auditLeader,jdbcType=VARCHAR},
+      </if>
+      <if test="correctContent != null">
+        CORRECT_CONTENT = #{correctContent,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where ID = #{id,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.gys.entity.wk.entity.GaiaQualityManagementSystemReport">
+    update GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    set CLIENT = #{client,jdbcType=VARCHAR},
+      VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      TITLE = #{title,jdbcType=VARCHAR},
+      REVIEW_RANGE = #{reviewRange,jdbcType=VARCHAR},
+      UNQUALIFIED = #{unqualified,jdbcType=VARCHAR},
+      CONCLUSION = #{conclusion,jdbcType=VARCHAR},
+      APPROVE_USER = #{approveUser,jdbcType=VARCHAR},
+      APPROVE_TIME = #{approveTime,jdbcType=TIMESTAMP},
+      `AUDIT` = #{audit,jdbcType=VARCHAR},
+      AUDIT_CONTENT = #{auditContent,jdbcType=VARCHAR},
+      AUDIT_TARGET = #{auditTarget,jdbcType=VARCHAR},
+      AUDIT_TIME = #{auditTime,jdbcType=TIMESTAMP},
+      AUDIT_BASE = #{auditBase,jdbcType=VARCHAR},
+      AUDIT_USER = #{auditUser,jdbcType=VARCHAR},
+      AUDIT_LEADER = #{auditLeader,jdbcType=VARCHAR},
+      CORRECT_CONTENT = #{correctContent,jdbcType=VARCHAR},
+      IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      UPDATE_USER = #{updateUser,jdbcType=VARCHAR}
+    where ID = #{id,jdbcType=BIGINT}
+  </update>
+
+  <insert id="addList"  parameterType="list">
+    insert into GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT (CLIENT, VOUCHER_ID, TITLE,
+                                                       REVIEW_RANGE, UNQUALIFIED, CONCLUSION,
+                                                       APPROVE_USER, APPROVE_TIME, `AUDIT`,
+                                                       AUDIT_CONTENT, AUDIT_TARGET, AUDIT_TIME,
+                                                       AUDIT_BASE, AUDIT_USER, AUDIT_LEADER,
+                                                       CORRECT_CONTENT, IS_DELETE, CREATE_TIME,
+                                                       CREATE_USER, UPDATE_TIME, UPDATE_USER
+    )
+    values
+    <foreach collection="dtos" item="item" separator=",">
+           (#{item.client,jdbcType=VARCHAR}, #{item.voucherId,jdbcType=VARCHAR}, #{item.title,jdbcType=VARCHAR},
+            #{item.reviewRange,jdbcType=VARCHAR}, #{item.unqualified,jdbcType=VARCHAR}, #{item.conclusion,jdbcType=VARCHAR},
+            #{item.approveUser,jdbcType=VARCHAR}, #{item.approveTime,jdbcType=TIMESTAMP}, #{item.audit,jdbcType=VARCHAR},
+            #{item.auditContent,jdbcType=VARCHAR}, #{item.auditTarget,jdbcType=VARCHAR}, #{item.auditTime,jdbcType=TIMESTAMP},
+            #{item.auditBase,jdbcType=VARCHAR}, #{item.auditUser,jdbcType=VARCHAR}, #{item.auditLeader,jdbcType=VARCHAR},
+            #{item.correctContent,jdbcType=VARCHAR}, #{item.isDelete,jdbcType=INTEGER}, #{item.createTime,jdbcType=TIMESTAMP},
+            #{item.createUser,jdbcType=VARCHAR}, #{item.updateTime,jdbcType=TIMESTAMP}, #{item.updateUser,jdbcType=VARCHAR}
+           )
+    </foreach>
+  </insert>
+
+  <select id="searchRecords" parameterType="com.gys.entity.wk.dto.QualityManagementSystemReportQueryDto" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    <where>
+      <if test="client != null and client !=''">
+        and CLIENT = #{client}
+      </if>
+      <if test="voucherId != null and voucherId !='' ">
+        and  VOUCHER_ID like concat('%',#{voucherId},'%')
+      </if>
+      <if test="title != null and title !='' ">
+        and   TITLE like concat('%',#{title},'%')
+      </if>
+      <if test="reviewRange != null and reviewRange != ''">
+        and  REVIEW_RANGE  like concat('%',#{reviewRange},'%')
+      </if>
+      <if test="audit != null and audit !='' ">
+        and  `AUDIT`  like concat('%',#{audit},'%')
+      </if>
+      <if test="auditTarget != null and auditTarget != ''">
+        and  AUDIT_TARGET  like concat('%',#{auditTarget},'%')
+      </if>
+      <if test="auditUser != null and auditUser != ''">
+        and  AUDIT_USER  like concat('%',#{auditUser},'%')
+      </if>
+      <if test="beginDate != null ">
+        and  AUDIT_TIME  &gt;=#{beginDate}
+      </if>
+      <if test="endDate != null ">
+        and  AUDIT_TIME &lt;=#{endDate}
+      </if>
+        and IS_DELETE='0'
+    </where>
+  </select>
+
+  <select id="selectList" parameterType="list" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    where ID in
+    <foreach collection="dto" open="(" separator="," item="item" close=")" >
+      #{item}
+    </foreach>
+  </select>
+
+  <update id="delList" parameterType="com.gys.entity.wk.dto.QualityManagementSystemReportDelDto">
+    update GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    set IS_DELETE='1',UPDATE_USER=#{updateUser},UPDATE_TIME=now()
+    <where>
+      ID in <foreach collection="ids" open="(" index="index" separator="," close=")" item="item">
+      #{item}
+    </foreach>
+    </where>
+  </update>
+
+  <update id="updateList" parameterType="com.gys.entity.wk.dto.QualityManagementSystemReportUpdateDto">
+    update GAIA_QUALITY_MANAGEMENT_SYSTEM_REPORT
+    <set>
+      <if test="client != null">
+        CLIENT = #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="title != null">
+        TITLE = #{title,jdbcType=VARCHAR},
+      </if>
+      <if test="reviewRange != null">
+        REVIEW_RANGE = #{reviewRange,jdbcType=VARCHAR},
+      </if>
+      <if test="unqualified != null">
+        UNQUALIFIED = #{unqualified,jdbcType=VARCHAR},
+      </if>
+      <if test="conclusion != null">
+        CONCLUSION = #{conclusion,jdbcType=VARCHAR},
+      </if>
+      <if test="approveUser != null">
+        APPROVE_USER = #{approveUser,jdbcType=VARCHAR},
+      </if>
+      <if test="approveTime != null">
+        APPROVE_TIME = #{approveTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="audit != null">
+        `AUDIT` = #{audit,jdbcType=VARCHAR},
+      </if>
+      <if test="auditContent != null">
+        AUDIT_CONTENT = #{auditContent,jdbcType=VARCHAR},
+      </if>
+      <if test="auditTarget != null">
+        AUDIT_TARGET = #{auditTarget,jdbcType=VARCHAR},
+      </if>
+      <if test="auditTime != null">
+        AUDIT_TIME = #{auditTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="auditBase != null">
+        AUDIT_BASE = #{auditBase,jdbcType=VARCHAR},
+      </if>
+      <if test="auditUser != null">
+        AUDIT_USER = #{auditUser,jdbcType=VARCHAR},
+      </if>
+      <if test="auditLeader != null">
+        AUDIT_LEADER = #{auditLeader,jdbcType=VARCHAR},
+      </if>
+      <if test="correctContent != null">
+        CORRECT_CONTENT = #{correctContent,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </set>
+    <where>
+      ID in <foreach collection="ids" open="(" index="index" separator="," close=")" item="item">
+      #{item}
+    </foreach>
+    </where>
+  </update>
+</mapper>

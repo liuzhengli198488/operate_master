@@ -1,0 +1,93 @@
+server:
+  port: 10212
+  #  servlet:
+  #    context-path: /operation
+  compression: #开启gzip压缩，返回内容大于1k的才会进行压缩
+    enabled: true
+    mime-types: application/javascript,text/css,application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+spring:
+  application:
+    name: gys-report
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://172.19.1.150:3306/GAIA?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false
+    username: root
+    password: Gov123456!
+    driver-class-name: com.mysql.jdbc.Driver
+  redis:
+    timeout: 6000ms
+    host: 172.19.1.150
+    port: 6379
+    lettuce:
+      pool:
+        max-active: 1000
+        max-idle: 10
+        min-idle: 5
+        max-wait: -1
+#  output:
+#    ansi:
+#      enabled: always
+
+mybatis:
+  type-aliases-package: com.gys.entity
+  mapper-locations: classpath*:/mapper/*Mapper.xml
+  mybatis.configuration.cache-enabled: true
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+mapper:
+  mappers: com.gys.common.base.BaseMapper
+  not-empty: false
+  identity: MYSQL
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://172.19.1.120:10101/eureka/
+    registry-fetch-interval-seconds: 5
+  instance:
+    lease-renewal-interval-in-seconds: 5
+
+feign:
+  hystrix:
+    enabled: true
+
+tencent:
+  cosSecretId: AKIDkGvJTP5algR1LOM2YoneR4at62i7MeVF
+  cosSecretKey: e2KOEo9nKcgT4PVTCl6FCyqSpxqRt9Au
+  cosRegion: ap-shanghai
+  cosBucket: purchase-dev-1301851641
+  cosUrl: https://{0}.cos.ap-shanghai.myqcloud.com/
+  importPaht: import/
+  exportPath: export/
+  invoicePath: invoice/
+
+xxl:
+  job:
+    admin:
+      addresses: http://172.19.1.120:7009/xxl-job-admin/
+    executor:
+      appname: report-xxljob
+      ip:
+      port: 7037
+      logpath: logs
+      logretentiondays: -1
+    accessToken:
+
+cos:
+  url: https://purchase-dev-1301851641.cos.ap-shanghai.myqcloud.com/
+
+#swagger:
+#  title: gys-operation
+#  description: gys-operation
+#  version: 1.0.0
+#  license: Apache License, Version 2.0
+#  licenseUrl: https://www.apache.org/licenses/LICENSE-2.0.html
+#  base-package: com.gys.business.controller
+#  base-path: /**
+#  enabled: true
+
+mail:
+  smptHost: smtp.qiye.aliyun.com
+  account: monitor_dev@gov-info.cn
+  password: monitor@123

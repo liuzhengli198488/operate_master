@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdStockBatchHMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdStockBatchH">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSSB_BR_ID" jdbcType="VARCHAR" property="gssbBrId" />
+    <id column="GSSB_PRO_ID" jdbcType="VARCHAR" property="gssbProId" />
+    <id column="GSSB_BATCH_NO" jdbcType="VARCHAR" property="gssbBatchNo" />
+    <id column="GSSB_BATCH" jdbcType="VARCHAR" property="gssbBatch" />
+    <id column="MAT_ASSESS_YEAR" jdbcType="VARCHAR" property="matAssessYear" />
+    <id column="MAT_ASSESS_MONTH" jdbcType="VARCHAR" property="matAssessMonth" />
+    <result column="ID" jdbcType="BIGINT" property="id" />
+    <result column="GSSB_QTY" jdbcType="DECIMAL" property="gssbQty" />
+    <result column="GSSB_VAILD_DATE" jdbcType="VARCHAR" property="gssbVaildDate" />
+    <result column="GSSB_UPDATE_DATE" jdbcType="VARCHAR" property="gssbUpdateDate" />
+    <result column="GSSB_UPDATE_EMP" jdbcType="VARCHAR" property="gssbUpdateEmp" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, GSSB_BR_ID, GSSB_PRO_ID, GSSB_BATCH_NO, GSSB_BATCH, MAT_ASSESS_YEAR, MAT_ASSESS_MONTH, 
+    ID, GSSB_QTY, GSSB_VAILD_DATE, GSSB_UPDATE_DATE, GSSB_UPDATE_EMP
+  </sql>
+	<select id="selectEndingInventoryByBatch"
+	        resultType="com.gys.entity.data.InventoryInquiry.EndingInventoryOutData">
+      SELECT
+	tab.siteCode,
+	tab.siteName,
+	tab.proCode,
+	tab.recordDate,
+	pb.PRO_NAME proName,
+	pb.PRO_COMMONNAME proCommonName,
+	pb.PRO_BARCODE proBarcode,
+	ROUND(sum( tab.qty ),2) qty,
+	tab.supplierCode,
+	IFNULL( sup.SUP_NAME, sup2.SUP_NAME ) supplierName,
+	tab.batchNo,
+	IFNULL(tab.deliveryDate,doc.DOC_DATE) deliveryDate,
+	IFNULL(tab.deliveryQty,doc.DOC_QTY) deliveryQty,
+	pb.PRO_FACTORY_NAME factory,
+	pb.PRO_PLACE origin,
+	pb.PRO_FORM dosageForm,
+	pb.PRO_UNIT unit,
+	pb.PRO_SPECS format,
+	pb.PRO_REGISTER_NO approvalNum,
+	IF(pb.PRO_IF_WHOLESALE ='1' ,'是','否') noWholesale,
+	concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+	concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+	concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+	ROUND(sum( cost ),2) cost,
+	ROUND(sum( taxes ),2) taxes,
+	ROUND(sum( includeTax ),2) includeTax,
+	tab.expiryDate,
+	tab.expiryDays,
+	tab.stoAttribute,
+	tab.stoIfDtp,
+	tab.stoIfMedical,
+	tab.stoTaxClass
+FROM
+	(
+	SELECT
+		sb.CLIENT client,
+		sb.GSSB_BR_ID siteCode,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName,
+		sb.GSSB_PRO_ID proCode,
+		concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate,
+		sb.GSSB_QTY qty,
+		sb.GSSB_BATCH_NO batchNo,
+		sb.GSSB_BATCH batch,
+		sto.STO_DC_CODE dcCode,
+		bi.BAT_SUPPLIER_CODE supplierCode,
+		ed.GSED_DATE deliveryDate,
+		ed.GSED_QTY deliveryQty,
+		ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSSB_QTY AS cost,
+		ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSSB_QTY AS taxes,
+		( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSSB_QTY AS includeTax,
+		bi.BAT_EXPIRY_DATE expiryDate,
+		DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(#{endMonth},'%Y-%m-%d')) expiryDays,
+		'store' site,
+		sto.STO_ATTRIBUTE stoAttribute,
+		sto.STO_IF_DTP stoIfDtp,
+		sto.STO_IF_MEDICALCARE stoIfMedical,
+		sto.STO_TAX_CLASS stoTaxClass
+	FROM
+		GAIA_SD_STOCK_BATCH_H sb
+		LEFT JOIN GAIA_STORE_DATA sto ON sb.CLIENT = sto.CLIENT
+		AND sb.GSSB_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_BATCH_INFO bi ON sb.CLIENT = bi.CLIENT
+		AND sb.GSSB_PRO_ID = bi.BAT_PRO_CODE
+		AND sb.GSSB_BATCH = bi.BAT_BATCH
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON sb.CLIENT = ass.CLIENT
+		AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE
+		AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE
+		AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR
+		AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		LEFT JOIN (
+		SELECT
+		CLIENT,
+		GSED_BR_ID,
+		GSED_PRO_ID,
+		GSED_BATCH_NO,
+		GSED_BATCH,
+		SUBSTRING_INDEX( GROUP_CONCAT( GSED_DATE ORDER BY GSED_DATE DESC ), ',', 1 ) GSED_DATE,
+		SUBSTRING_INDEX( GROUP_CONCAT( GSED_QUALIFIED_QTY ORDER BY GSED_DATE DESC ), ',', 1 ) GSED_QTY
+		FROM
+		GAIA_SD_EXAMINE_D
+		WHERE
+		CLIENT = #{clientId}
+		GROUP BY
+		CLIENT,
+		GSED_BR_ID,
+		GSED_PRO_ID,
+		GSED_BATCH_NO,
+		GSED_BATCH
+		) ed ON ed.CLIENT = sb.CLIENT
+		AND ed.GSED_BR_ID = sb.GSSB_BR_ID
+		AND ed.GSED_PRO_ID = sb.GSSB_PRO_ID
+		AND ed.GSED_BATCH_NO = sb.GSSB_BATCH_NO
+		AND ed.GSED_BATCH = sb.GSSB_BATCH
+		WHERE
+		sb.CLIENT = #{clientId}
+		<if test="recordDate != null and recordDate !=''">
+			and concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH )  = #{recordDate}
+		</if>
+      <if test="siteArr != null and siteArr.length > 0">
+        and sb.GSSB_BR_ID  in
+        <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="proArr != null and proArr.length > 0">
+        and sb.GSSB_PRO_ID  in
+        <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+		 UNION ALL
+	SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE siteCode,
+		dc.DC_NAME siteName,
+		kc.WM_SP_BM proCode,
+		kc.WM_TBSJ recordDate,
+		kc.WM_KCSL qty,
+		bi.BAT_BATCH_NO batchNo,
+		bi.BAT_BATCH batch,
+		NULL dcCode,
+		bi.BAT_SUPPLIER_CODE supplierCode,
+		rkys.RKYS_DATE deliveryDate,
+		rkys.RKYS_QTY deliveryQty,
+		ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost,
+		ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes,
+		(ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax,
+		bi.BAT_EXPIRY_DATE expiryDate,
+		DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(#{endMonth},'%Y-%m-%d')) expiryDays,
+		'dc' site,
+	    "" stoAttribute,
+	    "" stoIfDtp,
+	    "" stoIfMedical,
+	    "" stoTaxClass
+	FROM
+		GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc ON kc.CLIENT = dc.CLIENT
+		AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_BATCH_INFO bi ON kc.CLIENT = bi.CLIENT
+		AND kc.WM_SP_BM = bi.BAT_PRO_CODE
+		AND kc.WM_PCH = bi.BAT_BATCH
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON kc.CLIENT = ass.CLIENT
+		AND kc.PRO_SITE = ass.MAT_ASSESS_SITE
+		AND kc.WM_SP_BM = ass.MAT_PRO_CODE
+		AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat(ass.MAT_ASSESS_YEAR,ass.MAT_ASSESS_MONTH)
+		LEFT JOIN (
+		SELECT
+		CLIENT,
+		PRO_SITE,
+		WM_SP_BM,
+		WM_PH,
+		BATCHNO,
+		SUBSTRING_INDEX( GROUP_CONCAT( WM_YSRQ ORDER BY WM_YSRQ, WM_YSSJ DESC ), ',', 1 ) RKYS_DATE,
+		SUBSTRING_INDEX( GROUP_CONCAT( WM_SHSL ORDER BY WM_YSRQ, WM_YSSJ DESC ), ',', 1 ) RKYS_QTY
+		FROM
+		GAIA_WMS_RKYS
+		WHERE
+		CLIENT = #{clientId}
+		GROUP BY
+		CLIENT,
+		PRO_SITE,
+		WM_SP_BM,
+		WM_PH,
+		BATCHNO
+		) rkys ON rkys.CLIENT = kc.CLIENT
+		AND rkys.PRO_SITE = kc.PRO_SITE
+		AND rkys.WM_SP_BM = kc.WM_SP_BM
+		AND rkys.BATCHNO = kc.WM_PCH
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="dcDate != null and dcDate !=''">
+			and kc.WM_TBSJ  = #{dcDate}
+		</if>
+      <if test="siteArr != null and siteArr.length > 0">
+        and kc.PRO_SITE  in
+        <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="proArr != null and proArr.length > 0">
+        and kc.WM_SP_BM  in
+        <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+	) tab
+		LEFT JOIN (
+		SELECT
+		CLIENT,
+		MAT_PRO_CODE,
+		MAT_SITE_CODE,
+		MAT_BATCH,
+		SUBSTRING_INDEX( GROUP_CONCAT( MAT_DOC_DATE ORDER BY MAT_DOC_DATE DESC ), ',', 1 ) DOC_DATE,
+		SUBSTRING_INDEX( GROUP_CONCAT( MAT_QTY ORDER BY MAT_DOC_DATE DESC ), ',', 1 ) DOC_QTY
+		FROM
+		GAIA_MATERIAL_DOC
+		WHERE
+		CLIENT = #{clientId}
+		AND MAT_TYPE = 'QC'
+		<if test="siteArr != null and siteArr.length > 0">
+			and MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		CLIENT,
+		MAT_PRO_CODE,
+		MAT_SITE_CODE,
+		MAT_BATCH
+		) doc ON doc.CLIENT = tab.CLIENT
+		AND doc.MAT_PRO_CODE = tab.proCode
+		AND doc.MAT_SITE_CODE = tab.siteCode
+		AND doc.MAT_BATCH = tab.batch
+	LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.client = pb.CLIENT
+	AND tab.siteCode = pb.PRO_SITE
+	AND tab.proCode = pb.PRO_SELF_CODE
+	LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON ( tab.client = sup.CLIENT AND tab.siteCode = sup.SUP_SITE AND tab.supplierCode = sup.SUP_SELF_CODE )
+	LEFT JOIN GAIA_SUPPLIER_BUSINESS sup2 ON ( tab.client = sup2.CLIENT AND tab.dcCode = sup2.SUP_SITE AND tab.supplierCode = sup2.SUP_SELF_CODE )
+	LEFT JOIN (
+	SELECT
+		*
+	FROM
+		(
+		SELECT
+			PRO_BIG_CLASS_CODE AS classId,
+			PRO_BIG_CLASS_CODE,
+			PRO_BIG_CLASS_NAME,
+			NULL AS PRO_MID_CLASS_CODE,
+			NULL AS PRO_MID_CLASS_NAME,
+			NULL AS PRO_CLASS_CODE,
+			NULL AS PRO_CLASS_NAME
+		FROM
+			GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+			PRO_MID_CLASS_CODE AS classId,
+			PRO_BIG_CLASS_CODE,
+			PRO_BIG_CLASS_NAME,
+			PRO_MID_CLASS_CODE,
+			PRO_MID_CLASS_NAME,
+			NULL AS PRO_CLASS_CODE,
+			NULL AS PRO_CLASS_NAME
+		FROM
+			GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+			PRO_CLASS_CODE AS classId,
+			PRO_BIG_CLASS_CODE,
+			PRO_BIG_CLASS_NAME,
+			PRO_MID_CLASS_CODE,
+			PRO_MID_CLASS_NAME,
+			PRO_CLASS_CODE,
+			PRO_CLASS_NAME
+		FROM
+			GAIA_PRODUCT_CLASS
+		) proClass
+	GROUP BY
+		classId
+	) pc ON pc.classId = pb.PRO_CLASS
+  <where>
+	  <if test="supplierCode != null and supplierCode !=''">
+		  and tab.supplierCode = #{supplierCode}
+	  </if>
+	  <if test="expiryData != null and expiryData !=''">
+		  and tab.expiryDays &lt;= #{expiryData}
+	  </if>
+	  <if test="factory != null and factory != ''">
+		  AND (pb.PRO_FACTORY_CODE LIKE '%${factory}%' OR pb.PRO_FACTORY_NAME LIKE '%${factory}%')
+	  </if>
+	  <if test="classArrs != null and classArrs.size > 0">
+		  and pb.PRO_CLASS  in
+		  <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+			  #{item}
+		  </foreach>
+	  </if>
+	  <include refid="STORE_CLASS_BATCH" />
+  </where>
+GROUP BY
+	tab.recordDate,
+	tab.siteCode,
+	tab.proCode,
+	tab.batchNo,
+	tab.batch
+		HAVING
+		qty != 0
+		ORDER BY
+		tab.recordDate,
+		tab.siteCode,
+		tab.proCode,
+		tab.batchNo,
+		tab.batch
+    </select>
+
+	<sql id="STORE_CLASS_BATCH" >
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+			<if test="stoGssgTypes!=null and stoGssgTypes.size">
+				EXISTS (
+				SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE tab.CLIENT = gssg.CLIENT AND tab.siteCode = gssg.GSSG_BR_ID
+				AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+				<foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+					(#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+				</foreach>
+				)
+			</if>
+			<if test="stoAttributes!=null and stoAttributes.size">
+				OR tab.stoAttribute IN
+				<foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+					#{stoAttribute}
+				</foreach>
+			</if>
+			<if test="stoAttribute==''" >
+				OR tab.stoAttribute IS NOT NULL AND tab.stoAttribute != ''
+			</if>
+			<if test="stoIfMedicals!=null and stoIfMedicals.size">
+				OR tab.stoIfMedical IN
+				<foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+					#{stoIfMedical}
+				</foreach>
+			</if>
+			<if test="stoIfMedical==''" >
+				OR tab.stoIfMedical IS NOT NULL AND tab.stoIfMedical != ''
+			</if>
+			<if test="stoTaxClasss!=null and stoTaxClasss.size">
+				OR tab.stoTaxClass IN
+				<foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+					#{stoTaxClass}
+				</foreach>
+			</if>
+			<if test="stoTaxClass==''" >
+				OR tab.stoTaxClass IS NOT NULL AND tab.stoTaxClass != ''
+			</if>
+			<if test="stoIfDtps!=null and stoIfDtps.size">
+				OR tab.stoIfDtp IN
+				<foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+					#{stoIfDtp}
+				</foreach>
+			</if>
+			<if test="stoIfDtp==''" >
+				OR tab.stoIfDtp IS NOT NULL AND tab.stoIfDtp != ''
+			</if>
+		</trim>
+	</sql>
+
+	<select id="selectEffectiveGoodsByHistory"
+	        resultType="com.gys.entity.data.InventoryInquiry.EffectiveGoodsOutData">
+		SELECT
+		tab.siteCode,
+		tab.siteName,
+		tab.recordDate,
+		COUNT( DISTINCT tab.proCode ) InventoryItem,
+		COUNT( DISTINCT CASE WHEN tab.expiryDays &lt;= #{expiryDays} THEN tab.proCode ELSE NULL END ) expiryItem,
+		ROUND(
+		COUNT( DISTINCT CASE WHEN tab.expiryDays &lt;= #{expiryDays} THEN tab.proCode ELSE NULL END )/ COUNT( DISTINCT tab.proCode )* 100,
+		2
+		) expiryRate,
+		SUM( tab.includeTax ) includeTax,
+		SUM( CASE WHEN tab.expiryDays &lt;= #{expiryDays} THEN tab.includeTax ELSE NULL END ) expiryIncludeTax,
+		ROUND( SUM( CASE WHEN tab.expiryDays &lt;= #{expiryDays} THEN tab.includeTax ELSE NULL END )/ SUM( tab.includeTax )* 100, 2 ) expiryIncludeRate,
+		SUM( tab.retailSales ) retailSales,
+		SUM( CASE WHEN tab.expiryDays &lt;= #{expiryDays} THEN tab.retailSales ELSE NULL END )  expiryRetailSales,
+		ROUND( SUM( CASE WHEN tab.expiryDays &lt;= #{expiryDays} THEN tab.retailSales ELSE NULL END )/SUM( tab.retailSales )* 100, 2 ) expiryRetailRate
+		FROM
+		(
+		SELECT
+		sbh.CLIENT client,
+		sbh.GSSB_BR_ID siteCode,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName,
+		sbh.GSSB_PRO_ID proCode,
+		concat( sbh.MAT_ASSESS_YEAR, sbh.MAT_ASSESS_MONTH ) recordDate,
+		sbh.GSSB_QTY qty,
+		sbh.GSSB_BATCH_NO batchNo,
+		sbh.GSSB_BATCH batch,
+		bi.BAT_CREATE_DATE inDate,
+		( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sbh.GSSB_QTY AS includeTax,
+		bi.BAT_EXPIRY_DATE expiryDate,
+		DATEDIFF(
+		date_format( bi.BAT_EXPIRY_DATE, '%Y%m%d' ),
+		date_format( LAST_DAY( CONCAT( sbh.MAT_ASSESS_YEAR, sbh.MAT_ASSESS_MONTH, '01' )), '%Y%m%d' )) expiryDays,
+		IFNULL(ssh.GSPP_PRICE_NORMAL,b.PRO_LSJ) * sbh.GSSB_QTY retailSales,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_BATCH_H sbh
+		LEFT JOIN GAIA_STORE_DATA sto ON sbh.CLIENT = sto.CLIENT
+		AND sbh.GSSB_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_BATCH_INFO bi ON sbh.CLIENT = bi.CLIENT
+		AND sbh.GSSB_PRO_ID = bi.BAT_PRO_CODE
+		AND sbh.GSSB_BATCH = bi.BAT_BATCH
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON sbh.CLIENT = ass.CLIENT
+		AND sbh.GSSB_BR_ID = ass.MAT_ASSESS_SITE
+		AND sbh.GSSB_PRO_ID = ass.MAT_PRO_CODE
+		AND sbh.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR
+		AND sbh.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		LEFT JOIN GAIA_SD_STOCK_H ssh ON ssh.CLIENT = sbh.CLIENT
+		AND ssh.GSS_BR_ID = sbh.GSSB_BR_ID
+		AND ssh.GSS_PRO_ID = sbh.GSSB_PRO_ID
+		AND ssh.MAT_ASSESS_YEAR = sbh.MAT_ASSESS_YEAR
+		AND ssh.MAT_ASSESS_MONTH = sbh.MAT_ASSESS_MONTH
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON sbh.CLIENT = b.CLIENT
+		AND sbh.GSSB_BR_ID = b.PRO_SITE
+		AND sbh.GSSB_PRO_ID = b.PRO_SELF_CODE
+		WHERE
+		sbh.CLIENT = #{clientId}
+		AND concat( sbh.MAT_ASSESS_YEAR, sbh.MAT_ASSESS_MONTH ) BETWEEN #{startMonth} AND #{endMonth}
+		<if test="siteArr != null and siteArr.length > 0">
+			and sbh.GSSB_BR_ID in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE siteCode,
+		dc.DC_NAME siteName,
+		kc.WM_SP_BM proCode,
+		LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) recordDate,
+		kc.WM_KCSL qty,
+		bi.BAT_BATCH_NO batchNo,
+		bi.BAT_BATCH batch,
+		bi.BAT_CREATE_DATE inDate,
+		( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax,
+		bi.BAT_EXPIRY_DATE expiryDate,
+		DATEDIFF(
+		date_format( bi.BAT_EXPIRY_DATE, '%Y-%m-%d' ),
+		date_format( LAST_DAY( kc.WM_TBSJ - INTERVAL 1 MONTH ), '%Y%m%d' )) expiryDays,
+		kc.WM_KCSL * pb.PRO_LSJ retailSales,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc ON kc.CLIENT = dc.CLIENT
+		AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_BATCH_INFO bi ON kc.CLIENT = bi.CLIENT
+		AND kc.WM_SP_BM = bi.BAT_PRO_CODE
+		AND kc.WM_PCH = bi.BAT_BATCH
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON kc.CLIENT = ass.CLIENT
+		AND kc.PRO_SITE = ass.MAT_ASSESS_SITE
+		AND kc.WM_SP_BM = ass.MAT_PRO_CODE
+		AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat( ass.MAT_ASSESS_YEAR, ass.MAT_ASSESS_MONTH )
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON kc.client = pb.CLIENT
+		AND kc.PRO_SITE = pb.PRO_SITE
+		AND kc.WM_SP_BM = pb.PRO_SELF_CODE
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="dcEndMonth != null and dcEndMonth.size > 0">
+			AND kc.WM_TBSJ IN
+			<foreach collection="dcEndMonth" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and kc.PRO_SITE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		) tab
+		WHERE
+		tab.qty != 0
+		GROUP BY
+		tab.recordDate,
+		tab.siteCode
+		ORDER BY
+		tab.recordDate,
+		tab.siteCode
+	</select>
+	<select id="selectEffectiveGoodsByCurrent"
+	        resultType="com.gys.entity.data.InventoryInquiry.EffectiveGoodsOutData">
+		SELECT
+		a.gssmBrId siteCode,
+		a.gssBrName siteName,
+		#{endMonth} recordDate,
+		COUNT( DISTINCT a.gssmProId ) InventoryItem,
+		COUNT( DISTINCT CASE WHEN a.expiryDays &lt;= #{expiryDays} THEN a.gssmProId ELSE NULL END ) expiryItem,
+		ROUND(COUNT( DISTINCT CASE WHEN a.expiryDays &lt;= #{expiryDays} THEN a.gssmProId ELSE NULL END )/ COUNT( DISTINCT a.gssmProId )* 100,2) expiryRate,
+		SUM( a.addAmount ) includeTax,
+		SUM( CASE WHEN a.expiryDays &lt;= #{expiryDays} THEN a.addAmount ELSE NULL END ) expiryIncludeTax,
+		ROUND( SUM( CASE WHEN a.expiryDays &lt;= #{expiryDays} THEN a.addAmount ELSE NULL END )/ SUM( a.addAmount )* 100, 2 ) expiryIncludeRate,
+		SUM(IFNULL( a.gsspRetailSales, b.PRO_LSJ * a.qty )) retailSales,
+		SUM(CASE WHEN a.expiryDays &lt;= #{expiryDays} THEN IFNULL( a.gsspRetailSales, b.PRO_LSJ * a.qty ) ELSE NULL END) expiryRetailSales,
+		ROUND( SUM( CASE WHEN a.expiryDays &lt;= #{expiryDays} THEN IFNULL( a.gsspRetailSales, b.PRO_LSJ * a.qty ) ELSE NULL END )/
+		SUM( IFNULL( a.gsspRetailSales, b.PRO_LSJ * a.qty ))* 100,2 ) expiryRetailRate
+		FROM
+		(
+		SELECT
+		sb.CLIENT clientId,
+		sb.GSSB_BR_ID gssmBrId,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) gssBrName,
+		sb.GSSB_PRO_ID gssmProId,
+		sb.GSSB_QTY qty,
+		ifnull( ( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX )/ ( ass.MAT_TOTAL_QTY )* ( sb.GSSB_QTY ), 0.00 ) AS addAmount,
+		DATEDIFF(
+		date_format( sb.GSSB_VAILD_DATE, '%Y-%m-%d' ),
+		date_format( now(), '%Y-%m-%d' )) expiryDays,
+		pp.GSPP_PRICE_NORMAL * ( sb.GSSB_QTY ) AS gsspRetailSales,
+		sd.STO_DC_CODE dcCode,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_BATCH sb
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( sb.CLIENT = pp.CLIENT AND sb.GSSB_PRO_ID = pp.GSPP_PRO_ID AND sb.GSSB_BR_ID = pp.GSPP_BR_ID )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( sb.CLIENT = ass.CLIENT AND sb.GSSB_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSSB_PRO_ID = ass.MAT_PRO_CODE )
+		LEFT JOIN GAIA_STORE_DATA sto ON ( sb.CLIENT = sto.CLIENT AND sb.GSSB_BR_ID = sto.STO_CODE )
+		LEFT JOIN GAIA_BATCH_INFO bi ON ( sb.CLIENT = bi.CLIENT AND sb.GSSB_PRO_ID = bi.BAT_PRO_CODE AND sb.GSSB_BATCH = bi.BAT_BATCH )
+		LEFT JOIN GAIA_STORE_DATA sd ON ( sd.CLIENT = sb.CLIENT AND sd.STO_CODE = sb.GSSB_BR_ID )
+		WHERE
+		sb.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and sb.GSSB_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		 UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE gssmBrId,
+		dc.DC_NAME gssBrName,
+		kc.WM_SP_BM gssmProId,
+		kc.WM_KCSL qty,
+		ifnull( ( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT )/ ( ass.MAT_TOTAL_QTY )*( kc.WM_KCSL ), 0 ) AS addAmount,
+		DATEDIFF(
+		date_format( bi.BAT_EXPIRY_DATE, '%Y-%m-%d' ),
+		date_format( now(), '%Y-%m-%d' )) expiryDays,
+		NULL AS gsspRetailSales,
+		kc.PRO_SITE dcCode,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN kc
+		LEFT JOIN GAIA_BATCH_INFO bi ON ( kc.CLIENT = bi.CLIENT AND kc.WM_SP_BM = bi.BAT_PRO_CODE AND kc.WM_PCH = bi.BAT_BATCH )
+		LEFT JOIN GAIA_DC_DATA dc ON ( kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE )
+		LEFT JOIN GAIA_MATERIAL_ASSESS ass ON ( kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE )
+		WHERE
+		kc.CLIENT = #{clientId}
+		<if test="siteArr != null and siteArr.length > 0">
+			and kc.PRO_SITE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		) a
+		LEFT JOIN GAIA_PRODUCT_BUSINESS b ON ( a.clientId = b.CLIENT AND a.gssmBrId = b.PRO_SITE AND a.gssmProId = b.PRO_SELF_CODE )
+		WHERE
+		a.qty != 0
+		GROUP BY
+		a.gssmBrId
+		ORDER BY
+		a.gssmBrId
+	</select>
+</mapper>

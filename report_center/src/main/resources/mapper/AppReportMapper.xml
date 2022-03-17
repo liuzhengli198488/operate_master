@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.AppReportMapper">
+    <select id="selectYearList" resultType="java.lang.String">
+        SELECT GCD_YEAR gcdYear from GAIA_CAL_DT WHERE GCD_YEAR <![CDATA[<=]]> YEAR(NOW()) GROUP BY GCD_YEAR ORDER BY GCD_YEAR desc
+    </select>
+    <select id="selectWeekListByYear" resultType="java.util.Map">
+        SELECT GCD_YEAR gcdYear,GCD_WEEK gcdWeek,DATE_FORMAT(min(GCD_DATE),'%Y-%m-%d') minDate,DATE_FORMAT(max(GCD_DATE),'%Y-%m-%d') maxDate from GAIA_CAL_DT WHERE GCD_YEAR = #{year} AND GCD_DATE <![CDATA[<]]> date_format(now(),'%Y%m%d') group by GCD_WEEK ORDER BY GCD_WEEK desc
+    </select>
+    <select id="selectMonthListByYear" resultType="java.util.Map">
+        SELECT GCD_YEAR gcdYear,GCD_MONTH gcdMonth,DATE_FORMAT(min(GCD_DATE),'%Y-%m-%d') minDate,DATE_FORMAT(max(GCD_DATE),'%Y-%m-%d') maxDate from GAIA_CAL_DT WHERE GCD_YEAR = #{year} AND GCD_DATE <![CDATA[<]]> date_format(now(),'%Y%m%d') group by GCD_MONTH ORDER BY GCD_MONTH desc
+    </select>
+    <select id="selectDateTime" resultType="java.util.Map">
+        SELECT GCD_YEAR gcdYear,GCD_MONTH gcdMonth,GCD_WEEK gcdWeek,DATE_FORMAT(min(GCD_DATE),'%Y-%m-%d') minDate,DATE_FORMAT(max(GCD_DATE),'%Y-%m-%d') maxDate from GAIA_CAL_DT
+        WHERE GCD_YEAR = #{year}
+        <if test="month != null and month > 0">
+            AND GCD_MONTH = #{month}
+        </if>
+        <if test="week != null and week > 0">
+            AND GCD_WEEK = #{week}
+        </if>
+        AND GCD_DATE <![CDATA[<=]]> date_format(now(),'%Y%m%d')
+        group by GCD_YEAR ORDER BY GCD_MONTH desc
+    </select>
+    <!-- 下面 round( x.totalAmt / y.avgAmt, 0 ) AS stockDay,-->
+    <select id="selectOverStockList" parameterType="com.gys.common.data.ReportInData" resultType="com.gys.common.data.OverStockOutData">
+        SELECT
+        ROUND( x.totalAmt, 2 ) totalAmt,
+        x.proCode,
+        x.proName,
+        x.totalQty,
+        ROUND( IFNULL( y.gssdAmt, '0.00' ), 2 ) gssdAmt,
+        ROUND(x.totalQty / gssdQty * 30,0) AS stockDay,
+        IFNULL(z.gssdQty,0) gssdQty,
+        proSpecs,
+        factoryName
+        FROM
+        (
+        SELECT
+        sum( MAT_TOTAL_AMT ) totalAmt,
+        MAT_PRO_CODE proCode,
+        b.PRO_COMMONNAME proName,
+        b.PRO_SPECS proSpecs,
+        b.PRO_FACTORY_NAME factoryName,
+        MAT_TOTAL_QTY totalQty
+        FROM
+        GAIA_MATERIAL_ASSESS a
+        INNER JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT
+        AND a.MAT_ASSESS_SITE = b.PRO_SITE
+        AND a.MAT_PRO_CODE = b.PRO_SELF_CODE
+        WHERE
+        a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND a.MAT_ASSESS_SITE = #{stoCode}
+        </if>
+        AND MAT_TOTAL_QTY != '0'
+        GROUP BY
+        MAT_PRO_CODE
+        ORDER BY
+        TOTALAMT DESC
+        LIMIT 10
+        ) x
+        INNER JOIN (
+        SELECT
+        a.GSSD_PRO_ID,
+        sum( a.GSSD_AMT ) gssdAmt,
+        ( ( sum( a.GSSD_AMT ) - sum( a.GSSD_MOV_PRICE ) ) / saleDay ) AS avgAmt
+        FROM
+        GAIA_SD_SALE_D a
+        LEFT JOIN (
+        SELECT
+        count( 1 ) saleDay,
+        GSSD_PRO_ID
+        FROM
+        (
+        SELECT
+        GSSD_PRO_ID,
+        GSSD_DATE
+        FROM
+        GAIA_SD_SALE_D
+        WHERE
+        CLIENT = #{clientId}
+        <if test="startDate != null and startDate != ''">
+            AND GSSD_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND GSSD_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d')
+        </if>
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSD_BR_ID = #{stoCode}
+        </if>
+        GROUP BY
+        GSSD_PRO_ID,
+        GSSD_DATE
+        ORDER BY
+        GSSD_PRO_ID
+        ) s
+        GROUP BY
+        GSSD_PRO_ID
+        ) b ON a.GSSD_PRO_ID = b.GSSD_PRO_ID
+        WHERE
+        a.CLIENT = #{clientId}
+        <if test="startDate != null and startDate != ''">
+            AND a.GSSD_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND a.GSSD_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d')
+        </if>
+        <if test="stoCode != null and stoCode != ''">
+            AND a.GSSD_BR_ID = #{stoCode}
+        </if>
+        GROUP BY
+        a.GSSD_PRO_ID
+        ) y ON x.proCode = y.GSSD_PRO_ID
+        INNER JOIN (
+        SELECT
+        a.GSSD_PRO_ID,
+        sum( a.GSSD_QTY ) gssdQty
+        FROM
+        GAIA_SD_SALE_D a
+        WHERE
+        a.GSSD_DATE <![CDATA[>=]]> replace(date_sub(curdate(),interval 30 day),'-','')
+        AND a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND a.GSSD_BR_ID = #{stoCode}
+        </if>
+        GROUP BY
+        a.GSSD_PRO_ID
+        ) z ON x.proCode = z.GSSD_PRO_ID
+        <if test="heaven != null and heaven != ''">
+            AND round( x.totalAmt / y.avgAmt, 0 ) &gt;= #{heaven}
+        </if>
+        ORDER BY
+        <if test="dayType == '1'.toString()">
+          stockDay DESC
+        </if>
+        <if test="dayType == '2'.toString()">
+          gssdAmt DESC
+        </if>
+    </select>
+    <!--x.totalAmt DESC-->
+    <select id="selectRelevancyTotal" parameterType="com.gys.common.data.ReportInData" resultType="com.gys.common.data.RelevancyOutData">
+        SELECT
+        srCount,
+        round(saleAmt,2) saleAmt,
+        round(profitAmt,2) profitAmt,
+        srProCount,
+        srACount,
+        srMCount,
+        totalCount,
+        saleProCount
+        FROM
+        (
+        SELECT
+        count( 1 ) srCount,
+        sum( a.saleAmt ) saleAmt
+        FROM
+        ( SELECT GSSS_BILL_NO, sum( GSSS_SALE_AMT ) saleAmt FROM GAIA_SD_SR_SALE_RECORD
+        WHERE CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSS_BR_ID = #{stoCode}
+        </if>
+        AND GSSS_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND GSSS_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d') GROUP BY GSSS_BILL_NO ) a
+        ) a,
+        (
+        SELECT
+        sum( profitAmt ) profitAmt,
+        count( GSSS_PRO_ID ) srProCount
+        FROM
+        (
+        SELECT
+        GSSS_BILL_NO,
+        GSSS_PRO_ID,
+        SUM( a.GSSS_SALE_AMT ),
+        SUM( b.GSSD_ADD_AMT + b.GSSD_ADD_TAX ),
+        SUM( a.GSSS_SALE_AMT ) - SUM( b.GSSD_ADD_AMT + b.GSSD_ADD_TAX ) AS profitAmt
+        FROM
+        GAIA_SD_SR_SALE_RECORD a
+        INNER JOIN GAIA_SD_SALE_D b ON a.CLIENT = b.CLIENT
+        AND a.GSSS_BR_ID = b.GSSD_BR_ID
+        AND a.GSSS_PRO_ID = b.GSSD_PRO_ID
+        AND a.GSSS_BILL_NO = b.GSSD_BILL_NO
+        AND a.GSSS_SERIAL = b.GSSD_SERIAL
+        WHERE
+        a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSS_BR_ID = #{stoCode}
+        </if>
+        AND GSSS_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND GSSS_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d')
+        GROUP BY
+        GSSS_BILL_NO,
+        GSSS_PRO_ID
+        ) b
+        ) b,
+        (
+        SELECT
+        x.srACount,
+        y.srMCount,
+        ( x.srACount + y.srMCount ) totalCount
+        FROM
+        (
+        SELECT
+        count( * ) srACount
+        FROM
+        (
+        SELECT
+        GSSR_BILL_NO,
+        GSSR_FLAG
+        FROM
+        GAIA_SD_SR_RECORD a
+        WHERE
+        a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSR_BR_ID = #{stoCode}
+        </if>
+        AND GSSR_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND GSSR_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d')
+        AND GSSR_FLAG LIKE 'A%'
+        GROUP BY
+        GSSR_BILL_NO,
+        GSSR_FLAG
+        ) a
+        ) x,
+        (
+        SELECT
+        count( * ) srMCount
+        FROM
+        (
+        SELECT
+        GSSR_BILL_NO,
+        GSSR_FLAG
+        FROM
+        GAIA_SD_SR_RECORD a
+        WHERE
+        a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSR_BR_ID = #{stoCode}
+        </if>
+        AND GSSR_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND GSSR_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d')
+        AND GSSR_FLAG LIKE 'M%'
+        GROUP BY
+        GSSR_BILL_NO,
+        GSSR_FLAG
+        ) a
+        ) y
+        ) c,
+        (
+        SELECT
+        COUNT( GSSD_PRO_ID ) saleProCount
+        FROM
+        ( SELECT GSSD_PRO_ID FROM GAIA_SD_SALE_D WHERE
+        CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSD_BR_ID = #{stoCode}
+        </if>
+        AND GSSD_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND GSSD_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d') GROUP BY GSSD_PRO_ID ) a
+        ) d
+    </select>
+    <select id="selectCompClassRelevancyOutData" parameterType="com.gys.common.data.ReportInData" resultType="com.gys.common.data.CompClassRelevancyOutData">
+        SELECT a.*,@rank:=@rank + 1 AS rankNo
+        FROM (SELECT
+        COUNT( GSSD_BILL_NO ) billCount,
+        ROUND(SUM(GSSD_AMT),2) gssdAmt,
+        ROUND(SUM(GSSD_AMT) - SUM(a.GSSD_ADD_AMT + a.GSSD_ADD_TAX),2) grossProfitAmt,
+        b.PRO_COMPCLASS proCompClass,
+        b.PRO_COMPCLASS_NAME proCompClassName
+        FROM
+        GAIA_SD_SALE_D a
+        INNER JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT
+        AND a.GSSD_BR_ID = b.PRO_SITE
+        AND a.GSSD_PRO_ID = b.PRO_SELF_CODE
+        left join GAIA_SD_SALE_H ha ON a.CLIENT = ha.CLIENT AND a.GSSD_BR_ID = ha.GSSH_BR_ID and a.GSSD_BILL_NO = ha.GSSH_BILL_NO
+        WHERE
+        a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND a.GSSD_BR_ID = #{stoCode}
+        </if>
+        AND a.GSSD_BILL_NO IN (
+        SELECT
+        GSSD_BILL_NO
+        FROM
+        GAIA_SD_SALE_D a
+        INNER JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT
+        AND a.GSSD_BR_ID = b.PRO_SITE
+        AND a.GSSD_PRO_ID = b.PRO_SELF_CODE
+        left join GAIA_SD_SALE_H ha ON a.CLIENT = ha.CLIENT AND a.GSSD_BR_ID = ha.GSSH_BR_ID and a.GSSD_BILL_NO = ha.GSSH_BILL_NO
+        WHERE
+        a.GSSD_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND a.GSSD_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d')
+        AND a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND a.GSSD_BR_ID = #{stoCode}
+        </if>
+        AND b.PRO_COMPCLASS = #{compClass}
+        AND ha.GSSH_BILL_NO_RETURN is null
+        GROUP BY
+        GSSD_BILL_NO
+        )
+        AND ha.GSSH_BILL_NO_RETURN is null
+        GROUP BY
+        b.PRO_COMPCLASS,
+        b.PRO_COMPCLASS_NAME
+        ORDER BY
+        billCount DESC,gssdAmt DESC
+        LIMIT 4
+        ) a,(SELECT @rank:= -1) b
+    </select>
+    <select id="sumNowReport" parameterType="com.gys.common.data.ReportInData" resultType="com.gys.common.data.SumNowReportOutData">
+        SELECT SUM(b.billCount) billCount,ROUND(sum(b.grossProfitAmt),2) grossProfitAmt,ROUND(sum(b.gssdAmt),2) gssdAmt from
+        (SELECT count(GSSD_BILL_NO) billCount,PRO_COMPCLASS,SUM(gssdAmt) gssdAmt,SUM(grossProfitAmt) grossProfitAmt FROM ( SELECT
+        GSSD_BILL_NO,PRO_COMPCLASS,SUM(a.GSSD_AMT) gssdAmt,SUM(a.GSSD_AMT - t.GSSH_BILL_NO_RETURN * (a.GSSD_ADD_AMT+a.GSSD_ADD_TAX)) grossProfitAmt
+        FROM
+        GAIA_SD_SALE_D a
+        INNER JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT
+        AND a.GSSD_BR_ID = b.PRO_SITE
+        AND a.GSSD_PRO_ID = b.PRO_SELF_CODE
+        LEFT JOIN (SELECT (CASE IFNULL(GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE -1 END)
+        GSSH_BILL_NO_RETURN,GSSH_BILL_NO,GSSH_DATE,GSSH_BR_ID FROM GAIA_SD_SALE_H
+        WHERE GSSH_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d') AND GSSH_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND GSSH_BR_ID = #{stoCode}
+        </if>
+        ) t ON t.GSSH_BILL_NO = a.GSSD_BILL_NO AND t.GSSH_DATE = a.GSSD_DATE AND t.GSSH_BR_ID = a.GSSD_BR_ID
+        WHERE
+        a.GSSD_DATE <![CDATA[>=]]> date_format(#{startDate},'%Y%m%d')
+        AND a.GSSD_DATE <![CDATA[<=]]> date_format(#{endDate},'%Y%m%d')
+        AND a.CLIENT = #{clientId}
+        <if test="stoCode != null and stoCode != ''">
+            AND a.GSSD_BR_ID = #{stoCode}
+        </if>
+        GROUP BY
+        GSSD_BILL_NO) a GROUP BY PRO_COMPCLASS
+        ORDER BY SUM(gssdAmt) desc LIMIT 10) b
+    </select>
+
+    <select id="ingredientClassList" resultType="com.gys.common.data.ReportOutData">
+        SELECT
+        x.CLIENT clientId,
+        CONCAT( x.bigClass, x.bigClassname ) AS bigClass,
+        x.bigClass bigClassCode,
+        <if test=" categoryClass!= null and categoryClass == '2'.toString()">
+            CONCAT( x.PRO_COMP_MID_CODE, x.PRO_COMP_MID_NAME ) AS midClass,
+            x.PRO_COMP_MID_CODE midClassCode,
+        </if>
+        <if test="stoCode != null and stoCode !=''">
+            x.stoCode,
+            x.stoName,
+        </if>
+        x.totalAmt,
+        x.totalCost,
+        ROUND( x.totalProfit, 2 ) totalProfit,(
+        CASE
+        WHEN x.TotalAmt <![CDATA[<>]]> 0 THEN
+        Round( x.TotalProfit * 100 / x.TotalAmt, 2 ) ELSE 0
+        END
+        ) AS totalProfitRate,
+        y.allAmt,(
+        CASE
+        WHEN y.allAmt <![CDATA[<>]]> 0 THEN
+        Round( x.TotalProfit * 100 / y.allAmt, 2 ) ELSE 0
+        END
+        ) AS contributionRate
+        FROM
+        (
+        SELECT
+        a.CLIENT,
+        d.PRO_COMP_BIG_CODE AS bigClass,
+        d.PRO_COMP_BIG_NAME AS bigClassname,
+        <if test=" categoryClass!= null and categoryClass == '2'.toString()">
+            d.PRO_COMP_MID_CODE,
+            d.PRO_COMP_MID_NAME,
+        </if>
+        <if test="stoCode != null and stoCode !=''">
+            a.GSSD_BR_ID stoCode,
+            e.STO_NAME stoName,
+        </if>
+        round(SUM( a.GSSD_AMT ),2) AS totalAmt,
+        SUM( a.GSSD_MOV_PRICE ) AS totalCost,
+        sum(a.GSSD_AMT - ( f.GSSH_BILL_NO_RETURN * (IFNULL(a.GSSD_ADD_AMT,0) +IFNULL(a.GSSD_ADD_TAX,0)) ) ) AS totalProfit
+        FROM
+        GAIA_SD_SALE_D a
+        INNER JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT
+        AND a.GSSD_BR_ID = b.PRO_SITE
+        AND a.GSSD_PRO_ID = b.PRO_SELF_CODE
+        INNER JOIN GAIA_STORE_DATA c ON a.CLIENT = c.CLIENT
+        AND a.GSSD_BR_ID = c.STO_CODE
+        INNER JOIN GAIA_PRODUCT_COMPONENT_CLASS d ON b.PRO_COMPCLASS = d.PRO_COMP_CODE and d.PRO_COMP_BIG_CODE !='N'
+        LEFT JOIN GAIA_SD_SALE_H h ON a.CLIENT = h.CLIENT and a.GSSD_BR_ID = h.GSSH_BR_ID AND a.GSSD_BILL_NO = h.GSSH_BILL_NO
+        LEFT JOIN (SELECT (CASE IFNULL(GSSH_BILL_NO_RETURN, 1 ) WHEN 1 THEN 1 ELSE -1 END) GSSH_BILL_NO_RETURN, GSSH_BILL_NO,GSSH_DATE,GSSH_BR_ID
+        FROM GAIA_SD_SALE_H
+        WHERE CLIENT = #{clientId} and DATE_FORMAT(GSSH_DATE,'%Y-%m-%d') >= #{startDate} and DATE_FORMAT(GSSH_DATE,'%Y-%m-%d') <![CDATA[<=]]> #{endDate} AND GSSH_HIDE_FLAG = '0'
+        <if test="stoCode != null and stoCode !=''">
+            and GSSH_BR_ID = #{stoCode}
+        </if>
+            ) f on f.GSSH_BILL_NO = a.GSSD_BILL_NO and f.GSSH_DATE =h.GSSH_DATE and a.GSSD_BR_ID =f.GSSH_BR_ID
+        <if test="stoCode != null and stoCode !=''">
+            LEFT JOIN GAIA_STORE_DATA e on e.CLIENT =a.CLIENT and e.STO_CODE = a.GSSD_BR_ID
+        </if>
+        WHERE
+        DATE_FORMAT(a.GSSD_DATE,'%Y-%m-%d') >= #{startDate}
+        AND DATE_FORMAT(a.GSSD_DATE,'%Y-%m-%d') <![CDATA[<=]]> #{endDate}
+        AND a.CLIENT = #{clientId}
+        and h.GSSH_HIDE_FLAG = '0'
+        <if test="stoCode != null and stoCode !=''">
+           and a.GSSD_BR_ID =#{stoCode}
+        </if>
+        GROUP BY
+        a.CLIENT,
+        <if test=" categoryClass!= null and categoryClass == '2'.toString()">
+            d.PRO_COMP_MID_CODE,
+            d.PRO_COMP_MID_NAME,
+        </if>
+        d.PRO_COMP_BIG_CODE,
+        d.PRO_COMP_BIG_NAME
+
+        ORDER BY
+        SUM( a.GSSD_AMT ) DESC
+        LIMIT 10
+        ) x,
+        ( SELECT a.CLIENT, SUM( a.GSSD_AMT ) allAmt
+          FROM GAIA_SD_SALE_D a
+          INNER JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT AND a.GSSD_BR_ID = b.PRO_SITE AND a.GSSD_PRO_ID = b.PRO_SELF_CODE
+          LEFT JOIN GAIA_PRODUCT_COMPONENT_CLASS d ON b.PRO_COMPCLASS = d.PRO_COMP_CODE
+          LEFT JOIN GAIA_SD_SALE_H h ON a.CLIENT = h.CLIENT and a.GSSD_BR_ID = h.GSSH_BR_ID AND a.GSSD_BILL_NO = h.GSSH_BILL_NO
+        WHERE a.CLIENT = #{clientId} AND DATE_FORMAT(GSSD_DATE,'%Y-%m-%d') >= #{startDate}
+            AND DATE_FORMAT(GSSD_DATE,'%Y-%m-%d') <![CDATA[<=]]> #{endDate}
+            AND d.PRO_COMP_BIG_CODE != 'N'
+            and h.GSSH_HIDE_FLAG = '0'
+          <if test="stoCode != null and stoCode !=''">
+            and a.GSSD_BR_ID =#{stoCode}
+          </if>
+          GROUP BY a.CLIENT ) y
+        WHERE
+        x.CLIENT = y.CLIENT
+    </select>
+
+    <select id="ingredientProCountClassList" resultType="com.gys.common.data.ReportOutData">
+        SELECT
+        e.CLIENT,
+        e.PRO_COMP_BIG_CODE bigClassCode,
+        <if test=" categoryClass!= null and categoryClass == '2'.toString()">
+            e.midClassCode,
+        </if>
+        count( e.GSSD_PRO_ID ) proCount
+        FROM
+        (
+        SELECT
+        a.CLIENT,
+        d.PRO_COMP_BIG_CODE,
+        <if test=" categoryClass!= null and categoryClass == '2'.toString()">
+            d.PRO_COMP_MID_CODE midClassCode,
+        </if>
+        a.GSSD_PRO_ID
+        FROM
+        GAIA_SD_SALE_D a
+        LEFT JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT AND a.GSSD_BR_ID = b.PRO_SITE AND a.GSSD_PRO_ID = b.PRO_SELF_CODE
+        LEFT JOIN GAIA_PRODUCT_COMPONENT_CLASS d ON b.PRO_COMPCLASS = d.PRO_COMP_CODE
+        LEFT JOIN GAIA_SD_SALE_H h ON a.CLIENT = h.CLIENT and a.GSSD_BR_ID = h.GSSH_BR_ID AND a.GSSD_BILL_NO = h.GSSH_BILL_NO
+        WHERE
+        DATE_FORMAT(a.GSSD_DATE,'%Y-%m-%d') >= #{startDate}
+        AND DATE_FORMAT(a.GSSD_DATE,'%Y-%m-%d') <![CDATA[<=]]> #{endDate}
+        AND a.CLIENT = #{clientId}
+        AND d.PRO_COMP_BIG_CODE !='N'
+        and h.GSSH_HIDE_FLAG = '0'
+        <if test="stoCode != null and stoCode !=''">
+            and a.GSSD_BR_ID =#{stoCode}
+        </if>
+        GROUP BY
+        a.CLIENT,
+        d.PRO_COMP_BIG_CODE,
+        <if test=" categoryClass!= null and categoryClass == '2'.toString()">
+            d.PRO_COMP_MID_CODE,
+        </if>
+        a.GSSD_PRO_ID
+        ) e
+        GROUP BY
+        e.CLIENT,
+        <if test=" categoryClass!= null and categoryClass == '2'.toString()">
+            e.midClassCode,
+        </if>
+        e.PRO_COMP_BIG_CODE
+    </select>
+    <select id="listSaleBreedOutData" resultType="com.gys.common.data.SaleBreedOutData" parameterType="com.gys.common.data.SaleBreedOutData">
+        select PRO_SELF_CODE proCode,PRO_FACTORY_NAME factoryName from GAIA_PRODUCT_BUSINESS
+        where CLIENT = #{client}
+        <if test="brId !=null and brId!=''">
+            and PRO_SITE = #{brId}
+        </if>
+        <if test="proCodeList != null and proCodeList.size() > 0">
+            and PRO_SELF_CODE in
+            <foreach collection="proCodeList" item="item" index="index" open="(" separator="," close=")" >
+                #{item}
+            </foreach>
+        </if>
+    </select>
+</mapper>

@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaEmployeeHealthRecordMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaEmployeeHealthRecord">
+        <id column="ID" jdbcType="BIGINT" property="id" />
+        <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+        <result column="VOUCHER_ID" jdbcType="VARCHAR" property="voucherId" />
+        <result column="EMP_NAME" jdbcType="VARCHAR" property="empName" />
+        <result column="EMP_ID" jdbcType="VARCHAR" property="empId" />
+        <result column="CHECK_ORG" jdbcType="VARCHAR" property="checkOrg" />
+        <result column="CHECK_ITEM" jdbcType="VARCHAR" property="checkItem" />
+        <result column="CHECK_RESULT" jdbcType="VARCHAR" property="checkResult" />
+        <result column="CHECK_DATE" jdbcType="VARCHAR" property="checkDate" />
+        <result column="EMP_GENDER" jdbcType="VARCHAR" property="empGender" />
+        <result column="EMP_BIRTHDAY" jdbcType="VARCHAR" property="empBirthday" />
+        <result column="JOIN_DATE" jdbcType="VARCHAR" property="joinDate" />
+        <result column="MEASURES" jdbcType="VARCHAR" property="measures" />
+        <result column="EMP_POST" jdbcType="VARCHAR" property="empPost" />
+        <result column="EMP_JOB" jdbcType="VARCHAR" property="empJob" />
+        <result column="DEP_NAME" jdbcType="VARCHAR" property="depName" />
+        <result column="EMP_POSITION" jdbcType="VARCHAR" property="empPosition" />
+        <result column="IS_DELETE" jdbcType="INTEGER" property="isDelete" />
+        <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="GROUP_NAME" jdbcType="VARCHAR" property="groupName" />
+        <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+        <result column="UPDATE_USER" jdbcType="VARCHAR" property="updateUser" />
+        <result column="REMARK" jdbcType="VARCHAR" property="remark" />
+        <result column="CREATE_USER" jdbcType="VARCHAR" property="createUser" />
+    </resultMap>
+    <sql id="Base_Column_List">
+    ID, CLIENT, VOUCHER_ID, EMP_NAME, EMP_ID, CHECK_ORG, CHECK_ITEM, CHECK_RESULT, CHECK_DATE,
+    EMP_GENDER, EMP_BIRTHDAY, JOIN_DATE, MEASURES, EMP_POST, EMP_JOB, DEP_NAME, EMP_POSITION,
+    IS_DELETE, CREATE_TIME, GROUP_NAME, UPDATE_TIME, UPDATE_USER, REMARK, CREATE_USER
+  </sql>
+    <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from GAIA_EMPLOYEE_HEALTH_RECORD
+        where ID = #{id,jdbcType=BIGINT}
+    </select>
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    delete from GAIA_EMPLOYEE_HEALTH_RECORD
+    where ID = #{id,jdbcType=BIGINT}
+  </delete>
+    <insert id="insert" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.GaiaEmployeeHealthRecord" useGeneratedKeys="true">
+    insert into GAIA_EMPLOYEE_HEALTH_RECORD (CLIENT, VOUCHER_ID, EMP_NAME,
+      EMP_ID, CHECK_ORG, CHECK_ITEM,
+      CHECK_RESULT, CHECK_DATE, EMP_GENDER,
+      EMP_BIRTHDAY, JOIN_DATE, MEASURES,
+      EMP_POST, EMP_JOB, DEP_NAME,
+      EMP_POSITION, IS_DELETE, CREATE_TIME,
+      GROUP_NAME, UPDATE_TIME, UPDATE_USER,
+      REMARK, CREATE_USER)
+    values (#{client,jdbcType=VARCHAR}, #{voucherId,jdbcType=VARCHAR}, #{empName,jdbcType=VARCHAR},
+      #{empId,jdbcType=VARCHAR}, #{checkOrg,jdbcType=VARCHAR}, #{checkItem,jdbcType=VARCHAR},
+      #{checkResult,jdbcType=VARCHAR}, #{checkDate,jdbcType=VARCHAR}, #{empGender,jdbcType=VARCHAR},
+      #{empBirthday,jdbcType=VARCHAR}, #{joinDate,jdbcType=VARCHAR}, #{measures,jdbcType=VARCHAR},
+      #{empPost,jdbcType=VARCHAR}, #{empJob,jdbcType=VARCHAR}, #{depName,jdbcType=VARCHAR},
+      #{empPosition,jdbcType=VARCHAR}, #{isDelete,jdbcType=INTEGER}, #{createTime,jdbcType=TIMESTAMP},
+      #{groupName,jdbcType=VARCHAR}, #{updateTime,jdbcType=TIMESTAMP}, #{updateUser,jdbcType=VARCHAR},
+      #{remark,jdbcType=VARCHAR}, #{createUser,jdbcType=VARCHAR})
+  </insert>
+    <insert id="insertSelective" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.GaiaEmployeeHealthRecord" useGeneratedKeys="true">
+        insert into GAIA_EMPLOYEE_HEALTH_RECORD
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                CLIENT,
+            </if>
+            <if test="voucherId != null">
+                VOUCHER_ID,
+            </if>
+            <if test="empName != null">
+                EMP_NAME,
+            </if>
+            <if test="empId != null">
+                EMP_ID,
+            </if>
+            <if test="checkOrg != null">
+                CHECK_ORG,
+            </if>
+            <if test="checkItem != null">
+                CHECK_ITEM,
+            </if>
+            <if test="checkResult != null">
+                CHECK_RESULT,
+            </if>
+            <if test="checkDate != null">
+                CHECK_DATE,
+            </if>
+            <if test="empGender != null">
+                EMP_GENDER,
+            </if>
+            <if test="empBirthday != null">
+                EMP_BIRTHDAY,
+            </if>
+            <if test="joinDate != null">
+                JOIN_DATE,
+            </if>
+            <if test="measures != null">
+                MEASURES,
+            </if>
+            <if test="empPost != null">
+                EMP_POST,
+            </if>
+            <if test="empJob != null">
+                EMP_JOB,
+            </if>
+            <if test="depName != null">
+                DEP_NAME,
+            </if>
+            <if test="empPosition != null">
+                EMP_POSITION,
+            </if>
+            <if test="isDelete != null">
+                IS_DELETE,
+            </if>
+            <if test="createTime != null">
+                CREATE_TIME,
+            </if>
+            <if test="groupName != null">
+                GROUP_NAME,
+            </if>
+            <if test="updateTime != null">
+                UPDATE_TIME,
+            </if>
+            <if test="updateUser != null">
+                UPDATE_USER,
+            </if>
+            <if test="remark != null">
+                REMARK,
+            </if>
+            <if test="createUser != null">
+                CREATE_USER,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                #{client,jdbcType=VARCHAR},
+            </if>
+            <if test="voucherId != null">
+                #{voucherId,jdbcType=VARCHAR},
+            </if>
+            <if test="empName != null">
+                #{empName,jdbcType=VARCHAR},
+            </if>
+            <if test="empId != null">
+                #{empId,jdbcType=VARCHAR},
+            </if>
+            <if test="checkOrg != null">
+                #{checkOrg,jdbcType=VARCHAR},
+            </if>
+            <if test="checkItem != null">
+                #{checkItem,jdbcType=VARCHAR},
+            </if>
+            <if test="checkResult != null">
+                #{checkResult,jdbcType=VARCHAR},
+            </if>
+            <if test="checkDate != null">
+                #{checkDate,jdbcType=VARCHAR},
+            </if>
+            <if test="empGender != null">
+                #{empGender,jdbcType=VARCHAR},
+            </if>
+            <if test="empBirthday != null">
+                #{empBirthday,jdbcType=VARCHAR},
+            </if>
+            <if test="joinDate != null">
+                #{joinDate,jdbcType=VARCHAR},
+            </if>
+            <if test="measures != null">
+                #{measures,jdbcType=VARCHAR},
+            </if>
+            <if test="empPost != null">
+                #{empPost,jdbcType=VARCHAR},
+            </if>
+            <if test="empJob != null">
+                #{empJob,jdbcType=VARCHAR},
+            </if>
+            <if test="depName != null">
+                #{depName,jdbcType=VARCHAR},
+            </if>
+            <if test="empPosition != null">
+                #{empPosition,jdbcType=VARCHAR},
+            </if>
+            <if test="isDelete != null">
+                #{isDelete,jdbcType=INTEGER},
+            </if>
+            <if test="createTime != null">
+                #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="groupName != null">
+                #{groupName,jdbcType=VARCHAR},
+            </if>
+            <if test="updateTime != null">
+                #{updateTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updateUser != null">
+                #{updateUser,jdbcType=VARCHAR},
+            </if>
+            <if test="remark != null">
+                #{remark,jdbcType=VARCHAR},
+            </if>
+            <if test="createUser != null">
+                #{createUser,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+    <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.GaiaEmployeeHealthRecord">
+        update GAIA_EMPLOYEE_HEALTH_RECORD
+        <set>
+            <if test="client != null">
+                CLIENT = #{client,jdbcType=VARCHAR},
+            </if>
+            <if test="voucherId != null">
+                VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+            </if>
+            <if test="empName != null">
+                EMP_NAME = #{empName,jdbcType=VARCHAR},
+            </if>
+            <if test="empId != null">
+                EMP_ID = #{empId,jdbcType=VARCHAR},
+            </if>
+            <if test="checkOrg != null">
+                CHECK_ORG = #{checkOrg,jdbcType=VARCHAR},
+            </if>
+            <if test="checkItem != null">
+                CHECK_ITEM = #{checkItem,jdbcType=VARCHAR},
+            </if>
+            <if test="checkResult != null">
+                CHECK_RESULT = #{checkResult,jdbcType=VARCHAR},
+            </if>
+            <if test="checkDate != null">
+                CHECK_DATE = #{checkDate,jdbcType=VARCHAR},
+            </if>
+            <if test="empGender != null">
+                EMP_GENDER = #{empGender,jdbcType=VARCHAR},
+            </if>
+            <if test="empBirthday != null">
+                EMP_BIRTHDAY = #{empBirthday,jdbcType=VARCHAR},
+            </if>
+            <if test="joinDate != null">
+                JOIN_DATE = #{joinDate,jdbcType=VARCHAR},
+            </if>
+            <if test="measures != null">
+                MEASURES = #{measures,jdbcType=VARCHAR},
+            </if>
+            <if test="empPost != null">
+                EMP_POST = #{empPost,jdbcType=VARCHAR},
+            </if>
+            <if test="empJob != null">
+                EMP_JOB = #{empJob,jdbcType=VARCHAR},
+            </if>
+            <if test="depName != null">
+                DEP_NAME = #{depName,jdbcType=VARCHAR},
+            </if>
+            <if test="empPosition != null">
+                EMP_POSITION = #{empPosition,jdbcType=VARCHAR},
+            </if>
+            <if test="isDelete != null">
+                IS_DELETE = #{isDelete,jdbcType=INTEGER},
+            </if>
+            <if test="createTime != null">
+                CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="groupName != null">
+                GROUP_NAME = #{groupName,jdbcType=VARCHAR},
+            </if>
+            <if test="updateTime != null">
+                UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updateUser != null">
+                UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+            </if>
+            <if test="remark != null">
+                REMARK = #{remark,jdbcType=VARCHAR},
+            </if>
+            <if test="createUser != null">
+                CREATE_USER = #{createUser,jdbcType=VARCHAR},
+            </if>
+        </set>
+        where ID = #{id,jdbcType=BIGINT}
+    </update>
+    <update id="updateByPrimaryKey" parameterType="com.gys.entity.GaiaEmployeeHealthRecord">
+    update GAIA_EMPLOYEE_HEALTH_RECORD
+    set CLIENT = #{client,jdbcType=VARCHAR},
+      VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      EMP_NAME = #{empName,jdbcType=VARCHAR},
+      EMP_ID = #{empId,jdbcType=VARCHAR},
+      CHECK_ORG = #{checkOrg,jdbcType=VARCHAR},
+      CHECK_ITEM = #{checkItem,jdbcType=VARCHAR},
+      CHECK_RESULT = #{checkResult,jdbcType=VARCHAR},
+      CHECK_DATE = #{checkDate,jdbcType=VARCHAR},
+      EMP_GENDER = #{empGender,jdbcType=VARCHAR},
+      EMP_BIRTHDAY = #{empBirthday,jdbcType=VARCHAR},
+      JOIN_DATE = #{joinDate,jdbcType=VARCHAR},
+      MEASURES = #{measures,jdbcType=VARCHAR},
+      EMP_POST = #{empPost,jdbcType=VARCHAR},
+      EMP_JOB = #{empJob,jdbcType=VARCHAR},
+      DEP_NAME = #{depName,jdbcType=VARCHAR},
+      EMP_POSITION = #{empPosition,jdbcType=VARCHAR},
+      IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      GROUP_NAME = #{groupName,jdbcType=VARCHAR},
+      UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      REMARK = #{remark,jdbcType=VARCHAR},
+      CREATE_USER = #{createUser,jdbcType=VARCHAR}
+    where ID = #{id,jdbcType=BIGINT}
+  </update>
+</mapper>

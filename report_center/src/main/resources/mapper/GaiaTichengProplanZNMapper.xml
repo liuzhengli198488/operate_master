@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengProplanZNMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengProplanZN">
+        <!--
+      WARNING - @mbg.generated
+    -->
+        <id column="ID" jdbcType="BIGINT" property="id" />
+        <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+        <result column="PLAN_CODE" jdbcType="VARCHAR" property="planCode" />
+        <result column="PLAN_NAME" jdbcType="VARCHAR" property="planName" />
+        <result column="PLAN_START_DATE" jdbcType="VARCHAR" property="planStartDate" />
+        <result column="PLAN_END_DATE" jdbcType="VARCHAR" property="planEndDate" />
+        <result column="PLAN_PRODUCT_WAY" jdbcType="VARCHAR" property="planProductWay" />
+        <result column="PLIANT_PERCENTAGE_TYPE" jdbcType="VARCHAR" property="planPercentageType" />
+        <result column="PLAN_TYPE" jdbcType="VARCHAR" property="planType" />
+        <result column="PLAN_SCALE_STO" jdbcType="VARCHAR" property="planScaleSto" />
+        <result column="PLAN_SCALE_SALER" jdbcType="VARCHAR" property="planScaleSaler" />
+        <result column="PLAN_STATUS" jdbcType="VARCHAR" property="planStatus" />
+        <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag" />
+        <result column="PLAN_CREATER" jdbcType="VARCHAR" property="planCreater" />
+        <result column="PLAN_CREATER_ID" jdbcType="VARCHAR" property="planCreaterId" />
+        <result column="PLAN_CREATE_TIME" jdbcType="VARCHAR" property="planCreateTime" />
+        <result column="PLAN_UPDATE_ID" jdbcType="VARCHAR" property="planUpdateId" />
+        <result column="PLAN_UPDATER" jdbcType="VARCHAR" property="planUpdater" />
+        <result column="PLAN_UPDATE_DATETIME" jdbcType="VARCHAR" property="planUpdateDatetime" />
+        <result column="PLAN_REASON" jdbcType="VARCHAR" property="planReason" />
+        <result column="PLAN_STOP_DATE" jdbcType="VARCHAR" property="planStopDate" />
+        <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        ID, CLIENT, PLAN_CODE, PLAN_NAME, PLAN_START_DATE, PLAN_END_DATE, PLAN_PRODUCT_WAY,
+        PLIANT_PERCENTAGE_TYPE,PLAN_TYPE, PLAN_SCALE_STO, PLAN_SCALE_SALER, PLAN_STATUS,
+        DELETE_FLAG, PLAN_CREATER,PLAN_CREATER_ID, PLAN_CREATE_TIME, PLAN_UPDATE_ID, PLAN_UPDATER,
+        PLAN_UPDATE_DATETIME,PLAN_REASON, PLAN_STOP_DATE, LAST_UPDATE_TIME
+    </sql>
+    <select id="selectTichengProZ" resultMap="BaseResultMap">
+        SELECT
+            pz.*
+        FROM
+            GAIA_TICHENG_PROPLAN_Z_N pz
+        WHERE
+            pz.ID =#{id}
+          AND pz.CLIENT = #{client}
+          AND pz.DELETE_FLAG != '1'
+    </select>
+</mapper>

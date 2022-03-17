@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdReplenishComparedDMapper">
+
+  <select id="listDifferentReplenish" parameterType="com.gys.report.entity.GetReplenishInData" resultType="hashmap">
+    select a.GSRH_VOUCHER_ID voucherId,a.GSRH_BR_ID stoCode,b.STO_SHORT_NAME stoName,a.CLIENT clientId,DATE_FORMAT(a.GSRH_DATE,'%Y-%m-%d') creDate,DATE_FORMAT(CONCAT(a.GSRH_DATE,a.GSRH_CRE_TIME),'%H:%i:%s') creTime,a.GSRH_DN_BY ,DATE_FORMAT(a.GSRH_CHECK_DATE,'%Y-%m-%d') checkDate,a.GSRH_EMP,a.GSRH_PATTERN pattern,
+    d.USER_NAM creName,d.USER_NAM checkName,DATE_FORMAT(CONCAT(a.GSRH_CHECK_DATE,a.GSRH_TIME),'%H:%i:%s') checkTime,
+    ifnull(sum(case when c.GSRD_STATUS = 'A' then c.qty end),0) 'add',
+    ifnull(sum(case when c.GSRD_STATUS = 'D' then c.qty end),0) 'delete',
+    ifnull(sum(case when c.GSRD_STATUS = 'M' then c.qty end),0) 'modify',
+    ifnull(e.orginalItems,0) orginalItems
+    from GAIA_SD_REPLENISH_H a
+    LEFT JOIN GAIA_STORE_DATA b on a.CLIENT = b.CLIENT and a.GSRH_BR_ID = b.STO_CODE
+    LEFT JOIN (select CLIENT, GSRD_VOUCHER_ID,GSRD_STATUS,count(1) qty,GSRD_BR_ID from GAIA_SD_REPLENISH_COMPARED_D
+    GROUP BY GSRD_STATUS ,GSRD_VOUCHER_ID,CLIENT,GSRD_BR_ID) c on c.CLIENT = a.CLIENT and a.GSRH_BR_ID = c.GSRD_BR_ID and a.GSRH_VOUCHER_ID = c.GSRD_VOUCHER_ID
+    LEFT JOIN GAIA_USER_DATA d on d.CLIENT =a.CLIENT and a.GSRH_EMP = d.USER_ID
+    LEFT JOIN
+      (
+          SELECT CLIENT, GSRD_VOUCHER_ID,GSRD_BR_ID,count(GSRD_PRO_ID) orginalItems FROM GAIA_SD_REPLENISH_ORI_D
+          GROUP BY CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID
+      ) e
+    on a.CLIENT = e.CLIENT AND a.GSRH_VOUCHER_ID = e.GSRD_VOUCHER_ID AND a.GSRH_BR_ID = e.GSRD_BR_ID
+    where a.GSRH_STATUS ='1' and a.CLIENT = #{clientId}
+    <if test="gsrhVoucherId != null and gsrhVoucherId !=''">
+      and a.GSRH_VOUCHER_ID like concat('%',#{gsrhVoucherId},'%')
+    </if>
+    <if test="stoCodes != null and stoCodes.length > 0">
+      and a.GSRH_BR_ID in
+      <foreach item="item" collection="stoCodes" separator="," open="(" close=")" index="">
+        #{item}
+      </foreach>
+    </if>
+    <if test="gsrhPattern != null and gsrhPattern != ''">
+      AND a.GSRH_PATTERN = #{gsrhPattern}
+    </if>
+    <if test="startDate != null and startDate != ''">
+      AND a.GSRH_DATE <![CDATA[>=]]> #{startDate}
+    </if>
+    <if test="endDate != null and endDate != '' ">
+      AND a.GSRH_DATE <![CDATA[<=]]> #{endDate}
+    </if>
+    GROUP BY a.GSRH_VOUCHER_ID
+    order by a.GSRH_VOUCHER_ID desc
+  </select>
+
+  <select id="listDifferentReplenishDetail" parameterType="com.gys.report.entity.GetReplenishInData" resultType="hashmap">
+   SELECT
+      a.GSRD_PRO_ID proId,
+      b.PRO_NAME proName,
+      b.PRO_SPECS proSpecs,
+      b.PRO_UNIT unit,
+      b.PRO_FACTORY_NAME factory,
+      c.GSPP_PRICE_NORMAL proPrice,
+      a.GSRD_PROPOSE_QTY proposeQty,
+      a.GSRD_NEED_QTY needQty,(
+          a.GSRD_NEED_QTY - a.GSRD_PROPOSE_QTY
+      ) diffQty,
+  CASE
+
+          WHEN a.GSRD_STATUS IS NULL THEN
+          '一致'
+          WHEN a.GSRD_STATUS = 'A' THEN
+          '新增'
+          WHEN a.GSRD_STATUS = 'D' THEN
+          '删除'
+          WHEN a.GSRD_STATUS = 'M' THEN
+          '修改'
+      END status,
+      d.STO_CODE stoCode,
+      d.STO_NAME stoName,
+      ifnull(r.GSRD_STOCK_STORE,'0') storeQty
+  FROM
+      GAIA_SD_REPLENISH_COMPARED_D a
+      LEFT JOIN GAIA_PRODUCT_BUSINESS b ON a.CLIENT = b.CLIENT
+      AND a.GSRD_PRO_ID = b.PRO_SELF_CODE
+      AND a.GSRD_BR_ID = b.PRO_SITE
+      LEFT JOIN GAIA_SD_PRODUCT_PRICE c ON a.GSRD_PRO_ID = c.GSPP_PRO_ID
+      AND a.CLIENT = c.CLIENT
+      AND a.GSRD_BR_ID = c.GSPP_BR_ID
+      LEFT JOIN GAIA_STORE_DATA d ON a.CLIENT = d.CLIENT
+      AND c.GSPP_BR_ID = d.STO_CODE
+      LEFT JOIN GAIA_SD_REPLENISH_D r ON a.CLIENT = r.CLIENT
+      AND a.GSRD_PRO_ID = r.GSRD_PRO_ID
+      AND a.GSRD_BR_ID = r.GSRD_BR_ID
+      AND a.GSRD_VOUCHER_ID = r.GSRD_VOUCHER_ID
+   WHERE a.CLIENT = #{clientId} and a.GSRD_VOUCHER_ID =#{gsrhVoucherId}
+
+  ORDER BY
+      a.GSRD_PRO_ID ASC,
+      a.GSRD_STATUS
+  </select>
+
+  <select id="getDifferentReplenish" parameterType="com.gys.report.entity.GetReplenishInData" resultType="hashmap">
+    select a.GSRH_VOUCHER_ID gsrhVoucherId, ifnull(b.USER_NAM,a.GSRH_DN_BY) dnName,DATE_FORMAT(CONCAT(a.GSRH_DATE,a.GSRH_CRE_TIME),'%Y-%m-%d %H:%i:%s') dnDate
+    from GAIA_SD_REPLENISH_H a
+    LEFT JOIN GAIA_USER_DATA b on a.GSRH_EMP = b.USER_ID and a.CLIENT = b.CLIENT
+    where a.CLIENT = #{clientId} and a.GSRH_VOUCHER_ID =#{gsrhVoucherId}
+  </select>
+
+  <select id="getAreaList" resultType="com.gys.entity.AreaOutData">
+        SELECT
+            AREA_ID areaId,
+            AREA_NAME areaName,
+            LEVEL LEVEL,
+            PARENT_ID parentId
+        FROM
+            GAIA_AREA
+        WHERE
+            LEVEL IN ( '1', '2' )
+    </select>
+
+    <select id="getAllClient" resultType="com.gys.entity.GaiaFranchisee">
+    SELECT
+        CLIENT client,
+        IFNULL(FRANC_NAME, '') francName,
+        FRANC_NO francNo,
+        FRANC_LEGAL_PERSON francLegalPerson,
+        FRANC_QUA francQua,
+        FRANC_ADDR francAddr,
+        FRANC_CRE_DATE francCreDate,
+        FRANC_CRE_TIME francCreTime,
+        FRANC_CRE_ID francCreId,
+        FRANC_MODI_DATE francModiDate,
+        FRANC_MODI_TIME francModiTime,
+        FRANC_MODI_ID francModiId,
+        FRANC_LOGO francLogo,
+        FRANC_TYPE1 francType1,
+        FRANC_TYPE2 francType2,
+        FRANC_TYPE3 francType3,
+        FRANC_ASS francAss,
+        FRANC_PROV francProv,
+        FRANC_CITY francCity
+     FROM GAIA_FRANCHISEE
+  </select>
+
+  <select id="getReplenishDiffSumList" resultType="com.gys.entity.ReplenishDiffSumOutData">
+        SELECT
+            <if test="type == '1'.toString() ">
+            DATE_FORMAT(dt.GCD_DATE, '%Y/%m/%d') dateStr,
+            </if>
+
+            <if test="type == '2'.toString() ">
+            CONCAT( dt.GCD_YEAR, '年', dt.GCD_WEEK, '周' ) dateStr,
+            </if>
+
+            <if test="type == '3'.toString() ">
+            CONCAT( dt.GCD_YEAR, '年', dt.GCD_MONTH, '月' ) dateStr,
+            </if>
+            result.provName,
+            result.cityName,
+            result.client,
+            result.clientName,
+            result.pattern,
+            IFNULL( SUM( result.replenishStoreCount ), 0 ) replenishStoreCount,
+            ROUND( IFNULL( SUM( result.oldReplenishProCount ) / SUM( result.replenishStoreCount ), 0 ), 0 ) singleReplenishCount,
+            ROUND( IFNULL( SUM( result.addCount + result.equalCount + result.editCount ) / SUM( result.replenishStoreCount ), 0 ), 0 ) singleActualReplenishCount,
+            ROUND( IFNULL( SUM( result.oldReplenishProCount ), 0 ), 0 ) oldReplenishProCount,
+            ROUND( IFNULL( SUM( result.addCount ), 0 ), 0 ) addCount,
+            ROUND( IFNULL( SUM( result.addCount ) / SUM( result.oldReplenishProCount ) * 100, 0 ), 2 ) addProportion,
+            ROUND( IFNULL( SUM( result.deleteCount ), 0 ), 0 ) deleteCount,
+            ROUND( IFNULL( SUM( result.deleteCount ) / SUM( result.oldReplenishProCount ) * 100, 0 ), 2 ) deleteProportion,
+            ROUND( IFNULL( SUM( result.equalCount ), 0 ), 0 ) equalCount,
+            ROUND( IFNULL( SUM( result.equalCount ) / SUM( result.oldReplenishProCount ) * 100, 0 ), 2 ) equalProportion,
+            ROUND( IFNULL( SUM( result.editCount ), 0 ), 0 ) editCount,
+            ROUND( IFNULL( SUM( result.editCount ) / SUM( result.oldReplenishProCount ) * 100, 0 ), 2 ) editProportion,
+            ROUND( IFNULL( SUM( result.retailSaleAmt ) / 10000, 0 ), 2 ) retailSaleAmt,
+            ROUND( IFNULL( SUM( result.actualretailSaleAmt ) / 10000, 0 ), 2 ) actualretailSaleAmt,
+            ROUND( IFNULL( SUM( result.retailSaleAmt - result.actualretailSaleAmt ) / 10000, 0 ), 2 ) diffAmt,
+            ROUND( IFNULL( SUM( result.costAmt ) / 10000, 0 ), 2 ) costAmt,
+            ROUND( IFNULL( SUM( result.actualCostAmt ) / 10000, 0 ), 2 ) actualCostAmt,
+            ROUND( IFNULL( SUM( result.costAmt - result.actualCostAmt ) / 10000, 0 ), 2 ) diffCostAmt
+        FROM
+            (
+            SELECT
+                dateStr,
+                provName,
+                cityName,
+                client,
+                clientName,
+                CASE
+                    WHEN pattern = '0' THEN
+                    '正常补货'
+                    WHEN pattern = '1' THEN
+                    '紧急补货'
+                    WHEN pattern = '2' THEN
+                    '铺货'
+                    WHEN pattern = '3' THEN
+                    '互调'
+                    WHEN pattern = '4' THEN
+                    '直配' ELSE pattern
+                END pattern,
+            COUNT( DISTINCT brId ) replenishStoreCount,
+            SUM( oldReplenishProCount ) oldReplenishProCount,
+            SUM( addCount ) addCount,
+            SUM( addCount ) addProportion,
+            SUM( deleteCount ) deleteCount,
+            SUM( deleteCount ) deleteProportion,
+            SUM( equalCount ) equalCount,
+            SUM( equalCount ) equalProportion,
+            SUM( editCount ) editCount,
+            SUM( editCount ) editProportion,
+            SUM( retailSaleAmt ) retailSaleAmt,
+            SUM( actualretailSaleAmt ) actualretailSaleAmt,
+            SUM( costAmt ) costAmt,
+            SUM( actualCostAmt ) actualCostAmt
+        FROM
+            (
+            SELECT
+                rcd.GSRD_DATE dateStr,
+                province.AREA_NAME provName,
+                city.AREA_NAME cityName,
+                rcd.CLIENT client,
+                fran.FRANC_NAME clientName,
+                rh.GSRH_PATTERN pattern,
+                rcd.GSRD_BR_ID brId,
+                COUNT( rcd.GSRD_PRO_ID ) oldReplenishProCount,
+                SUM( CASE WHEN rcd.GSRD_STATUS = 'A' THEN 1 ELSE 0 END ) addCount,
+                SUM( CASE WHEN rcd.GSRD_STATUS = 'D' THEN 1 ELSE 0 END ) deleteCount,
+                SUM( CASE WHEN rcd.GSRD_STATUS IS NULL THEN 1 ELSE 0 END ) equalCount,
+                SUM( CASE WHEN rcd.GSRD_STATUS = 'M' THEN 1 ELSE 0 END ) editCount,
+                SUM( pp.GSPP_PRICE_NORMAL * rcd.GSRD_PROPOSE_QTY ) retailSaleAmt,
+                SUM( pp.GSPP_PRICE_NORMAL * rcd.GSRD_NEED_QTY ) actualretailSaleAmt,
+                ( SUM( cost.MAT_MOV_PRICE ) * SUM(( 1 + REPLACE ( cost.TAX_CODE_VALUE, '%', '' ) / 100))) * SUM( rcd.GSRD_PROPOSE_QTY ) costAmt,
+		        ( SUM( cost.MAT_MOV_PRICE ) * SUM(( 1 + REPLACE ( cost.TAX_CODE_VALUE, '%', '' ) / 100))) * SUM( rcd.GSRD_NEED_QTY ) actualCostAmt
+            FROM
+                GAIA_SD_REPLENISH_COMPARED_D rcd
+                LEFT JOIN GAIA_SD_REPLENISH_ORI_D rod ON (
+                    rcd.CLIENT = rod.CLIENT
+                    AND rcd.GSRD_BR_ID = rod.GSRD_BR_ID
+                    AND rcd.GSRD_VOUCHER_ID = rod.GSRD_VOUCHER_ID
+                    AND rcd.GSRD_PRO_ID = rod.GSRD_PRO_ID
+                    AND rcd.GSRD_DATE = rod.GSRD_DATE
+                )
+                LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON ( rcd.CLIENT = pp.CLIENT AND rcd.GSRD_BR_ID = pp.GSPP_BR_ID AND rcd.GSRD_PRO_ID = pp.GSPP_PRO_ID )
+                LEFT JOIN GAIA_SD_REPLENISH_H rh ON (
+                    rcd.CLIENT = rh.CLIENT
+                    AND rcd.GSRD_BR_ID = rh.GSRH_BR_ID
+                    AND rcd.GSRD_VOUCHER_ID = rh.GSRH_VOUCHER_ID
+                    AND rcd.GSRD_DATE = rh.GSRH_DATE
+                )
+                LEFT JOIN (
+                SELECT
+                    ass.CLIENT,
+                    ass.MAT_PRO_CODE,
+                    ass.MAT_MOV_PRICE,
+                    tax.TAX_CODE_VALUE
+                FROM
+                    GAIA_MATERIAL_ASSESS ass
+                    INNER JOIN GAIA_PRODUCT_BUSINESS pb ON ( ass.CLIENT = pb.CLIENT AND ass.MAT_ASSESS_SITE = pb.PRO_SITE AND ass.MAT_PRO_CODE = pb.PRO_SELF_CODE )
+                    LEFT JOIN GAIA_TAX_CODE tax ON ( tax.TAX_CODE = pb.PRO_INPUT_TAX AND tax.TAX_CODE_CLASS = '1' )
+                    INNER JOIN GAIA_DC_DATA dc ON ( ass.CLIENT = dc.CLIENT AND ass.MAT_ASSESS_SITE = dc.DC_CODE )
+                    <if test="clientList != null and clientList.size() != 0">
+                    WHERE
+                    ass.CLIENT IN
+                        <foreach collection="clientList" item="client" index="index" open="(" close=")" separator=",">
+                             #{client}
+                        </foreach>
+                    </if>
+                GROUP BY
+                ass.CLIENT,
+                ass.MAT_PRO_CODE
+                ) cost ON ( rcd.CLIENT = cost.CLIENT AND rcd.GSRD_PRO_ID = cost.MAT_PRO_CODE )
+                LEFT JOIN GAIA_FRANCHISEE fran ON ( rcd.CLIENT = fran.CLIENT )
+                LEFT JOIN GAIA_AREA province ON ( fran.FRANC_PROV = province.AREA_ID AND province.`LEVEL` = '1' )
+                LEFT JOIN GAIA_AREA city ON ( fran.FRANC_CITY = city.AREA_ID AND city.`LEVEL` = '2' )
+            WHERE
+                rcd.GSRD_DATE <![CDATA[>=]]> DATE_FORMAT(#{beginDate}, '%Y%m%d')
+                AND rcd.GSRD_DATE <![CDATA[<=]]> DATE_FORMAT(#{endDate}, '%Y%m%d')
+                <if test="clientList != null and clientList.size() != 0">
+                AND rcd.CLIENT IN
+                    <foreach collection="clientList" item="client" index="index" open="(" close=")" separator=",">
+                         #{client}
+                    </foreach>
+                </if>
+
+                <if test="provinceList != null and provinceList.size() != 0">
+                AND province.AREA_ID IN
+                    <foreach collection="provinceList" item="province" index="index" open="(" close=")" separator=",">
+                         #{province}
+                    </foreach>
+                </if>
+
+                <if test="cityList != null and cityList.size() != 0">
+                AND city.AREA_ID IN
+                    <foreach collection="cityList" item="city" index="index" open="(" close=")" separator=",">
+                         #{city}
+                    </foreach>
+                </if>
+
+                <if test="patternList != null and patternList.size() != 0">
+                AND rh.GSRH_PATTERN IN
+                    <foreach collection="patternList" item="pattern" index="index" open="(" close=")" separator=",">
+                         #{pattern}
+                    </foreach>
+                </if>
+            GROUP BY
+                rcd.GSRD_DATE,
+                province.AREA_ID,
+		        city.AREA_ID,
+                rcd.CLIENT,
+                rh.GSRH_PATTERN,
+                rcd.GSRD_BR_ID,
+                rcd.GSRD_VOUCHER_ID,
+                rcd.GSRD_PRO_ID
+            ) baseData
+        GROUP BY
+            dateStr,
+            provName,
+            cityName,
+            client,
+            pattern
+            ) result
+            LEFT JOIN GAIA_CAL_DT dt ON ( result.dateStr = dt.GCD_DATE )
+        GROUP BY
+            <if test="type == '1'.toString() ">
+            dt.GCD_DATE,
+            </if>
+
+            <if test="type == '2'.toString() ">
+            dt.GCD_WEEK,
+            </if>
+
+            <if test="type == '3'.toString() ">
+            dt.GCD_MONTH,
+            </if>
+            result.provName,
+            result.cityName,
+            result.client,
+            result.pattern
+  </select>
+</mapper>

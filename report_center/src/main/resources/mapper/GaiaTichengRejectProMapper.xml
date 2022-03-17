@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengRejectProMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengRejectPro">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="ID" jdbcType="BIGINT" property="id"/>
+        <result column="CLIENT" jdbcType="VARCHAR" property="client"/>
+        <result column="PID" jdbcType="BIGINT" property="pid"/>
+        <result column="PRO_CODE" jdbcType="VARCHAR" property="proCode"/>
+        <result column="PRO_NAME" jdbcType="VARCHAR" property="proName"/>
+        <result column="PRO_SPECS" jdbcType="VARCHAR" property="proSpecs"/>
+        <result column="PRO_FACTORY_NAME" jdbcType="VARCHAR" property="proFactoryName"/>
+        <result column="PRO_COST_PRICE" jdbcType="DECIMAL" property="proCostPrice"/>
+        <result column="PRO_PRICE_NORMAL" jdbcType="DECIMAL" property="proPriceNormal"/>
+        <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag"/>
+        <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        ID, CLIENT, PID, PRO_CODE, PRO_NAME, PRO_SPECS, PRO_FACTORY_NAME, PRO_COST_PRICE,
+        PRO_PRICE_NORMAL, DELETE_FLAG, LAST_UPDATE_TIME
+    </sql>
+
+    <select id="selectPro" resultType="java.lang.String">
+        SELECT DISTINCT PRO_CODE
+        FROM GAIA_TICHENG_REJECT_PRO
+        WHERE PID = #{id}
+        UNION
+        SELECT DISTINCT pp.PRO_CODE
+        FROM GAIA_TICHENG_PROPLAN_BASIC pz
+        LEFT JOIN GAIA_TICHENG_PROPLAN_SETTING pt ON pz.ID = pt.PID
+        LEFT JOIN GAIA_TICHENG_PROPLAN_STO_N ps ON pz.ID = ps.PID
+        LEFT JOIN GAIA_TICHENG_PROPLAN_PRO_N pp ON pz.ID = pp.PID AND pt.ID = pp.SETTING_ID
+        WHERE pz.CLIENT = #{client}
+          AND pt.DELETE_FLAG = '0'
+          AND pz.PLAN_STATUS = '1'
+          AND ps.DELETE_FLAG = '0'
+          AND pp.DELETE_FLAG = '0'
+          AND pt.PLAN_PRODUCT_WAY = '0'
+          AND (
+                (pz.PLAN_START_DATE &gt;= #{planStartDate} AND pz.PLAN_START_DATE &lt;= #{planEndDate})
+                OR (pz.PLAN_START_DATE &lt;= #{planStartDate} AND pz.PLAN_END_DATE &gt;= #{planEndDate})
+                OR (pz.PLAN_END_DATE &gt;= #{planStartDate} AND pz.PLAN_END_DATE &lt;= #{planEndDate})
+            )
+    </select>
+
+</mapper>

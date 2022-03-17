@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.ReportFormatMapper">
+    <insert id="insertReportFormat"  parameterType="com.gys.entity.data.reportFormat.ReportFormatData">
+        INSERT INTO GAIA_USER_DEFINED_FORMAT (CLIENT,USER_ID,RESOURCE_ID,TAB_NAME,FORMAT_DETAIL,CREATE_DATE,UPDATE_DATE)
+        VALUES (#{client},#{userId},#{resourceId},#{tabName},#{formatDetail},#{createDate},#{updateDate})
+    </insert>
+    <update id="updateReportFormat"  parameterType="com.gys.entity.data.reportFormat.ReportFormatData">
+        UPDATE GAIA_USER_DEFINED_FORMAT SET FORMAT_DETAIL = #{formatDetail} ,UPDATE_DATE = #{updateDate}
+        where CLIENT = #{client} AND USER_ID = #{userId} AND RESOURCE_ID = #{resourceId} AND TAB_NAME = #{tabName}
+    </update>
+    <delete id="deleteReportFormat"  parameterType="com.gys.entity.data.reportFormat.ReportFormatData">
+        DELETE FROM GAIA_USER_DEFINED_FORMAT
+        where CLIENT = #{client} AND USER_ID = #{userId} AND RESOURCE_ID = #{resourceId} AND TAB_NAME = #{tabName}
+    </delete>
+    <select id="selectReportFormat"  parameterType="com.gys.entity.data.reportFormat.ReportFormatData"
+            resultType="com.gys.entity.data.reportFormat.ReportFormatData">
+        select ID id,CLIENT client,USER_ID userId,RESOURCE_ID resourceId,TAB_NAME tabName,
+               FORMAT_DETAIL formatDetail,CREATE_DATE createDate,UPDATE_DATE  updateDate
+        from GAIA_USER_DEFINED_FORMAT
+        where CLIENT = #{client} AND USER_ID = #{userId} AND RESOURCE_ID = #{resourceId} AND TAB_NAME = #{tabName}
+    </select>
+
+</mapper>

@@ -1,0 +1,564 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.ProductPriceProposalMapper">
+
+    <select id="selectCityDimensionList" parameterType="String"
+            resultType="com.gys.entity.priceProposal.dto.CityDimensionDTO">
+        SELECT MODEL.PROVINCE                                       province,
+               MODEL.PROVINCE_ID                                    provinceId,
+               MODEL.CITY                                           city,
+               MODEL.CITY_ID                                        cityId,
+               MODEL.PRO_CODE                                       proCode,
+               MODEL.BAYESIAN_PROBABILITY                           bayesianProbability,
+               IFNULL(ROUND(MODEL.GSSD_AMT / MODEL.SALE_QTY, 2), 0) avgSellingPrice
+        FROM GAIA_COMMODITY_CATEGORY_MODEL MODEL
+        WHERE MODEL.DIMENSION = 2
+          AND DATE_FORMAT(MODEL.COMPADM_CRE_TIME, '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+          AND MODEL.PRO_COMP_CLASS like 'A%'
+          AND MODEL.PROVINCE_ID IS NOT NULL
+          AND MODEL.CITY_ID IS NOT NULL
+          AND MODEL.PROVINCE_ID = #{provinceId}
+          AND MODEL.CITY_ID = #{cityId}
+    </select>
+
+    <select id="selectStoDimensionList" parameterType="String"
+            resultType="com.gys.entity.priceProposal.dto.StoDimensionDTO">
+        SELECT MODEL.PROVINCE                                       province,
+               MODEL.PROVINCE_ID                                    provinceId,
+               MODEL.CITY                                           city,
+               MODEL.CITY_ID                                        cityId,
+               MODEL.PRO_CODE                                       proCode,
+               MODEL.STO_CODE                                       stoCode,
+               MODEL.STO_NAME                                       stoName,
+               MODEL.CLIENT_ID                                      clientId,
+               MODEL.CLIENT_NAME                                    clientName,
+               IFNULL(ROUND(MODEL.GSSD_AMT / MODEL.SALE_QTY, 2), 0) avgSellingPrice,
+               MODEL.BAYESIAN_PROBABILITY                           bayesianProbability,
+               MODEL.PRO_DEPICT                                     proDepict,
+               MODEL.PRO_SPECS                                      proSpecs,
+               MODEL.FACTORY_NAME                                   factoryName,
+               MODEL.PRO_UNIT                                       proUnit,
+               MODEL.PRO_COMP_CLASS                                 proCompClass,
+               MODEL.PRO_COMP_CLASS_NAME                            proCompClassName,
+               MODEL.PRO_BIG_CLASS                                  proBigClass,
+               MODEL.PRO_BIG_CLASS_NAME                             proBigClassName,
+               MODEL.PRO_CLASS                                      proClass,
+               MODEL.PRO_CLASS_NAME                                 proClassName
+        FROM GAIA_COMMODITY_CATEGORY_MODEL MODEL
+        WHERE MODEL.DIMENSION = 4
+          AND MODEL.PROVINCE_ID = #{provinceId}
+          AND MODEL.CITY_ID = #{cityId}
+          AND MODEL.PROVINCE_ID IS NOT NULL
+          AND MODEL.PROVINCE_ID &lt;&gt; ''
+          AND MODEL.CITY_ID IS NOT NULL
+          AND MODEL.CITY_ID &lt;&gt; ''
+          AND DATE_FORMAT(MODEL.COMPADM_CRE_TIME, '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+          AND MODEL.PRO_COMP_CLASS like 'A%'
+    </select>
+
+    <select id="selectCustomerDimensionList" parameterType="String"
+            resultType="com.gys.entity.priceProposal.dto.CustomerDimensionDTO">
+        SELECT MODEL.PROVINCE                            province,
+               MODEL.PROVINCE_ID                         provinceId,
+               MODEL.CITY                                city,
+               MODEL.CITY_ID                             cityId,
+               MODEL.PRO_CODE                            proCode,
+               ROUND(MODEL.GSSD_AMT / MODEL.SALE_QTY, 2) avgSellingPrice
+        FROM GAIA_COMMODITY_CATEGORY_MODEL MODEL
+        WHERE MODEL.DIMENSION = 3
+          AND MODEL.PROVINCE_ID = #{provinceId}
+          AND MODEL.CITY_ID = #{cityId}
+          AND MODEL.PROVINCE_ID IS NOT NULL
+          AND MODEL.PROVINCE_ID &lt;&gt; ''
+          AND MODEL.CITY_ID IS NOT NULL
+          AND MODEL.CITY_ID &lt;&gt; ''
+          AND DATE_FORMAT(MODEL.COMPADM_CRE_TIME, '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+          AND MODEL.PRO_COMP_CLASS like 'A%'
+          AND NOT EXISTS(
+                SELECT 1
+                FROM GAIA_PRODUCT_BUSINESS BUSINESS
+                WHERE BUSINESS.CLIENT = MODEL.CLIENT_ID
+                  AND BUSINESS.PRO_SITE = MODEL.STO_CODE
+                  AND BUSINESS.PRO_CODE = MODEL.PRO_CODE
+                  AND (BUSINESS.PRO_POSITION IN ('D')
+                    OR BUSINESS.PRO_CONTROL_CLASS IN ('1', '2', '3', '4', '6', '7', '11', '12')
+                    OR BUSINESS.PRO_STORAGE_CONDITION = '3'
+                    OR BUSINESS.PRO_COMPCLASS_NAME like '%针剂%'
+                    OR PRO_CLASS REGEXP '301|302|8|H'))
+          AND MODEL.CLIENT_ID IN
+              (SELECT DISTINCT STORE.CLIENT FROM GAIA_SD_STORE_DATA STORE WHERE STORE.GSST_ORG_TYPE = '2')
+          AND MODEL.CLIENT_ID = #{clientId}
+    </select>
+
+    <!--<select id="selectStoOrgType" parameterType="String" resultType="String">
+        SELECT STORE.STO_ATTRIBUTE gsstOrgType
+        FROM GAIA_STORE_DATA STORE
+        WHERE STORE.CLIENT = #{clientId}
+          AND STORE.STO_CODE = #{stoCode}
+    </select>-->
+
+    <select id="selectStoOrgType" parameterType="String" resultType="String">
+        SELECT STORE.GSST_ORG_TYPE gsstOrgType
+        FROM GAIA_SD_STORE_DATA STORE
+        WHERE STORE.CLIENT = #{clientId}
+          AND STORE.GSST_BR_ID = #{stoCode}
+    </select>
+
+    <select id="selectStoDimensionListByOrgType" parameterType="String"
+            resultType="com.gys.entity.priceProposal.dto.StoDimensionDTO">
+        SELECT MODEL.PROVINCE                            province,
+               MODEL.PROVINCE_ID                         provinceId,
+               MODEL.CITY                                city,
+               MODEL.CITY_ID                             cityId,
+               MODEL.PRO_CODE                            proCode,
+               MODEL.STO_CODE                            stoCode,
+               MODEL.STO_NAME                            stoName,
+               MODEL.CLIENT_ID                           clientId,
+               MODEL.CLIENT_NAME                         clientName,
+               ROUND(MODEL.GSSD_AMT / MODEL.SALE_QTY, 2) avgSellingPrice,
+               MODEL.BAYESIAN_PROBABILITY                bayesianProbability
+        FROM GAIA_COMMODITY_CATEGORY_MODEL MODEL
+        WHERE MODEL.DIMENSION = 4
+          AND MODEL.PROVINCE_ID = #{provinceId}
+          AND MODEL.CITY_ID = #{cityId}
+          AND MODEL.PROVINCE_ID IS NOT NULL
+          AND MODEL.PROVINCE_ID &lt;&gt; ''
+          AND MODEL.CITY_ID IS NOT NULL
+          AND MODEL.CITY_ID &lt;&gt; ''
+          AND DATE_FORMAT(MODEL.COMPADM_CRE_TIME, '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+          AND MODEL.PRO_COMP_CLASS like 'A%'
+          AND NOT EXISTS(
+                SELECT 1
+                FROM GAIA_PRODUCT_BUSINESS BUSINESS
+                WHERE BUSINESS.CLIENT = MODEL.CLIENT_ID
+                  AND BUSINESS.PRO_SITE = MODEL.STO_CODE
+                  AND BUSINESS.PRO_CODE = MODEL.PRO_CODE
+                  AND (BUSINESS.PRO_POSITION IN ('X', 'D')
+                    OR BUSINESS.PRO_CONTROL_CLASS IN ('1', '2', '3', '4', '6', '7', '11', '12')
+                    OR BUSINESS.PRO_STORAGE_CONDITION = '3'
+                    OR BUSINESS.PRO_COMPCLASS_NAME like '%针剂%'
+                    OR PRO_CLASS REGEXP '301|302|8|H'))
+          AND MODEL.CLIENT_ID IN
+              (SELECT DISTINCT STORE.CLIENT FROM GAIA_SD_STORE_DATA STORE WHERE STORE.GSST_ORG_TYPE = '1')
+          AND MODEL.CLIENT_ID = #{clientId}
+    </select>
+
+    <select id="selectRetailPrice" parameterType="String" resultType="com.gys.entity.priceProposal.dto.RetailPriceDTO">
+        SELECT PRICE.PRC_EFFECT_DATE prcEffectDate, PRICE.PRC_APPROVAL_SUATUS prcApprovalSuatus
+        FROM GAIA_RETAIL_PRICE PRICE
+        WHERE PRICE.CLIENT = #{clientId}
+          AND PRICE.PRC_STORE = #{stoCode}
+          AND PRICE.PRC_PRODUCT = #{proCode}
+        ORDER BY PRICE.PRC_CREATE_TIME DESC LIMIT 1
+    </select>
+
+    <select id="selectPriceProposalList"
+            parameterType="com.gys.entity.priceProposal.condition.SelectPriceProposalListCondition"
+            resultType="com.gys.entity.priceProposal.vo.PriceProposalListVO">
+        SELECT PROPOSALH.PRICE_PROPOSAL_NO priceProposalNo,
+        DATE_FORMAT(PROPOSALH.CREATED_TIME,'%Y-%m-%d %H:%i:%s') createdTime,
+        DATE_FORMAT(PROPOSALH.PRICE_PROPOSAL_INVALID_TIME,'%Y-%m-%d %H:%i:%s') priceProposalInvalidTime,
+        PROPOSALH.PRICE_PROPOSAL_ITEM_NUM priceProposalItemNum,
+        PROPOSALH.BILL_STATUS billStatus
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_H PROPOSALH
+        LEFT JOIN GAIA_PRODUCT_PRICE_PROPOSAL_D PROPOSALD
+        ON PROPOSALH.PRICE_PROPOSAL_NO = PROPOSALD.PRICE_PROPOSAL_NO
+        WHERE 1=1
+        <if test="priceProposalNo != null and priceProposalNo.length > 0">AND PROPOSALD.PRICE_PROPOSAL_NO LIKE
+            CONCAT('%', #{priceProposalNo} '%')
+        </if>
+        <if test="startTime != null and startTime.length > 0">
+            AND DATE_FORMAT(PROPOSALH.CREATED_TIME, '%Y%m%d' ) <![CDATA[>=]]> DATE_FORMAT(#{startTime}, '%Y%m%d')
+            AND DATE_FORMAT(PROPOSALH.CREATED_TIME, '%Y%m%d' ) <![CDATA[<=]]> DATE_FORMAT(#{endTime}, '%Y%m%d')
+        </if>
+        <if test="billStatus != null and billStatus.length > 0">AND PROPOSALH.BILL_STATUS = #{billStatus}</if>
+        <!--        <if test="priceProposalNo != null">AND PROPOSALH.PRICE_PROPOSAL_NO IN (SELECT DETAIL.PRICE_PROPOSAL_NO-->
+        <!--            FROM GAIA_PRODUCT_PRICE_PROPOSAL_D DETAIL-->
+        <!--            WHERE DETAIL.CLIENT_ID = #{clientId}-->
+        <!--            <if test="proCode != null">AND DETAIL.PRO_CODE LIKE CONCAT('%', #{proCode}, '%')</if>-->
+        <!--            )-->
+        <!--        </if>-->
+        AND PROPOSALH.PRICE_PROPOSAL_NO IN (SELECT DETAIL.PRICE_PROPOSAL_NO
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_D DETAIL
+        WHERE DETAIL.CLIENT_ID = #{clientId}
+        <if test="proCode != null and proCode.length > 0">AND DETAIL.PRO_SELF_CODE LIKE CONCAT('%', #{proCode}, '%')
+        </if>
+        )
+        GROUP BY PROPOSALH.PRICE_PROPOSAL_NO
+    </select>
+
+    <select id="selectAdjustedPriceNum" parameterType="String" resultType="int">
+        SELECT COUNT(1) isAdjustedCount
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_D DETAIL
+        WHERE DETAIL.PRICE_PROPOSAL_NO = #{priceProposalNo}
+          AND ADJUST_STATUS = 1
+          AND DETAIL.CLIENT_ID = #{clientId}
+        UNION ALL
+        SELECT COUNT(1)
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_D DETAIL
+        WHERE DETAIL.PRICE_PROPOSAL_NO = #{priceProposalNo}
+          AND DETAIL.CLIENT_ID = #{clientId}
+        UNION ALL
+        SELECT COUNT(1) isAdjustedCount
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_D DETAIL
+        WHERE DETAIL.PRICE_PROPOSAL_NO = #{priceProposalNo}
+          AND DETAIL.CLIENT_ID = #{clientId}
+    </select>
+
+    <select id="selectPriceProposalDetailList"
+            parameterType="com.gys.entity.priceProposal.condition.SelectPriceProposalDetailListCondition"
+            resultType="com.gys.entity.priceProposal.vo.PriceProposalDetailListVO">
+        SELECT DETAIL.PRICE_PROPOSAL_NO           priceProposalNo,
+               DETAIL.CLIENT_ID                   clientId,
+               DETAIL.ADJUST_STATUS               adjustStatus,
+               DETAIL.PRO_CODE                    proCode,
+               DETAIL.PRO_SELF_CODE               proSelfCode,
+               DETAIL.PRO_DESC                    proDesc,
+               DETAIL.PRO_SPECS                   proSpecs,
+               DETAIL.PRO_FACTORY_NAME            proFactoryName,
+               DETAIL.PRO_UNIT                    proUnit,
+               DETAIL.LATEST_COST_PRICE           latestCostPrice,
+               DETAIL.ORIGINAL_AVG_SELLING_PRICE  originalAvgSellingPrice,
+               DETAIL.SUGGESTED_RETAIL_PRICE_LOW  suggestedRetailPriceLow,
+               DETAIL.SUGGESTED_RETAIL_PRICE_HIGH suggestedRetailPriceHigh,
+               DETAIL.NEW_RETAIL_PRICE            newRetailPrice,
+               DETAIL.PRO_COMP_CLASS              proCompClass,
+               DETAIL.PRO_COMP_CLASS_NAME         proCompClassName,
+               DETAIL.PRO_BIG_CLASS               proBigClass,
+               DETAIL.PRO_BIG_CLASS_NAME          proBigClassName,
+               DETAIL.PRO_CLASS                   proClass,
+               DETAIL.PRO_CLASS_NAME              proClassName,
+               DETAIL.PROVINCE_CODE               provinceCode,
+               DETAIL.PROVINCE_NAME               provinceName,
+               DETAIL.CITY_CODE                   cityCode,
+               DETAIL.CITY_NAME                   cityName
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_D DETAIL
+        WHERE DETAIL.PRICE_PROPOSAL_NO = #{priceProposalNo}
+          AND DETAIL.CLIENT_ID = #{clientId}
+    </select>
+
+    <update id="updatePriceProposalNewRetailPrice"
+            parameterType="com.gys.entity.priceProposal.condition.SavePriceProposalCondition">
+        UPDATE GAIA_PRODUCT_PRICE_PROPOSAL_D
+        SET NEW_RETAIL_PRICE = #{newPrice}
+        WHERE PRICE_PROPOSAL_NO = #{priceProposalNo}
+          AND PROVINCE_CODE = #{provinceCode}
+          AND CITY_CODE = #{cityCode}
+          AND CLIENT_ID = #{clientId}
+          AND PRO_CODE = #{proCode}
+    </update>
+
+    <update id="updatePriceProposalAdjustStatus"
+            parameterType="String">
+        UPDATE GAIA_PRODUCT_PRICE_PROPOSAL_D
+        SET ADJUST_STATUS = 1
+        WHERE PRICE_PROPOSAL_NO = #{priceProposalNo}
+          AND CLIENT_ID = #{clientNo}
+          AND PRO_CODE = #{proCode}
+    </update>
+
+    <select id="selectAllStosByClientId" parameterType="String" resultType="com.gys.entity.priceProposal.vo.AllStosVO">
+        SELECT STORE.STO_CODE stoCode, STORE.STO_NAME stoName
+        FROM GAIA_STORE_DATA STORE
+        WHERE STORE.CLIENT = #{clientId}
+    </select>
+
+    <select id="stoQuickSearch" parameterType="com.gys.entity.priceProposal.condition.StoQuickSearchCondition"
+            resultType="com.gys.entity.priceProposal.vo.AllStosVO">
+        SELECT STORE.STO_CODE stoCode, STORE.STO_NAME stoName
+        FROM GAIA_STORE_DATA STORE
+        WHERE 1=1
+        <if test="ifMedicalcare != null and ifMedicalcare.length > 0">
+            AND STORE.STO_IF_MEDICALCARE IN
+            <foreach collection="ifMedicalcare" item="care" separator="," open="(" close=" )">
+                #{care}
+            </foreach>
+        </if>
+        <if test="contained == 1">
+            and STORE.STO_IF_MEDICALCARE is null or LENGTH(TRIM(STORE.STO_IF_MEDICALCARE)) = 0
+        </if>
+        <if test="stoAttribute != null and stoAttribute.length > 0">
+            AND STORE.STO_ATTRIBUTE IN
+            <foreach collection="stoAttribute" item="stoAttr" separator="," open="(" close=" )">
+                #{stoAttr}
+            </foreach>
+        </if>
+        <if test="gssgTypes != null and gssgTypes.size() > 0">
+            AND STORE.STO_CODE
+            IN (SELECT G.GSSG_BR_ID FROM GAIA_SD_STORES_GROUP G WHERE G.CLIENT = #{clientId}
+            AND G.GSSG_TYPE IN
+            <foreach collection="gssgTypes" item="gssgType" separator="," open="(" close=" )">
+                #{gssgType}
+            </foreach>
+            <if test="gssgIds != null and gssgIds.size() > 0">
+                AND G.GSSG_ID IN
+                <foreach collection="gssgIds" item="gssgId" separator="," open="(" close=" )">
+                    #{gssgId}
+                </foreach>
+            </if>
+            )
+        </if>
+        AND STORE.CLIENT = #{clientId}
+    </select>
+
+    <select id="selectUnitAndLsj" parameterType="String" resultType="Map">
+        SELECT BUSINESS.PRO_UNIT proUnit, CAST(BUSINESS.PRO_LSJ AS CHAR) proLsj
+        FROM GAIA_PRODUCT_BUSINESS BUSINESS
+        WHERE BUSINESS.CLIENT = #{clientId}
+          AND BUSINESS.PRO_CODE = #{proCode} LIMIT 1
+    </select>
+
+    <select id="getMaxNo" resultType="String">
+        SELECT H.PRICE_PROPOSAL_NO priceProposalNo
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_H H
+        ORDER BY H.CREATED_TIME DESC LIMIT 1
+    </select>
+
+    <insert id="insertPriceProposalH" parameterType="com.gys.entity.priceProposal.entity.ProductPriceProposalH">
+        INSERT INTO GAIA_PRODUCT_PRICE_PROPOSAL_H(PRICE_PROPOSAL_NO, PRICE_PROPOSAL_INVALID_TIME,
+                                                  PRICE_PROPOSAL_ITEM_NUM, BILL_STATUS, CREATED_ID)
+        VALUES (#{priceProposalNo}, #{priceProposalInvalidTime}, #{priceProposalItemNum}, #{billStatus}, #{createdId})
+    </insert>
+
+    <select id="getLatestCostPrice" parameterType="String" resultType="String">
+        SELECT ROUND((ASSESS.MAT_TOTAL_AMT + ASSESS.MAT_RATE_AMT) / ASSESS.MAT_TOTAL_QTY, 2) latestCostPrice
+        FROM GAIA_MATERIAL_ASSESS ASSESS
+        WHERE ASSESS.CLIENT = #{clientId}
+          AND ASSESS.MAT_PRO_CODE = #{proCode}
+          AND ASSESS.MAT_ASSESS_SITE = #{stoCode}
+    </select>
+
+    <insert id="batchInsertPriceProposalD" parameterType="com.gys.entity.priceProposal.entity.ProductPriceProposalD">
+        INSERT INTO GAIA_PRODUCT_PRICE_PROPOSAL_D(PRICE_PROPOSAL_NO, PROVINCE_CODE, PROVINCE_NAME, CITY_CODE, CITY_NAME,
+        CLIENT_ID, CLIENT_NAME, STO_CODE, STO_NAME,
+        PRO_CODE, PRO_SELF_CODE, PRO_DESC, PRO_SPECS, PRO_FACTORY_NAME, PRO_UNIT,
+        LATEST_COST_PRICE, ORIGINAL_AVG_SELLING_PRICE,
+        SUGGESTED_RETAIL_PRICE_LOW,
+        SUGGESTED_RETAIL_PRICE_HIGH, NEW_RETAIL_PRICE, PROPOSAL_TYPE,
+        PRO_CLASS, PRO_CLASS_NAME, PRO_COMP_CLASS, PRO_COMP_CLASS_NAME,
+        PRO_BIG_CLASS,
+        PRO_BIG_CLASS_NAME, CREATED_ID, ADJUST_STATUS)
+        VALUES
+        <foreach collection="datas" item="item" open="(" close=")" separator="),(">
+            #{item.priceProposalNo},
+            #{item.provinceCode},
+            #{item.provinceName},
+            #{item.cityCode},
+            #{item.cityName},
+            #{item.clientId},
+            #{item.clientName},
+            #{item.stoCode},
+            #{item.stoName},
+            #{item.proCode},
+            #{item.proSelfCode},
+            #{item.proDesc},
+            #{item.proSpecs},
+            #{item.proFactoryName},
+            #{item.proUnit},
+            #{item.latestCostPrice},
+            #{item.originalAvgSellingPrice},
+            #{item.suggestedRetailPriceLow},
+            #{item.suggestedRetailPriceHigh},
+            #{item.newRetailPrice},
+            #{item.proposalType},
+            #{item.proClass},
+            #{item.proClassName},
+            #{item.proCompClass},
+            #{item.proCompClassName},
+            #{item.proBigClass},
+            #{item.proBigClassName},
+            #{item.createdId},
+            #{item.adjustStatus}
+        </foreach>
+    </insert>
+
+    <insert id="insertPriceProposalD" parameterType="com.gys.entity.priceProposal.entity.ProductPriceProposalD">
+        INSERT INTO GAIA_PRODUCT_PRICE_PROPOSAL_D(PRICE_PROPOSAL_NO, PROVINCE_CODE, PROVINCE_NAME, CITY_CODE, CITY_NAME,
+                                                  CLIENT_ID, CLIENT_NAME, STO_CODE, STO_NAME,
+                                                  PRO_CODE, PRO_DESC, PRO_SPECS, PRO_FACTORY_NAME, PRO_UNIT,
+                                                  LATEST_COST_PRICE, ORIGINAL_AVG_SELLING_PRICE,
+                                                  SUGGESTED_RETAIL_PRICE_LOW,
+                                                  SUGGESTED_RETAIL_PRICE_HIGH, NEW_RETAIL_PRICE, PROPOSAL_TYPE,
+                                                  PRO_CLASS, PRO_CLASS_NAME, PRO_COMP_CLASS, PRO_COMP_CLASS_NAME,
+                                                  PRO_BIG_CLASS,
+                                                  PRO_BIG_CLASS_NAME, CREATED_ID, ADJUST_STATUS)
+        VALUES (#{priceProposalNo},
+                #{provinceCode},
+                #{provinceName},
+                #{cityCode},
+                #{cityName},
+                #{clientId},
+                #{clientName},
+                #{stoCode},
+                #{stoName},
+                #{proCode},
+                #{proDesc},
+                #{proSpecs},
+                #{proFactoryName},
+                #{proUnit},
+                #{latestCostPrice},
+                #{originalAvgSellingPrice},
+                #{suggestedRetailPriceLow}, #{suggestedRetailPriceHigh}, #{newRetailPrice}, #{proposalType},
+                #{proClass}, #{proClassName}, #{proCompClass}, #{proCompClassName},
+                #{proBigClass}, #{proBigClassName}, #{createdId}, #{adjustStatus})
+    </insert>
+
+    <insert id="batchInsertPriceProposalZ" parameterType="com.gys.entity.priceProposal.entity.ProductPriceProposalZ">
+        INSERT INTO GAIA_PRODUCT_PRICE_PROPOSAL_Z(PRICE_PROPOSAL_NO, PROVINCE_CODE, PROVINCE_NAME, CITY_CODE, CITY_NAME,
+        CLIENT_ID, CLIENT_NAME, STO_CODE, STO_NAME,
+        PRO_CODE, AVG_SELLING_PRICE, BAYESIAN_PROBABILITY, PRICE_REGION_LOW,
+        PRICE_REGION_HIGH,
+        PRICE_STEP, CREATED_ID, DATA_TYPE, STO_INFO)
+        VALUES
+        <foreach collection="datas" item="item" open="(" close=")" separator="),(">
+            #{item.priceProposalNo},
+            #{item.provinceCode},
+            #{item.provinceName},
+            #{item.cityCode},
+            #{item.cityName},
+            #{item.clientId},
+            #{item.clientName},
+            #{item.stoCode},
+            #{item.stoName},
+            #{item.proCode},
+            #{item.avgSellingPrice},
+            #{item.bayesianProbability},
+            #{item.priceRegionLow},
+            #{item.priceRegionHigh},
+            #{item.priceStep},
+            #{item.createdId},
+            #{item.dataType},
+            #{item.stoInfo}
+        </foreach>
+    </insert>
+
+    <delete id="clearHData">
+        DELETE
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_H
+    </delete>
+
+    <delete id="clearDData">
+        DELETE
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_D
+    </delete>
+
+    <delete id="clearZData">
+        DELETE
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_Z
+    </delete>
+
+    <select id="selectPriceRangeByClientId" parameterType="String" resultType="Map">
+        SELECT CAST(PRICE_RANGE.RANGE_LEVEL AS CHAR)    classify,
+               CAST(PRICE_RANGE.START_PRICE AS CHAR)    `start`,
+               CAST(PRICE_RANGE.END_PRICE AS CHAR)      `end`,
+               CAST(PRICE_RANGE.PRICE_INTERVAL AS CHAR) `gap`
+        FROM GAIA_PRICE_RANGE PRICE_RANGE
+        WHERE PRICE_RANGE.CLIENT = #{clientId}
+          AND PRICE_RANGE.DELETE_FLAG = 0
+          AND PRICE_RANGE.START_PRICE is not null
+    </select>
+
+    <select id="selectAllClients" parameterType="String"
+            resultType="com.gys.entity.priceProposal.dto.PriceProposalClientDTO">
+        SELECT A.CLIENT clientId, A.FRANC_NAME clientName, A.FRANC_PROV provinceId, A.FRANC_CITY cityId, A.FRANC_TYPE1
+        type1, A.FRANC_TYPE2 type2
+        FROM GAIA_FRANCHISEE A WHERE
+        A.FRANC_STATUS = '0'
+        AND A.FRANC_PROV IS NOT NULL AND A.FRANC_CITY IS NOT NULL
+        <if test="clientId != null and clientId.length > 0">AND A.CLIENT = #{clientId}</if>
+    </select>
+
+    <select id="getProSelfCode" parameterType="String" resultType="String">
+        SELECT DISTINCT B.PRO_SELF_CODE proSelfCode
+        FROM GAIA_PRODUCT_BUSINESS B
+        WHERE B.PRO_CODE = #{proCode}
+          AND B.PRO_SITE IN (
+            SELECT A.STO_CODE
+            FROM GAIA_STORE_DATA A
+            WHERE A.CLIENT = #{clientId}
+              AND A.STO_PROVINCE = #{provinceCode}
+              AND A.STO_CITY = #{cityCode}
+        )
+          AND B.CLIENT = #{clientId}
+    </select>
+
+    <select id="selectStosByClientId" parameterType="String" resultType="Map">
+        select d.GSST_BR_ID gsstBrId, d.GSST_BR_NAME gsstBrName
+        from GAIA_SD_STORE_DATA d
+        WHERE d.CLIENT = #{clientId}
+    </select>
+
+    <select id="selectIsRunRangeList" parameterType="String"
+            resultType="com.gys.entity.priceProposal.entity.ProductPriceProposalZ">
+        SELECT z.PRICE_PROPOSAL_NO    priceProposalNo,
+               z.PROVINCE_CODE        provinceCode,
+               z.PROVINCE_NAME        provinceName,
+               z.CITY_CODE            cityCode,
+               z.CITY_NAME            cityName,
+               z.CLIENT_ID            clientId,
+               z.CLIENT_NAME          clientName,
+               z.STO_CODE             stoCode,
+               z.STO_NAME             stoName,
+               z.PRO_CODE             proCode,
+               z.PRO_SELF_CODE        proSelfCode,
+               z.AVG_SELLING_PRICE    avgSellingPrice,
+               z.BAYESIAN_PROBABILITY bayesianProbability,
+               z.PRICE_REGION_LOW     priceRegionLow,
+               z.PRICE_REGION_HIGH    priceRegionHigh,
+               z.PRICE_STEP           priceStep,
+               z.CREATED_ID           createdId,
+               z.CREATED_TIME         createdTime,
+               z.DATA_TYPE            dataType,
+               z.STO_INFO             stoInfo
+        FROM GAIA_PRODUCT_PRICE_PROPOSAL_Z z
+        WHERE z.DATA_TYPE = '4'
+          AND z.CLIENT_ID = #{clientId}
+          AND PERIOD_DIFF(date_format(now(), '%Y%m'), date_format(z.CREATED_TIME, '%Y%m')) = 0
+    </select>
+
+    <select id="checkIsAllAdjust" parameterType="String" resultType="int">
+        select count(1)
+        from GAIA_PRODUCT_PRICE_PROPOSAL_D d
+        where d.CLIENT_ID = #{clientId}
+          and d.PRICE_PROPOSAL_NO = #{priceProposalNo}
+          AND d.ADJUST_STATUS = 0
+    </select>
+
+    <select id="selectInvalidNo" parameterType="String" resultType="String">
+        select h.PRICE_PROPOSAL_NO priceProposalNo
+        from GAIA_PRODUCT_PRICE_PROPOSAL_H h
+        where h.PRICE_PROPOSAL_INVALID_TIME <![CDATA[<=]]> #{date}
+          and h.BILL_STATUS = 0
+    </select>
+
+    <update id="updatePriceProposalInvalid" parameterType="String">
+        UPDATE GAIA_PRODUCT_PRICE_PROPOSAL_H
+        SET BILL_STATUS = 2
+        WHERE PRICE_PROPOSAL_NO = #{no}
+          AND BILL_STATUS = 0
+    </update>
+
+    <update id="updateGSMInfo" parameterType="String">
+        UPDATE GAIA_SD_MESSAGE a
+        SET a.GSM_DELETE_FLAG = '1'
+        WHERE a.GSM_TYPE = 'GAIA_PP_220117'
+          AND a.GSM_WARNING_DAY = 'ProductPriceProposal'
+          AND a.GSM_VALUE = #{invalidDate}
+    </update>
+
+    <update id="updateAllGSMInfo">
+        UPDATE GAIA_SD_MESSAGE a
+        SET a.GSM_DELETE_FLAG = '1'
+        WHERE a.GSM_TYPE = 'GAIA_MM_010313'
+          AND a.GSM_WARNING_DAY = 'ProductPriceProposal'
+    </update>
+
+    <select id="selectProPosition" parameterType="String" resultType="String">
+        SELECT B.PRO_POSITION
+        FROM GAIA_PRODUCT_BUSINESS B
+        WHERE B.PRO_CODE = #{proCode}
+          AND B.CLIENT = #{clientId}
+    </select>
+
+
+</mapper>

@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaEmployeeEducationalRecordMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.wk.entity.GaiaEmployeeEducationalRecord">
+    <id column="ID" jdbcType="INTEGER" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="VOUCHER_ID" jdbcType="VARCHAR" property="voucherId" />
+    <result column="STORE_ID" jdbcType="VARCHAR" property="storeId" />
+    <result column="STORE_NAME" jdbcType="VARCHAR" property="storeName" />
+    <result column="EMP_ID" jdbcType="VARCHAR" property="empId" />
+    <result column="EMP_NAME" jdbcType="VARCHAR" property="empName" />
+    <result column="START_DATE" jdbcType="TIMESTAMP" property="startDate" />
+    <result column="END_DATE" jdbcType="TIMESTAMP" property="endDate" />
+    <result column="TRAIN_CATEGORY" jdbcType="VARCHAR" property="trainCategory" />
+    <result column="TRAIN_TYPE" jdbcType="VARCHAR" property="trainType" />
+    <result column="TRAIN_CONTENT" jdbcType="VARCHAR" property="trainContent" />
+    <result column="HOST_ORG" jdbcType="VARCHAR" property="hostOrg" />
+    <result column="TRAIN_TEACHER" jdbcType="VARCHAR" property="trainTeacher" />
+    <result column="TRAIN_LOCATION" jdbcType="VARCHAR" property="trainLocation" />
+    <result column="CLASS_HOUR" jdbcType="VARCHAR" property="classHour" />
+    <result column="SCORE" jdbcType="DECIMAL" property="score" />
+    <result column="EMP_POST" jdbcType="VARCHAR" property="empPost" />
+    <result column="EMP_JOB" jdbcType="VARCHAR" property="empJob" />
+    <result column="EDUCATIONAL" jdbcType="VARCHAR" property="educational" />
+    <result column="IS_DELETE" jdbcType="INTEGER" property="isDelete" />
+    <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="CREATE_USER" jdbcType="VARCHAR" property="createUser" />
+    <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+    <result column="UPDATE_USER" jdbcType="VARCHAR" property="updateUser" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    ID, CLIENT, VOUCHER_ID, STORE_ID, STORE_NAME, EMP_ID, EMP_NAME, START_DATE, END_DATE, 
+    TRAIN_CATEGORY, TRAIN_TYPE, TRAIN_CONTENT, HOST_ORG, TRAIN_TEACHER, TRAIN_LOCATION, 
+    CLASS_HOUR, SCORE, EMP_POST, EMP_JOB, EDUCATIONAL, IS_DELETE, CREATE_TIME, CREATE_USER, 
+    UPDATE_TIME, UPDATE_USER
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    where ID = #{id,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    where ID = #{id,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.wk.entity.GaiaEmployeeEducationalRecord" useGeneratedKeys="true">
+    insert into GAIA_EMPLOYEE_EDUCATIONAL_RECORD (CLIENT, VOUCHER_ID, STORE_ID, 
+      STORE_NAME, EMP_ID, EMP_NAME, 
+      START_DATE, END_DATE, TRAIN_CATEGORY, 
+      TRAIN_TYPE, TRAIN_CONTENT, HOST_ORG, 
+      TRAIN_TEACHER, TRAIN_LOCATION, CLASS_HOUR, 
+      SCORE, EMP_POST, EMP_JOB, 
+      EDUCATIONAL, IS_DELETE, CREATE_TIME, 
+      CREATE_USER, UPDATE_TIME, UPDATE_USER
+      )
+    values (#{client,jdbcType=VARCHAR}, #{voucherId,jdbcType=VARCHAR}, #{storeId,jdbcType=VARCHAR}, 
+      #{storeName,jdbcType=VARCHAR}, #{empId,jdbcType=VARCHAR}, #{empName,jdbcType=VARCHAR}, 
+      #{startDate,jdbcType=TIMESTAMP}, #{endDate,jdbcType=TIMESTAMP}, #{trainCategory,jdbcType=VARCHAR}, 
+      #{trainType,jdbcType=VARCHAR}, #{trainContent,jdbcType=VARCHAR}, #{hostOrg,jdbcType=VARCHAR}, 
+      #{trainTeacher,jdbcType=VARCHAR}, #{trainLocation,jdbcType=VARCHAR}, #{classHour,jdbcType=VARCHAR}, 
+      #{score,jdbcType=DECIMAL}, #{empPost,jdbcType=VARCHAR}, #{empJob,jdbcType=VARCHAR}, 
+      #{educational,jdbcType=VARCHAR}, #{isDelete,jdbcType=INTEGER}, #{createTime,jdbcType=TIMESTAMP}, 
+      #{createUser,jdbcType=VARCHAR}, #{updateTime,jdbcType=TIMESTAMP}, #{updateUser,jdbcType=VARCHAR}
+      )
+  </insert>
+  <insert id="insertSelective" keyColumn="ID" keyProperty="id" parameterType="com.gys.entity.wk.entity.GaiaEmployeeEducationalRecord" useGeneratedKeys="true">
+    insert into GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        CLIENT,
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID,
+      </if>
+      <if test="storeId != null">
+        STORE_ID,
+      </if>
+      <if test="storeName != null">
+        STORE_NAME,
+      </if>
+      <if test="empId != null">
+        EMP_ID,
+      </if>
+      <if test="empName != null">
+        EMP_NAME,
+      </if>
+      <if test="startDate != null">
+        START_DATE,
+      </if>
+      <if test="endDate != null">
+        END_DATE,
+      </if>
+      <if test="trainCategory != null">
+        TRAIN_CATEGORY,
+      </if>
+      <if test="trainType != null">
+        TRAIN_TYPE,
+      </if>
+      <if test="trainContent != null">
+        TRAIN_CONTENT,
+      </if>
+      <if test="hostOrg != null">
+        HOST_ORG,
+      </if>
+      <if test="trainTeacher != null">
+        TRAIN_TEACHER,
+      </if>
+      <if test="trainLocation != null">
+        TRAIN_LOCATION,
+      </if>
+      <if test="classHour != null">
+        CLASS_HOUR,
+      </if>
+      <if test="score != null">
+        SCORE,
+      </if>
+      <if test="empPost != null">
+        EMP_POST,
+      </if>
+      <if test="empJob != null">
+        EMP_JOB,
+      </if>
+      <if test="educational != null">
+        EDUCATIONAL,
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE,
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME,
+      </if>
+      <if test="createUser != null">
+        CREATE_USER,
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME,
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="client != null">
+        #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null">
+        #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="storeId != null">
+        #{storeId,jdbcType=VARCHAR},
+      </if>
+      <if test="storeName != null">
+        #{storeName,jdbcType=VARCHAR},
+      </if>
+      <if test="empId != null">
+        #{empId,jdbcType=VARCHAR},
+      </if>
+      <if test="empName != null">
+        #{empName,jdbcType=VARCHAR},
+      </if>
+      <if test="startDate != null">
+        #{startDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="endDate != null">
+        #{endDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="trainCategory != null">
+        #{trainCategory,jdbcType=VARCHAR},
+      </if>
+      <if test="trainType != null">
+        #{trainType,jdbcType=VARCHAR},
+      </if>
+      <if test="trainContent != null">
+        #{trainContent,jdbcType=VARCHAR},
+      </if>
+      <if test="hostOrg != null">
+        #{hostOrg,jdbcType=VARCHAR},
+      </if>
+      <if test="trainTeacher != null">
+        #{trainTeacher,jdbcType=VARCHAR},
+      </if>
+      <if test="trainLocation != null">
+        #{trainLocation,jdbcType=VARCHAR},
+      </if>
+      <if test="classHour != null">
+        #{classHour,jdbcType=VARCHAR},
+      </if>
+      <if test="score != null">
+        #{score,jdbcType=DECIMAL},
+      </if>
+      <if test="empPost != null">
+        #{empPost,jdbcType=VARCHAR},
+      </if>
+      <if test="empJob != null">
+        #{empJob,jdbcType=VARCHAR},
+      </if>
+      <if test="educational != null">
+        #{educational,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null">
+        #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.wk.entity.GaiaEmployeeEducationalRecord">
+    update GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    <set>
+      <if test="client != null">
+        CLIENT = #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null">
+        VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="storeId != null">
+        STORE_ID = #{storeId,jdbcType=VARCHAR},
+      </if>
+      <if test="storeName != null">
+        STORE_NAME = #{storeName,jdbcType=VARCHAR},
+      </if>
+      <if test="empId != null">
+        EMP_ID = #{empId,jdbcType=VARCHAR},
+      </if>
+      <if test="empName != null">
+        EMP_NAME = #{empName,jdbcType=VARCHAR},
+      </if>
+      <if test="startDate != null">
+        START_DATE = #{startDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="endDate != null">
+        END_DATE = #{endDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="trainCategory != null">
+        TRAIN_CATEGORY = #{trainCategory,jdbcType=VARCHAR},
+      </if>
+      <if test="trainType != null">
+        TRAIN_TYPE = #{trainType,jdbcType=VARCHAR},
+      </if>
+      <if test="trainContent != null">
+        TRAIN_CONTENT = #{trainContent,jdbcType=VARCHAR},
+      </if>
+      <if test="hostOrg != null">
+        HOST_ORG = #{hostOrg,jdbcType=VARCHAR},
+      </if>
+      <if test="trainTeacher != null">
+        TRAIN_TEACHER = #{trainTeacher,jdbcType=VARCHAR},
+      </if>
+      <if test="trainLocation != null">
+        TRAIN_LOCATION = #{trainLocation,jdbcType=VARCHAR},
+      </if>
+      <if test="classHour != null">
+        CLASS_HOUR = #{classHour,jdbcType=VARCHAR},
+      </if>
+      <if test="score != null">
+        SCORE = #{score,jdbcType=DECIMAL},
+      </if>
+      <if test="empPost != null">
+        EMP_POST = #{empPost,jdbcType=VARCHAR},
+      </if>
+      <if test="empJob != null">
+        EMP_JOB = #{empJob,jdbcType=VARCHAR},
+      </if>
+      <if test="educational != null">
+        EDUCATIONAL = #{educational,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null">
+        IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where ID = #{id,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.gys.entity.wk.entity.GaiaEmployeeEducationalRecord">
+    update GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    set CLIENT = #{client,jdbcType=VARCHAR},
+      VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      STORE_ID = #{storeId,jdbcType=VARCHAR},
+      STORE_NAME = #{storeName,jdbcType=VARCHAR},
+      EMP_ID = #{empId,jdbcType=VARCHAR},
+      EMP_NAME = #{empName,jdbcType=VARCHAR},
+      START_DATE = #{startDate,jdbcType=TIMESTAMP},
+      END_DATE = #{endDate,jdbcType=TIMESTAMP},
+      TRAIN_CATEGORY = #{trainCategory,jdbcType=VARCHAR},
+      TRAIN_TYPE = #{trainType,jdbcType=VARCHAR},
+      TRAIN_CONTENT = #{trainContent,jdbcType=VARCHAR},
+      HOST_ORG = #{hostOrg,jdbcType=VARCHAR},
+      TRAIN_TEACHER = #{trainTeacher,jdbcType=VARCHAR},
+      TRAIN_LOCATION = #{trainLocation,jdbcType=VARCHAR},
+      CLASS_HOUR = #{classHour,jdbcType=VARCHAR},
+      SCORE = #{score,jdbcType=DECIMAL},
+      EMP_POST = #{empPost,jdbcType=VARCHAR},
+      EMP_JOB = #{empJob,jdbcType=VARCHAR},
+      EDUCATIONAL = #{educational,jdbcType=VARCHAR},
+      IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      UPDATE_USER = #{updateUser,jdbcType=VARCHAR}
+    where ID = #{id,jdbcType=INTEGER}
+  </update>
+
+  <insert id="addList" parameterType="com.gys.entity.wk.dto.EmployeeEducationalRecordDto" useGeneratedKeys="false">
+    insert into GAIA_EMPLOYEE_EDUCATIONAL_RECORD (CLIENT, VOUCHER_ID, STORE_ID,
+                                                  STORE_NAME, EMP_ID, EMP_NAME,
+                                                  START_DATE, END_DATE, TRAIN_CATEGORY,
+                                                  TRAIN_TYPE, TRAIN_CONTENT, HOST_ORG,
+                                                  TRAIN_TEACHER, TRAIN_LOCATION, CLASS_HOUR,
+                                                  SCORE, EMP_POST, EMP_JOB,
+                                                  EDUCATIONAL, IS_DELETE, CREATE_TIME,
+                                                  CREATE_USER, UPDATE_TIME, UPDATE_USER
+    )
+    values
+    <foreach collection="dtos" item="item" separator=",">
+           (#{item.client,jdbcType=VARCHAR}, #{item.voucherId,jdbcType=VARCHAR}, #{item.storeId,jdbcType=VARCHAR},
+            #{item.storeName,jdbcType=VARCHAR}, #{item.empId,jdbcType=VARCHAR}, #{item.empName,jdbcType=VARCHAR},
+            #{item.startDate,jdbcType=TIMESTAMP}, #{item.endDate,jdbcType=TIMESTAMP}, #{item.trainCategory,jdbcType=VARCHAR},
+            #{item.trainType,jdbcType=VARCHAR}, #{item.trainContent,jdbcType=VARCHAR}, #{item.hostOrg,jdbcType=VARCHAR},
+            #{item.trainTeacher,jdbcType=VARCHAR}, #{item.trainLocation,jdbcType=VARCHAR}, #{item.classHour,jdbcType=VARCHAR},
+            #{item.score,jdbcType=DECIMAL}, #{item.empPost,jdbcType=VARCHAR}, #{item.empJob,jdbcType=VARCHAR},
+            #{item.educational,jdbcType=VARCHAR}, #{item.isDelete,jdbcType=INTEGER}, #{item.createTime,jdbcType=TIMESTAMP},
+            #{item.createUser,jdbcType=VARCHAR}, #{item.updateTime,jdbcType=TIMESTAMP}, #{item.updateUser,jdbcType=VARCHAR}
+           )
+           </foreach>
+  </insert>
+
+  <select id="searchList" parameterType="com.gys.entity.wk.dto.EmployeeEducationalRecordQueryDto" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    <where>
+      <if test="client != null">
+        and CLIENT = #{client}
+      </if>
+      <if test="storeIds != null and storeIds.size>0 ">
+       and  STORE_ID in
+        <foreach collection="storeIds" open="(" item="item"  separator="," close=")">
+           #{item}
+        </foreach>
+      </if>
+      <if test="empName != null and empName !='' ">
+       and   EMP_NAME like concat('%',#{empName},'%')
+      </if>
+      <if test="hostOrg != null and hostOrg !='' ">
+        and  HOST_ORG  like concat('%',#{hostOrg},'%')
+      </if>
+      <if test="trainCategory != null and trainCategory !='' ">
+       and  TRAIN_CATEGORY  like concat('%',#{trainCategory},'%')
+      </if>
+      <if test="trainContent != null and trainContent !='' ">
+       and  TRAIN_CONTENT  like concat('%',#{trainContent},'%')
+      </if>
+      <if test="trainTeacher != null and trainTeacher !='' ">
+       and  TRAIN_TEACHER  like concat('%',#{trainTeacher},'%')
+      </if>
+      <if test="beginStartDate != null and  endStartDate!=null ">
+       and START_DATE &gt;=#{beginStartDate} and START_DATE &lt;=#{endStartDate}
+      </if>
+      <if test="beginEndDate != null and endEndDate!=null">
+       and END_DATE &lt;=#{endEndDate} and END_DATE&gt;=#{beginEndDate}
+      </if>
+      and IS_DELETE='0'
+    </where>
+  </select>
+
+  <update id="del" parameterType="com.gys.entity.wk.dto.EmployeeEducationalRecordDelDto">
+    update GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    set IS_DELETE='1',UPDATE_USER=#{updateUser},UPDATE_TIME= now()
+    <where>
+      ID in <foreach collection="ids" open="(" index="index" separator="," close=")" item="item">
+      #{item}
+    </foreach>
+    </where>
+  </update>
+
+  <select id="getList" parameterType="list" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    <where>
+      ID in <foreach collection="dto" open="(" separator="," item="item" close=")" >
+        #{item}
+    </foreach>
+    </where>
+  </select>
+
+  <update id="updateList" parameterType="com.gys.entity.wk.dto.EmployeeEducationalRecordUpdateDto" >
+      update GAIA_EMPLOYEE_EDUCATIONAL_RECORD
+    <set>
+      <if test="client != null and client !='' ">
+        CLIENT = #{client,jdbcType=VARCHAR},
+      </if>
+      <if test="voucherId != null and voucherId !=''">
+        VOUCHER_ID = #{voucherId,jdbcType=VARCHAR},
+      </if>
+      <if test="storeId != null and storeId !='' ">
+        STORE_ID = #{storeId,jdbcType=VARCHAR},
+      </if>
+      <if test="storeName != null and storeName !='' ">
+        STORE_NAME = #{storeName,jdbcType=VARCHAR},
+      </if>
+      <if test="empId != null and empId !='' ">
+        EMP_ID = #{empId,jdbcType=VARCHAR},
+      </if>
+      <if test="empName != null and empName !='' ">
+        EMP_NAME = #{empName,jdbcType=VARCHAR},
+      </if>
+      <if test="startDate != null  ">
+        START_DATE = #{startDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="endDate != null ">
+        END_DATE = #{endDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="trainCategory != null and trainCategory !='' ">
+        TRAIN_CATEGORY = #{trainCategory,jdbcType=VARCHAR},
+      </if>
+      <if test="trainType != null and trainType !='' ">
+        TRAIN_TYPE = #{trainType,jdbcType=VARCHAR},
+      </if>
+      <if test="trainContent != null and trainContent !='' ">
+        TRAIN_CONTENT = #{trainContent,jdbcType=VARCHAR},
+      </if>
+      <if test="hostOrg != null and hostOrg !='' ">
+        HOST_ORG = #{hostOrg,jdbcType=VARCHAR},
+      </if>
+      <if test="trainTeacher != null and trainTeacher !=''">
+        TRAIN_TEACHER = #{trainTeacher,jdbcType=VARCHAR},
+      </if>
+      <if test="trainLocation != null and trainLocation !='' ">
+        TRAIN_LOCATION = #{trainLocation,jdbcType=VARCHAR},
+      </if>
+      <if test="classHour != null and classHour !='' ">
+        CLASS_HOUR = #{classHour,jdbcType=VARCHAR},
+      </if>
+      <if test="score!= null">
+        SCORE = #{score,jdbcType=DECIMAL},
+      </if>
+      <if test="empPost != null  and empPost !='' ">
+        EMP_POST = #{empPost,jdbcType=VARCHAR},
+      </if>
+      <if test="empJob != null  ">
+        EMP_JOB = #{empJob,jdbcType=VARCHAR},
+      </if>
+      <if test="educational != null and educational !='' ">
+        EDUCATIONAL = #{educational,jdbcType=VARCHAR},
+      </if>
+      <if test="isDelete != null and isDelete !='' ">
+        IS_DELETE = #{isDelete,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null  ">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null and createUser !='' ">
+        CREATE_USER = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null   ">
+        UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null and updateUser !=''">
+        UPDATE_USER = #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where ID  in
+      <foreach collection="ids" open="(" separator="," item="item" close=")">
+           #{item}
+      </foreach>
+
+  </update>
+
+  <select id="searchEducationals" resultType="com.gys.entity.wk.vo.EducationalVo">
+    select
+      `TYPE`,
+      CODE,
+      NAME,
+      SORT
+     from  GAIA_DICTIONARY
+     where TYPE='Educational' and STATUS='1'
+  </select>
+</mapper>

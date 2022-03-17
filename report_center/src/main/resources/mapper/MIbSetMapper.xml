@@ -1,0 +1,235 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE mapper PUBLIC '-//mybatis.org//DTD Mapper 3.0//EN' 'http://mybatis.org/dtd/mybatis-3-mapper.dtd'>
+<mapper namespace='com.gys.mapper.MedicalSetMapper'>
+
+    <select id='selectMedicalSetList' parameterType='com.gys.report.entity.MedicalSetInData' resultType='com.gys.report.entity.MedicalSetOutData'>
+      SELECT
+        msi.BR_ID as stoCode,
+        IFNULL(gtd.STO_SHORT_NAME,gtd.STO_NAME) as stoName,
+        msi.BILL_NO as billNo,
+        msi.MDTRTAREA_ADMVS  as mdtrtareaAdmvs,
+        msi.INSUPLC_ADMDVS as insuplcAdmvs,
+        msi.SETL_ID as setlId,
+        msi.MDTRT_ID as mdtrtId,
+        msi.PSN_NO as psnNo,
+        msi.PSN_NAME as psnName,
+        case msi.PSN_CERT_TYPE
+        when '01' then '居民身份证（户口簿）' when '02' then '中国人民解放军军官证' when '03' then '中国人民武装警察警官证' when '04' then '香港特区护照/港澳居民来往内地通行证'
+        when '05' then '澳门特区护照/港澳居民来往内地通行证' when '06' then '台湾居民来往大陆通行证' when '07' then '外国人永久居留证' when '08' then '外国人护照'
+        when '09' then '残疾人证' when '10' then '军烈属证明' when '11' then '外国人就业证' when '12' then '外国专家证' when '13' then '外国人常驻记者证' when '14' then '台港澳人员就业证'
+        when '15' then '回国（来华）定居专家证' when '90' then '社会保障卡' when '99' then '其他身份证件' else msi.PSN_CERT_TYPE end  as psnCertType,
+        msi.CERTNO as certno,
+        case msi.GEND
+        when '0' then '未知的性别'
+        when '1' then '男'
+        when '2' then '女'
+        when '9' then '未说明性别'
+        ELSE msi.GEND END as gend,
+        case msi.NATY
+        when '01' then '汉族' when '02' then '蒙古族' when '03' then '回族' when '04' then '藏族' when '05' then '维吾尔族' when '06' then '苗族' when '07' then '彝族' when '08' then '壮族'
+        when '09' then '布依族' when '10' then '朝鲜族' when '11' then '满族' when '12' then '侗族' when '13' then '瑶族' when '14' then '白族' when '15' then '土家族' when '16' then '哈尼族'
+        when '17' then '哈萨克族' when '18' then '傣族' when '19' then '黎族' when '20' then '傈僳族' when '21' then '佤族' when '22' then '畲族' when '23' then '高山族' when '24' then '拉祜族'
+        when '25' then '水族' when '26' then '东乡族' when '27' then '纳西族' when '28' then '景颇族' when '29' then '柯尔克孜族' when '30' then '土族' when '31' then '达斡尔族' when '32' then '仫佬族'
+        when '33' then '羌族'  when '34' then '布朗族'  when '35' then '撒拉族'  when '36' then '毛南族'  when '37' then '仡佬族'  when '38' then '锡伯族'  when '39' then '阿昌族'  when '40' then '普米族'
+        when '41' then '塔吉克族' when '42' then '怒族' when '43' then '乌孜别克族' when '44' then '俄罗斯族' when '45' then '鄂温克族' when '46' then '德昂族' when '47' then '保安族' when '48' then '裕固族'
+        when '49' then '京族'  when '50' then '塔塔尔族'  when '51' then '独龙族'  when '52' then '鄂伦春族'  when '53' then '赫哲族'  when '54' then '门巴族'  when '55' then '珞巴族'  when '56' then '基诺族'
+        else msi.NATY END as naty,
+        msi.BRDY as brdy,
+        round(msi.AGE,2) as age,
+        case msi.INSUTYPE
+        when '310' then '职工基本医疗保险' when '320' then '公务员医疗补助' when '330' then '大额医疗费用补助' when '340' then '离休人员医疗保障'
+        when '390' then '城乡居民基本医疗保险' when '392' then '城乡居民大病医疗保险' when '510' then '生育保险'
+        else msi.INSUTYPE END  as insutype,
+        case msi.PSN_TYPE
+        when '11' then '在职' when '21' then '退休' when '31' then '离休' when '32' then '老红军' when '33' then '一至六级残废军人' when '34' then '医疗照顾人员'
+        when '41' then '学龄前儿童' when '42' then '中小学生' when '43' then '大学生' when '50' then '成年居民（非从业）' when '60' then '老年居民' when '91' then '其他人员'
+        else msi.PSN_TYPE END as psnType,
+        case msi.CVLSERV_FLAG when '0' then '否' when '1' then '是' else msi.CVLSERV_FLAG END as cvlservFlag,
+        from_unixtime(left(msi.SETL_TIME,  LENGTH(msi.SETL_TIME) -3),'%Y-%m-%d %H:%I:%S')   as setlTime,
+        case  msi.MDTRT_CERT_TYPE when '01' then '医保电子凭证' when '02' then '居民身份证' when '03' then '社会保障卡' ELSE msi.MDTRT_CERT_TYPE END as mdtrtCertType,
+        case msi.MED_TYPE WHEN '11' THEN '普通门诊' when '12' then '门诊挂号' when '13' then '急诊' when '14' then '门诊慢特病'
+        WHEN '21' THEN '普通住院' when '22' then '外伤住院' when '23' then '转外诊治住院' when '24' then '急诊转住院'
+        WHEN '41' THEN '定点药店购药' when '51' then '生育门诊' when '52' then '生育住院' when '53' then '计划生育手术费'
+        WHEN '91' THEN '其他门诊' when '92' then '其他住院' when '93' then '其他购药' when '99' then '地方扩展医疗类别'
+        ELSE msi.MED_TYPE end as medType,
+        msi.MEDFEE_SUMAMT as medfeeSumant,
+        msi.FULAMT_OWNPAY_AMT as fulamtOwnpayAmt,
+        msi.OVERLMT_SELFPAY as overlmtSelfpay,
+        msi.PRESELFPAY_AMT as preselfpayAmt,
+        msi.INSCP_SCP_AMT as inscpScpAmt,
+        msi.ACT_PAY_DEDC as actPayDedc,
+        msi.HIFP_PAY as hifpPay,
+        msi.POOL_PROP_SELFPAY as poolPropSelfpay,
+        msi.CVLSERV_PAY as cvlservPay,
+        msi.HIFES_PAY as hifesPay,
+        msi.HIFMI_PAY as hifmiPay,
+        msi.HIFOB_PAY as hifobPay,
+        msi.MAF_PAY as mafPay,
+        msi.OTH_PAY as othPay,
+        msi.FUND_PAY_SUMAMT as fundPaySumamt,
+        msi.PSN_PART_AMT as psnPartAmt,
+        msi.ACCT_PAY as acctPay,
+        msi.PSN_CASH_PAY as psnCashPayamt,
+        msi.BALC as balc,
+        msi.ACCT_MULAID_PAY as acctMulaidPay,
+        msi.MEDINS_SETL_ID as medinsSetlId,
+        msi.CLR_OPTINS  as clrOptins,
+        md.ADMVS_NAME as clrOptinsName,
+        msi.CLR_WAY as clrWay,
+        case msi.CLR_TYPE when '11' then '门诊' when '21' then '住院' when '41' then '药店购药' when '99' then '其他'
+          else msi.CLR_TYPE end as clrType
+       FROM MIB_SETL_INFO as msi
+       left join MIB_ADMVS as md on msi.CLR_OPTINS = md.ADMVS_CODE
+       left join GAIA_STORE_DATA AS gtd on msi.CLIENT = gtd.CLIENT AND msi.BR_ID = gtd.STO_CODE
+       left join MIB_DRUG_DETAIL as mdd on msi.CLIENT = gtd.CLIENT AND msi.BR_ID = mdd.BR_ID
+       AND msi.BILL_NO = mdd.BILL_NO
+       WHERE msi.CLIENT = #{clientId}
+        AND msi.SETL_TIME &gt;= #{startDate} AND  msi.SETL_TIME &lt; #{endDate}
+        <if test='stoCode != null and stoCode.size > 0 '>
+            AND  msi.BR_ID in
+            <foreach collection='stoCode' index='index' item='item' open='('  separator=',' close=')'>
+                #{item}
+            </foreach>
+        </if>
+        <if test="billNo != null and billNo !=''">
+           and msi.BILL_NO = #{billNo}
+        </if>
+        <if test="setlId != null and setlId !=''">
+            and msi.SETL_ID = #{setlId}
+        </if>
+        <if test="mdtrtId != null and mdtrtId !=''">
+            and msi.MDTRT_ID = #{mdtrtId}
+        </if>
+        <if test="psnName != null and psnName !=''">
+            AND  msi.PSN_NAME = #{psnName}
+        </if>
+        <if test="psnCertType != null and psnCertType !=''">
+            AND  msi.PSN_CERT_TYPE = #{psnCertType}
+        </if>
+        <if test="certno != null and certno !=''">
+            AND  msi.CERTNO = #{certno}
+        </if>
+        <if test="proId != null and proId.size > 0 ">
+            AND  mdd.MEDINS_LIST_CODG in
+            <foreach collection="proId" index="index" item="item" open="("  separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        GROUP BY msi.CLIENT,msi.BR_ID,msi.BILL_NO
+    </select>
+
+    <select id='selectMedicalSalesList' parameterType='com.gys.report.entity.MedicalSalesInData' resultType='com.gys.report.entity.MedicalSalesOutData'>
+       SELECT
+          mdi.BR_ID as stoCode,
+          IFNULL(gtd.STO_SHORT_NAME,gtd.STO_NAME) as stoName,
+          mdi.BILL_NO as  billNo,
+          mdi.FEEDETL_SN as feedetlSn ,
+          mde.RXNO as rxno,
+          case mde.RX_CIRC_FLAG  when '0' then '否' when '1' then '是'  else mde.RX_CIRC_FLAG end as rxCircFlag,
+          from_unixtime(left(mde.FEE_OCUR_TIME,  LENGTH(mde.FEE_OCUR_TIME) -3),'%Y-%m-%d %H:%I:%S')  as feeOcurTime,
+          mde.MED_LIST_CODG as medListCodg,
+          mde.MEDINS_LIST_CODG as medinsListCodg,
+          mdi.DET_ITEM_FEE_SUMAMT as detItemFeeSumamt,
+          mde.SIN_DOS_DSCR as sinDosDscr,
+          mde.USED_FRQU_DSCR as usedFrquDscr,
+          mde.PRD_DAYS as prdDays,
+          mde.MEDC_WAY_DSCR as medcWayDscr,
+          mde.BILG_DR_CODG as bilgDrCodg,
+          mde.BILG_DR_NAME as bilgDrName,
+          case mde.TCMDRUG_USED_WAY when '1' then '复方'  when '2' then '单方' else mde.TCMDRUG_USED_WAY END as  tcmdrugUsedWay,
+          mdi.CNT as  cnt,
+          mdi.PRIC as  pric,
+          mdi.PRIC_UPLMT_AMT as  pricUplmtAmt,
+          mdi.SELFPAY_PROP as  selfpayProp,
+          mdi.FULAMT_OWNPAY_AMT as  fulamtOwnpayAmt,
+          mdi.OVERLMT_AMT as  overLmtAmt,
+          mdi.PRESELFPAY_AMT as  preselfpayAmt,
+          mdi.INSCP_SCP_AMT as  inscpScpAmt,
+          case mdi.CHRGITM_LV  when '01' then '甲类' when '02' then '乙类' when '03' then '自费' else mdi.CHRGITM_LV end as  chrgimtLv,
+          case mdi.MED_CHRGITM_TYPE when '01' then '床位费' when '02' then '诊察费' when '03' then '检查费' when '04' then '化验费'
+          when '05' then '治疗费' when '06' then '手术费' when '07' then '护理费' when '08' then '卫生材料费' when '09' then '西药费' when '10' then '中药饮片费'
+          when '11' then '中成药费' when '12' then '一般诊疗费' when '13' then '挂号费' when '14' then '其他费' else mdi.MED_CHRGITM_TYPE end as  medChrgitmType,
+          case mdi.BAS_MEDN_FLAG  when '1' then '是'  when '0' then '否' else mdi.BAS_MEDN_FLAG end as  basMednFlag,
+          case mdi.HI_NEGO_DRUG_FLAG  when '1' then '是'  when '0' then '否' else mdi.HI_NEGO_DRUG_FLAG end as  hiNegoDrugFlag,
+          case mdi.CHLD_MEDC_FLAG  when '1' then '是'  when '0' then '否' else mdi.CHLD_MEDC_FLAG end as  chldMedcFlag,
+          case mdi.LIST_SP_ITEM_FLAG  when '1' then '是'  when '0' then '否' else mdi.LIST_SP_ITEM_FLAG end as  listSpItemFlag,
+          case mdi.DRT_REIM_FLAG  when '1' then '是'  when '0' then '否' else mdi.DRT_REIM_FLAG end as  drtReimFalg,
+          mdi.MEMO as  memo
+       FROM
+         MIB_DETLCUT_INFO as mdi
+	     inner join MIB_DRUG_DETAIL mde on mdi.CLIENT = mde.CLIENT   and mdi.BILL_NO = mde.BILL_NO  and mde.BR_ID = mdi.BR_ID and mdi.FEEDETL_SN = mde.FEEDETL_SN
+	     inner join MIB_SETL_INFO as msi on mdi.CLIENT = msi.CLIENT  and mdi.BILL_NO = msi.BILL_NO  and mdi.BR_ID = msi.BR_ID
+	     left join GAIA_STORE_DATA AS gtd on mdi.CLIENT = gtd.CLIENT AND mdi.BR_ID = gtd.STO_CODE
+       WHERE
+	     mdi.CLIENT = #{clientId}
+	     AND mdi.BR_ID = #{stoCode}
+	     AND mdi.BILL_NO = #{billNo}
+    </select>
+    <sql id="MEDICAL_SUMMARY">
+        msi.INSUTYPE insutype, <!-- 险种 -->
+        msi.BR_ID storeCode,
+        case msi.INSUTYPE
+        when '310' then '职工基本医疗保险' when '320' then '公务员医疗补助' when '330' then '大额医疗费用补助' when '340' then '离休人员医疗保障'
+        when '390' then '城乡居民基本医疗保险' when '392' then '城乡居民大病医疗保险' when '510' then '生育保险'
+        else msi.INSUTYPE END as inSuTypeName, <!-- 险种名称 -->
+        msi.CLR_TYPE clrType,<!-- 清算类别 -->
+        case msi.CLR_TYPE when '11' then '门诊' when '21' then '住院' when '41' then '药店购药' when '99' then '其他'
+        else msi.CLR_TYPE end as clrTypeName,  <!-- 清算名称 -->
+        round(sum(ifnull(msi.MEDFEE_SUMAMT,0)),2) as medfeeSumant, <!-- 医疗费用总金额 -->
+        round(sum(ifnull(msi.FUND_PAY_SUMAMT,0)),2) as fundPaySumamt,    <!-- 基金支付总额 -->
+        round(sum(ifnull(msi.ACCT_PAY,0)),2) as acctPay,    <!-- 个人账户支付总额 -->
+        count(msi.SETL_ID) as medicalSettlementCount,<!-- 个人结算笔数 -->
+        round(sum(ifnull(msi.PSN_CASH_PAY,0)),2) as psnCashPayamt,    <!-- 个人现金支付总额 -->
+        count(msi.PSN_NO) as personTime   <!-- 人次 -->
+    </sql>
+    <select id="selectMedicalSummaryList" resultType="com.gys.report.entity.SelectMedicalSummaryDTO">
+        select
+            <include refid="MEDICAL_SUMMARY"/>
+        from MIB_SETL_INFO msi
+        <where>
+            msi.CLIENT = #{inData.client}
+            <if test="inData.startDate!=null and inData.startDate!=''">
+                and msi.SETL_TIME &gt;= #{inData.startDate}
+            </if>
+            <if test="inData.endDate!=null and inData.endDate!=''">
+                and msi.SETL_TIME &lt;= #{inData.endDate}
+            </if>
+            <if test="inData.inSuTypes!=null and inData.inSuTypes.size()>0">
+                and msi.INSUTYPE in
+                <foreach collection="inData.inSuTypes" index="index" item="inSuType" open="(" separator="," close=")">
+                    #{inSuType}
+                </foreach>
+            </if>
+        </where>
+        group by msi.INSUTYPE,msi.CLR_TYPE
+    </select>
+    <select id="selectMedicalStoreSummaryList" resultType="com.gys.report.entity.SelectMedicalSummaryDTO">
+        select
+        ifnull(gsd.STO_SHORT_NAME,gsd.STO_NAME)  storeName,
+        <include refid="MEDICAL_SUMMARY"/>
+        from MIB_SETL_INFO msi left join GAIA_STORE_DATA gsd on msi.CLIENT = gsd.CLIENT and msi.BR_ID = gsd.STO_CODE
+        <where>
+            msi.CLIENT = #{inData.client}
+            <if test="inData.startDate!=null and inData.startDate!=''">
+                and msi.SETL_TIME &gt;= #{inData.startDate}
+            </if>
+            <if test="inData.endDate!=null and inData.endDate!=''">
+                and msi.SETL_TIME &lt;= #{inData.endDate}
+            </if>
+            <if test="inData.inSuTypes!=null and inData.inSuTypes.size()>0">
+                and msi.INSUTYPE in
+                <foreach collection="inData.inSuTypes" index="index" item="inSuType" open="(" separator="," close=")">
+                    #{inSuType}
+                </foreach>
+            </if>
+            <if test="inData.stores!=null and inData.stores.size()>0">
+                and msi.BR_ID in
+                <foreach collection="inData.stores" index="index" item="store" open="(" separator="," close=")">
+                    #{store}
+                </foreach>
+            </if>
+        </where>
+        group by BR_ID,msi.INSUTYPE,msi.CLR_TYPE
+    </select>
+
+</mapper>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdPayDayreportDMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdPayDayreportD">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSPDD_VOUCHER_ID" jdbcType="VARCHAR" property="gspddVoucherId" />
+    <id column="GSPDD_BR_ID" jdbcType="VARCHAR" property="gspddBrId" />
+    <id column="GSPDD_SERIAL" jdbcType="VARCHAR" property="gspddSerial" />
+    <result column="GSPDD_PAY_TYPE" jdbcType="VARCHAR" property="gspddPayType" />
+    <result column="GSPDD_SALE_PAYMETHOD_ID" jdbcType="VARCHAR" property="gspddSalePaymethodId" />
+    <result column="GSPDD_SALE_RECEIVABLE_AMT" jdbcType="DECIMAL" property="gspddSaleReceivableAmt" />
+    <result column="GSPDD_SALE_INPUT_AMT" jdbcType="DECIMAL" property="gspddSaleInputAmt" />
+    <result column="GSPDD_SALE_DIFFERENCE" jdbcType="DECIMAL" property="gspddSaleDifference" />
+
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, GSPDD_VOUCHER_ID, GSPDD_BR_ID, GSPDD_SERIAL, GSPDD_PAY_TYPE, GSPDD_SALE_PAYMETHOD_ID, 
+    GSPDD_SALE_RECEIVABLE_AMT, GSPDD_SALE_INPUT_AMT
+  </sql>
+  <select id="selectPayDayReportDetail" resultType="com.gys.entity.data.payDayReport.PayDayReportDetailOutData">
+    SELECT
+      d.GSPDD_VOUCHER_ID voucherId,
+      d.GSPDD_SALE_PAYMETHOD_ID gspddPayType,
+      pm.GSPM_NAME gspddPayName,
+      d.GSPDD_SALE_RECEIVABLE_AMT saleAmount,
+      GSPDD_SALE_CARD_AMT cardAmount,
+      d.GSPDD_SALE_INPUT_AMT saleinputAmt,
+      d.GSPDD_SALE_DIFFERENCE saleDifference
+    FROM
+      GAIA_SD_PAY_DAYREPORT_D d
+        LEFT JOIN GAIA_SD_PAYMENT_METHOD pm ON d.CLIENT = pm.CLIENT
+        AND d.GSPDD_BR_ID = pm.GSPM_BR_ID
+        AND d.GSPDD_SALE_PAYMETHOD_ID = pm.GSPM_ID
+    WHERE
+      d.CLIENT = #{client}
+      AND d.GSPDD_VOUCHER_ID = #{voucherId}
+      AND d.GSPDD_PAY_TYPE IN ('1')
+    GROUP BY
+      d.CLIENT,
+      d.GSPDD_BR_ID,
+      d.GSPDD_VOUCHER_ID,
+      d.GSPDD_SALE_PAYMETHOD_ID
+  </select>
+</mapper>

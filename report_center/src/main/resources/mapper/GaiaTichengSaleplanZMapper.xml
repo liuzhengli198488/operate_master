@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengSaleplanZMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengSaleplanZ">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <result column="PLAN_CODE" jdbcType="VARCHAR" property="planCode" />
+    <result column="PLAN_NAME" jdbcType="VARCHAR" property="planName" />
+    <result column="PLAN_START_DATE" jdbcType="VARCHAR" property="planStartDate" />
+    <result column="PLAN_END_DATE" jdbcType="VARCHAR" property="planEndDate" />
+    <result column="PLAN_AMT_WAY" jdbcType="VARCHAR" property="planAmtWay" />
+    <result column="PLAN_RATE_WAY" jdbcType="VARCHAR" property="planRateWay" />
+    <result column="PLAN_IF_NEGATIVE" jdbcType="VARCHAR" property="planIfNegative" />
+    <result column="PLAN_REJECT_PRO" jdbcType="VARCHAR" property="planRejectPro" />
+    <result column="PLAN_TYPE" jdbcType="VARCHAR" property="planType" />
+    <result column="PLAN_SCALE_STO" jdbcType="VARCHAR" property="planScaleSto" />
+    <result column="PLAN_SCALE_SALER" jdbcType="VARCHAR" property="planScaleSaler" />
+    <result column="PLAN_STATUS" jdbcType="VARCHAR" property="planStatus" />
+    <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag" />
+    <result column="PLAN_CREATER" jdbcType="VARCHAR" property="planCreater" />
+    <result column="PLAN_CREATER_ID" jdbcType="VARCHAR" property="planCreaterId" />
+    <result column="PLAN_CREATE_TIME" jdbcType="VARCHAR" property="planCreateTime" />
+    <result column="PLAN_UPDATE_ID" jdbcType="VARCHAR" property="planUpdateId" />
+    <result column="PLAN_UPDATER" jdbcType="VARCHAR" property="planUpdater" />
+    <result column="PLAN_UPDATE_DATETIME" jdbcType="VARCHAR" property="planUpdateDatetime" />
+    <result column="PLAN_REASON" jdbcType="VARCHAR" property="planReason" />
+    <result column="PLAN_STOP_DATE" jdbcType="VARCHAR" property="planStopDate" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    ID, CLIENT, PLAN_CODE, PLAN_NAME, PLAN_START_DATE, PLAN_END_DATE, PLAN_AMT_WAY, PLAN_RATE_WAY, 
+    PLAN_IF_NEGATIVE, PLAN_REJECT_PRO, PLAN_TYPE, PLAN_SCALE_STO, PLAN_SCALE_SALER, PLAN_STATUS, 
+    DELETE_FLAG, PLAN_CREATER, PLAN_CREATER_ID, PLAN_CREATE_TIME, PLAN_UPDATE_ID, PLAN_UPDATER, 
+    PLAN_UPDATE_DATETIME, PLAN_REASON, PLAN_STOP_DATE, LAST_UPDATE_TIME
+  </sql>
+    <resultMap id="BaseResultMap2" type="com.gys.entity.data.MonthPushMoney.V2.TichengZInfoBO" >
+        <result column="client"    property="client"    jdbcType="VARCHAR" />
+        <result column="planId"    property="planId"    jdbcType="VARCHAR" />
+        <result column="planName" property="planName" jdbcType="VARCHAR" />
+        <result column="startDate"    property="startDate"    jdbcType="VARCHAR" />
+        <result column="endtDate"    property="endtDate"    jdbcType="VARCHAR" />
+        <result column="status"    property="status"    jdbcType="VARCHAR" />
+        <result column="type"    property="type"    jdbcType="VARCHAR" />
+        <result column="planRejectDiscountRateSymbol"    property="planRejectDiscountRateSymbol"    jdbcType="VARCHAR" />
+        <result column="planRejectDiscountRate"    property="planRejectDiscountRate"    jdbcType="VARCHAR" />
+        <collection property="stoArr" javaType="java.util.ArrayList" ofType="com.gys.entity.SiteBO">
+            <result column="siteCode" property="siteCode" jdbcType="VARCHAR" />
+            <result column="siteName"    property="siteName"    jdbcType="VARCHAR" />
+        </collection>
+    </resultMap>
+
+
+  <select id="selectAllBySale"
+	        resultMap="BaseResultMap2">
+      SELECT
+          pz.CLIENT client,
+          pz.ID planId,
+          pz.PLAN_NAME planName,
+          pz.PLAN_START_DATE startDate,
+          pz.PLAN_END_DATE endtDate,
+          pz.PLAN_STATUS status,
+          '1' `type`,
+          ps.STO_CODE siteCode,
+          sd.STO_NAME siteName,
+          pz.PLAN_REJECT_DISCOUNT_RATE_SYMBOL planRejectDiscountRateSymbol,
+          pz.PLAN_REJECT_DISCOUNT_RATE planRejectDiscountRate
+      FROM
+          GAIA_TICHENG_SALEPLAN_Z pz
+          LEFT JOIN GAIA_TICHENG_SALEPLAN_STO ps ON ps.PID = pz.ID
+          AND ps.CLIENT = pz.CLIENT
+          LEFT JOIN GAIA_STORE_DATA sd ON sd.CLIENT = ps.CLIENT
+          AND sd.STO_CODE = ps.STO_CODE
+      WHERE
+          pz.CLIENT = #{client}
+      <if test="planId != null and planId !=''">
+          AND pz.ID = #{planId}
+      </if>
+      <if test="planName != null and planName !=''">
+          AND pz.PLAN_NAME like '%${planName}%'
+      </if>
+      <if test="stoArr != null and stoArr.size() > 0">
+          AND ps.STO_CODE  in
+          <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+              #{item}
+          </foreach>
+      </if>
+<!--      <if test="stoCode != null and stoCode != ''">-->
+<!--          AND ps.STO_CODE = #{stoCode}-->
+<!--      </if>-->
+      <choose>
+          <when test="source == '2'.toString()">
+              AND pz.DELETE_FLAG = '2'
+          </when>
+          <otherwise>
+              AND PLAN_STATUS = '1' AND pz.DELETE_FLAG = '0'
+              <if test="startDate != null and startDate != '' and endDate != null and endDate != ''">
+                  AND (
+                  (pz.PLAN_START_DATE &gt;= #{startDate} AND pz.PLAN_START_DATE &lt;= #{endDate} )
+                  OR (pz.PLAN_START_DATE &lt;= #{startDate} AND pz.PLAN_END_DATE   &gt;= #{endDate} )
+                  OR (pz.PLAN_END_DATE   &gt;= #{startDate} AND pz.PLAN_END_DATE   &lt;= #{endDate} )
+                  )
+              </if>
+          </otherwise>
+      </choose>
+      GROUP BY
+          pz.ID,
+          ps.STO_CODE
+      ORDER BY
+      pz.PLAN_START_DATE,
+      ps.STO_CODE
+    </select>
+
+    <select id="selectSaleCommissionSummary" resultType="com.gys.entity.data.commissionplan.StoreCommissionSummary">
+        SELECT
+            '' subPlanId,
+            '默认' subPlanName,
+            gtsz.ID planId,
+            gtsz.CLIENT client,
+            gtsz.PLAN_AMT_WAY planAmtWay,
+            gtsz.PLAN_RATE_WAY planRateWay,
+            gtsz.PLAN_REJECT_DISCOUNT_RATE_SYMBOL planRejectDisCountRateSymbol,
+            gtsz.PLAN_REJECT_DISCOUNT_RATE planRejectDisCountRate,
+            gtsz.PLAN_IF_NEGATIVE planIfNegative,
+            gtsz.PLAN_NAME planName,
+            gtsz.PLAN_START_DATE planStartDate,
+            gtsz.PLAN_END_DATE planEndDate,
+            gtsz.PLAN_SCALE_STO planScaleSto,
+            gtsz.PLAN_SCALE_SALER planScaleSaler,
+            GROUP_CONCAT(gsd.STO_CODE) stoCode
+        FROM
+            GAIA_TICHENG_SALEPLAN_Z gtsz
+        INNER JOIN GAIA_TICHENG_SALEPLAN_STO gtss ON gtsz.CLIENT = gtss.CLIENT AND gtsz.ID = gtss.PID
+        INNER JOIN GAIA_STORE_DATA gsd ON gtss.CLIENT = gsd.CLIENT AND gtss.STO_CODE = gsd.STO_CODE
+        WHERE gtsz.CLIENT = #{client}
+        AND gtsz.PLAN_STATUS = '1'
+        <if test="startDate!=null and startDate!='' and endDate!=null and endDate!=''" >
+            <![CDATA[
+               AND (
+                 (gtsz.PLAN_START_DATE >= #{startDate} AND gtsz.PLAN_START_DATE <= #{endDate} )
+                  OR (gtsz.PLAN_START_DATE <=  #{startDate} AND gtsz.PLAN_END_DATE >= #{endDate} )
+                  OR (gtsz.PLAN_END_DATE >= #{startDate} AND gtsz.PLAN_END_DATE <=  #{endDate} )
+                )
+            ]]>
+        </if>
+        <if test="planName!=null and planName!=''">
+            AND gtsz.PLAN_NAME LIKE CONCAT('%', #{planName}, '%')
+        </if>
+        <if test="subPlanName!=null and subPlanName!=''">
+            AND '默认' LIKE CONCAT('%', #{subPlanName}, '%')
+        </if>
+        <if test="stoCodes!=null and stoCodes.size>0">
+            AND gsd.STO_CODE IN
+            <foreach collection="stoCodes" item="stoCode" separator="," open="(" close=")" >
+                #{stoCode}
+            </foreach>
+        </if>
+        GROUP BY gtsz.ID
+        ORDER BY gtsz.PLAN_START_DATE, gtsz.PLAN_END_DATE, gsd.STO_CODE
+    </select>
+
+
+    <select id="selectSaleCommissionSummaryOptimize" resultType="com.gys.entity.data.commissionplan.StoreCommissionSummary">
+        SELECT
+            gtsz.ID planId,
+            gtsz.CLIENT client,
+            gtsz.PLAN_AMT_WAY planAmtWay,
+            gtsz.PLAN_RATE_WAY planRateWay,
+            gtsz.PLAN_REJECT_DISCOUNT_RATE_SYMBOL planRejectDisCountRateSymbol,
+            gtsz.PLAN_REJECT_DISCOUNT_RATE planRejectDisCountRate,
+            gtsz.PLAN_IF_NEGATIVE planIfNegative,
+            gtsz.PLAN_NAME planName,
+            gtsz.PLAN_START_DATE planStartDate,
+            gtsz.PLAN_END_DATE planEndDate,
+            gtsz.PLAN_SCALE_STO planScaleSto,
+            gtsz.PLAN_SCALE_SALER planScaleSaler,
+            GROUP_CONCAT(gtss.STO_CODE) stoCode
+        FROM
+        GAIA_TICHENG_SALEPLAN_Z gtsz
+        INNER JOIN GAIA_TICHENG_SALEPLAN_STO gtss ON gtsz.CLIENT = gtss.CLIENT AND gtsz.ID = gtss.PID
+        WHERE gtsz.CLIENT = #{client}
+        AND gtsz.PLAN_STATUS = '1'
+        <if test="startDate!=null and startDate!='' and endDate!=null and endDate!=''" >
+            <![CDATA[
+               AND (
+                 (gtsz.PLAN_START_DATE >= #{startDate} AND gtsz.PLAN_START_DATE <= #{endDate} )
+                  OR (gtsz.PLAN_START_DATE <=  #{startDate} AND gtsz.PLAN_END_DATE >= #{endDate} )
+                  OR (gtsz.PLAN_END_DATE >= #{startDate} AND gtsz.PLAN_END_DATE <=  #{endDate} )
+                )
+            ]]>
+        </if>
+        <if test="planName!=null and planName!=''">
+            AND gtsz.PLAN_NAME LIKE CONCAT('%', #{planName}, '%')
+        </if>
+        <if test="subPlanName!=null and subPlanName!=''">
+            AND '默认' LIKE CONCAT('%', #{subPlanName}, '%')
+        </if>
+        <if test="stoCodes!=null and stoCodes.size>0">
+            AND gtss.STO_CODE IN
+            <foreach collection="stoCodes" item="stoCode" separator="," open="(" close=")" >
+                #{stoCode}
+            </foreach>
+        </if>
+        GROUP BY gtsz.ID
+        ORDER BY gtsz.PLAN_START_DATE, gtsz.PLAN_END_DATE, gtss.STO_CODE
+    </select>
+
+    <select id="selectUserName" resultType="map" >
+        SELECT USER_ID userId, USER_NAM userName
+        FROM GAIA_USER_DATA
+        <where>
+            <if test="client!=null and client!=''">
+                AND CLIENT = #{client}
+            </if>
+        </where>
+    </select>
+    <select id="selectAllBySaleByCondiTion" resultType="com.gys.entity.data.MonthPushMoney.V2.TichengZInfoBO">
+        SELECT
+        pz.CLIENT client,
+        pz.ID planId,
+        pz.PLAN_NAME planName,
+        pz.PLAN_START_DATE startDate,
+        pz.PLAN_END_DATE endtDate,
+        pz.PLAN_STATUS status,
+        '1' `type`,
+        ps.STO_CODE siteCode,
+        sd.STO_NAME siteName,
+        pz.PLAN_REJECT_DISCOUNT_RATE_SYMBOL planRejectDiscountRateSymbol,
+        pz.PLAN_REJECT_DISCOUNT_RATE planRejectDiscountRate
+        FROM
+        GAIA_TICHENG_SALEPLAN_Z pz
+        LEFT JOIN GAIA_TICHENG_SALEPLAN_STO ps ON ps.PID = pz.ID
+        AND ps.CLIENT = pz.CLIENT
+        LEFT JOIN GAIA_STORE_DATA sd ON sd.CLIENT = ps.CLIENT
+        AND sd.STO_CODE = ps.STO_CODE
+        WHERE
+        pz.CLIENT = #{client}
+        <if test="planId != null and planId !=''">
+            AND pz.ID = #{planId}
+        </if>
+        <if test="planName != null and planName !=''">
+            AND pz.PLAN_NAME like '%${planName}%'
+        </if>
+        <if test="stoArr != null and stoArr.size() > 0">
+            AND ps.STO_CODE  in
+            <foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        AND PLAN_STATUS = '1' AND pz.DELETE_FLAG = '0'
+        <if test="startDate != null and startDate != '' and endDate != null and endDate != ''">
+            AND (
+            (pz.PLAN_START_DATE &gt;= #{startDate} AND pz.PLAN_START_DATE &lt;= #{endDate} )
+            OR (pz.PLAN_START_DATE &lt;= #{startDate} AND pz.PLAN_END_DATE   &gt;= #{endDate} )
+            OR (pz.PLAN_END_DATE   &gt;= #{startDate} AND pz.PLAN_END_DATE   &lt;= #{endDate} )
+            )
+        </if>
+        GROUP BY
+        pz.ID,
+        ps.STO_CODE
+        ORDER BY
+        pz.PLAN_START_DATE desc,
+        ps.STO_CODE
+    </select>
+
+    <select id="selectAvgAmtByStore" resultType="com.gys.entity.data.commissionplan.StoreAvgAmt">
+        SELECT
+            gssd.GSSD_BR_ID stoCode,
+            SUM(gssd.GSSD_AMT) amt,
+            1 klDate
+        FROM GAIA_SD_SALE_D gssd
+        INNER JOIN GAIA_PRODUCT_BUSINESS gpb ON gpb.CLIENT = gssd.CLIENT AND gpb.PRO_SITE = gssd.GSSD_BR_ID AND gpb.PRO_SELF_CODE = gssd.GSSD_PRO_ID
+        WHERE gssd.CLIENT = #{client}
+        AND gssd.GSSD_BR_ID !='' AND gssd.GSSD_BR_ID IS NOT NULL
+        AND gssd.GSSD_DATE = #{today}
+        <if test="stoCodes!=null and stoCodes.size>0">
+            AND gssd.GSSD_BR_ID IN
+            <foreach collection="stoCodes" item="stoCode" separator="," open="(" close=")" >
+                #{stoCode}
+            </foreach>
+        </if>
+        GROUP BY gssd.CLIENT, gssd.GSSD_BR_ID
+    </select>
+
+
+</mapper>

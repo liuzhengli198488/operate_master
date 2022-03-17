@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.business.mapper.ProductCheckKucunImportMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.gys.entity.ProductCheckKucunImport">
+        <id column="CLIENT" property="client" />
+        <result column="STO_CODE" property="stoCode" />
+        <result column="STO_NAME" property="stoName" />
+        <result column="PRO_CODE" property="proCode" />
+        <result column="PRO_BARCODE" property="proBarcode" />
+        <result column="PRO_NAME" property="proName" />
+        <result column="KU_CUN_NUM" property="kuCunNum" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        CLIENT, STO_CODE, STO_NAME, PRO_CODE, PRO_BARCODE, PRO_NAME, KU_CUN_NUM
+    </sql>
+</mapper>

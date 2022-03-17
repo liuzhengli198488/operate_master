@@ -1,0 +1,62 @@
+server:
+  port: 10212
+spring:
+  application:
+    name: gys-operation
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://172.16.0.247:3306/gys_dev?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false
+    username: root
+    password: rd_123456
+    driver-class-name: com.mysql.jdbc.Driver
+  redis:
+    timeout: 6000ms
+    password:
+    cluster:
+      max-redirects: 3
+      nodes:
+        - 172.16.0.245:7000
+        - 172.16.0.245:7001
+        - 172.16.0.245:7002
+        - 172.16.0.246:7003
+        - 172.16.0.246:7004
+        - 172.16.0.246:7005
+    lettuce:
+      pool:
+        max-active: 1000
+        max-idle: 10
+        min-idle: 5
+        max-wait: -1
+
+mybatis:
+  type-aliases-package: com.gys.business.mapper.entity
+  mapper-locations: classpath*:/mapper/*Mapper.xml
+  mybatis.configuration.cache-enabled: true
+mapper:
+  mappers: com.gys.common.base.BaseMapper
+  not-empty: false
+  identity: MYSQL
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://172.16.0.245:10101/eureka/
+    registry-fetch-interval-seconds: 5
+  instance:
+    lease-renewal-interval-in-seconds: 5
+
+feign:
+  hystrix:
+    enabled: true
+
+ribbon:
+  ReadTimeout: 30000
+  ConnectTimeout: 30000
+
+thirdServer: 0
+
+chinaums:
+  payUrl: http://58.247.0.18:29015/v2/poslink/transaction/pay
+
+zydj:
+  tl: http://222.92.193.238:8888

@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdBatchChangeMapper">
+
+    <select id="getInventoryList" parameterType="com.gys.report.entity.InvoicingInData" resultType="com.gys.report.entity.InvoicingOutData">
+        SELECT pb.PRO_SELF_CODE AS gssbProId,
+        bc.CLIENT AS clientId,
+        pb.PRO_NAME AS gssbProName,
+        pb.PRO_COMMONNAME as proCommonname,
+        pb.PRO_DEPICT as proDepict,
+        pp.GSPP_PRICE_NORMAL AS gssbRetailPrice,
+        bc.GSBC_BATCH_NO AS gssbBatchNo,
+        bc.GSBC_BATCH AS batch,
+        sb.GSSB_VAILD_DATE AS gssbValidUntil,
+        sb.GSSB_QTY AS stockNum,
+        bc.GSBC_VOUCHER_ID AS gssbVoucherId,
+        bc.GSBC_DATE AS gssbDate,
+        IFNULL(bc.GSBC_QTY ,0)AS gssbQty,
+        pb.PRO_FACTORY_NAME AS gssbFactory,
+        pb.PRO_PLACE AS gssbOrigin,
+        pb.PRO_FORM AS gssbDosageForm,
+        pb.PRO_UNIT AS gssbUnit,
+        pb.PRO_SPECS AS gssbFormat,
+        pb.PRO_REGISTER_NO AS gssbApprovalNum,
+        wb.WM_PSDH AS deliveryOrderNo,
+        wb.WM_JHDH AS pickingOrderNo,
+        wj.WM_CJRQ AS pickingDate,
+        pb.PRO_MED_ID AS proMedId,
+        bc.GSBC_SERIAL serial,
+        wdb.WM_CKJ AS deliveryPrice,
+        wdb.WM_CKJ * bc.GSBC_QTY AS deliveryAmount,
+        IF(pb.PRO_IF_MED = '1', '✔', '') AS ifMed,
+        saleH.GSSH_BILL_NO_RETURN billReturnNo
+        FROM GAIA_SD_BATCH_CHANGE bc
+        INNER JOIN GAIA_SD_STOCK_BATCH sb ON sb.CLIENT = bc.CLIENT AND sb.GSSB_BR_ID = bc.GSBC_BR_ID AND sb.GSSB_PRO_ID
+        = bc.GSBC_PRO_ID AND bc.GSBC_BATCH = sb.GSSB_BATCH
+        INNER JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = bc.CLIENT AND pb.PRO_SITE = bc.GSBC_BR_ID AND
+        pb.PRO_SELF_CODE = sb.GSSB_PRO_ID
+        LEFT JOIN GAIA_SD_SALE_H saleH ON saleH.CLIENT = bc.CLIENT AND saleH.GSSH_BILL_NO = bc.GSBC_VOUCHER_ID
+        LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON pp.CLIENT = bc.CLIENT AND pp.GSPP_BR_ID = bc.GSBC_BR_ID AND pp.GSPP_PRO_ID
+        = pb.PRO_SELF_CODE
+        LEFT JOIN GAIA_SD_EXAMINE_H eh ON eh.CLIENT = bc.CLIENT AND eh.GSEH_BR_ID = bc.GSBC_BR_ID AND eh.GSEH_VOUCHER_ID
+        = bc.GSBC_VOUCHER_ID
+        LEFT JOIN GAIA_SD_ACCEPT_H ah ON ah.CLIENT = bc.CLIENT AND ah.GSAH_BR_ID = bc.GSBC_BR_ID AND ah.GSAH_VOUCHER_ID
+        = eh.GSEH_VOUCHER_ACCEPT_ID
+        LEFT JOIN GAIA_WMS_BOCI wb ON wb.CLIENT = bc.CLIENT AND wb.WM_PSDH = ah.GSAH_PS_VOUCHER_ID
+        LEFT JOIN GAIA_WMS_JHD wj ON wj.CLIENT = bc.CLIENT AND wj.PRO_SITE = wb.PRO_SITE AND wb.WM_JHDH = wj.WM_JHDH
+        LEFT JOIN GAIA_WMS_DIAOBO_M wdb ON wdb.CLIENT = bc.CLIENT AND wdb.WM_PCH = bc.GSBC_BATCH and wdb.WM_SP_BM =
+        bc.GSBC_PRO_ID AND ah.GSAH_PS_VOUCHER_ID = wdb.WM_PSDH
+        WHERE bc.CLIENT = #{clientId} AND bc.GSBC_BR_ID = #{gssbBrId} AND bc.GSBC_DATE BETWEEN #{gssbStartDate}
+        AND #{gssbFinishDate}
+        and not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = bc.CLIENT and PRO_SELF_CODE=pb.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+        <if test="proArr != null and proArr.length > 0">
+            AND bc.GSBC_PRO_ID IN
+            <foreach collection="proArr" open="(" separator="," item="item" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="inventoryList!=null and inventoryList.size()>0">
+            AND bc.GSBC_PRO_ID not in
+            <foreach collection="inventoryList" item="inventoryProCode" index="index" open="(" separator="," close=")">
+                #{inventoryProCode}
+            </foreach>
+        </if>
+        <if test="type != null and type != ''">
+            AND bc.GSBC_VOUCHER_ID LIKE concat(#{type}, '%')
+        </if>
+
+        <if test="gssbBatchNo != null and gssbBatchNo != ''">
+            AND bc.GSBC_BATCH_NO LIKE concat('%', #{gssbBatchNo}, '%')
+        </if>
+
+        <if test="ifMed != null and ifMed != ''">
+            <if test='ifMed == "1" '>
+                AND pb.PRO_IF_MED = #{ifMed}
+            </if>
+            <if test='ifMed != "1" '>
+                AND IFNULL(pb.PRO_IF_MED,'') != '1'
+            </if>
+        </if>
+        <if test="flag == '1'.toString()">
+            and (pb.PRO_OUT != '1' or pb.PRO_OUT is null)
+        </if>
+        group by gssbVoucherId, serial, gssbProId, gssbDate, batch
+        order by gssbProId;
+    </select>
+    <select id="getBrIdInventoryList" resultType="com.gys.report.entity.InvoicingOutData">
+        SELECT
+        bc.CLIENT_ID as clientId,
+        bc.GSSB_BR_ID as gssbBrId,
+        bc.GSSB_PRO_ID as gssbProId,
+        bus.PRO_NAME as gssbProName,
+        bus.PRO_COMMONNAME as proCommonname,
+        bus.PRO_DEPICT as proDepict,
+        pp.GSPP_PRICE_NORMAL as gssbRetailPrice,
+        bc.GSSB_BATCH_NO as gssbBatchNo,
+        bc.GSBC_BATCH as batch,
+        bc.GSSB_VALID_UNTIL as gssbValidUntil,
+        bc.GSSB_QTY AS stockNum,
+        bc.GSSB_VOUCHER_ID as gssbVoucherId,
+        bc.GSSB_DATE as gssbDate,
+        IFNULL(bc.BATCH_STOCK_NUM,0) as gssbQty,
+        bus.PRO_FACTORY_NAME as gssbFactory,
+        bus.PRO_PLACE as gssbOrigin,
+        bus.PRO_FORM as gssbDosageForm,
+        bus.PRO_UNIT as gssbUnit,
+        bus.PRO_SPECS as gssbFormat,
+        bus.PRO_REGISTER_NO as gssbApprovalNum,
+        bc.DELIVERY_ORDER_NO as deliveryOrderNo,
+        bc.PICKING_ORDER_NO as pickingOrderNo,
+        bc.PICKING_DATE as pickingDate,
+        bc.PRO_MED_ID as proMedId,
+        bc.DELIVERY_PRICE as deliveryPrice,
+        bc.DELIVERY_AMOUNT as deliveryAmount,
+        IF(bus.PRO_IF_MED = '1', '✔', '') AS ifMed,
+        bc.BILL_RETURN_NO as billReturnNo
+        FROM GAIA_SD_BATCH_IMPORT_DETAIL bc
+        left join GAIA_PRODUCT_BUSINESS bus on bus.CLIENT = bc.CLIENT_ID
+        AND bus.PRO_SITE = bc.GSSB_BR_ID
+        AND bus.PRO_SELF_CODE = bc.GSSB_PRO_ID
+        LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON pp.CLIENT = bc.CLIENT_ID AND pp.GSPP_BR_ID = bc.GSSB_BR_ID AND pp.GSPP_PRO_ID
+        = bus.PRO_SELF_CODE
+        WHERE bc.CLIENT_ID = #{clientId} AND bc.GSSB_BR_ID = #{gssbBrId} AND bc.GSSB_DATE BETWEEN #{gssbStartDate} AND
+        #{gssbFinishDate}
+        and not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = bus.CLIENT and PRO_SELF_CODE=bus.PRO_SELF_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+        <if test="proArr != null and proArr.length > 0">
+            AND bc.GSSB_PRO_ID IN
+            <foreach collection="proArr" open="(" separator="," item="item" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="type != null and type != ''">
+            AND bc.GSSB_VOUCHER_ID LIKE concat(#{type}, '%')
+        </if>
+
+        <if test="gssbBatchNo != null and gssbBatchNo != ''">
+            AND bc.GSSB_BATCH_NO LIKE concat('%', #{gssbBatchNo}, '%')
+        </if>
+
+        <if test="ifMed != null and ifMed != ''">
+            AND bus.PRO_IF_MED = #{ifMed}
+        </if>
+         <if test="flag == '1'.toString()">
+             and (bus.PRO_OUT != '1' or bus.PRO_OUT is null)
+         </if>
+    </select>
+    <select id="getProductSalesBySupplier"
+            resultType="com.gys.report.entity.ProductSalesBySupplierOutData">
+        SELECT
+        gsbc.GSBC_PRO_ID proCode,
+        gsbc.GSBC_BATCH batch,
+        sd.STO_CODE stoCode,
+        IFNULL(sd.STO_SHORT_NAME,STO_NAME) stoName,
+        DATEDIFF(date_format(bi.BAT_EXPIRY_DATE,'%Y-%m-%d'),date_format(now(),'%Y-%m-%d')) expiryDay,
+        bi.BAT_EXPIRY_DATE expiryDate,
+
+        bi.BAT_SUPPLIER_CODE supplierCode,
+        sup.SUP_NAME supplierName,
+        IFNULL( pb.PRO_NAME, pb.PRO_COMMONNAME ) proName,
+        pb.PRO_COMMONNAME proCommonName,
+        pb.PRO_DEPICT  proDepict,
+        pb.PRO_SPECS specs,
+        pb.PRO_UNIT unit,
+        pb.PRO_FACTORY_CODE factoryCode,
+        pb.PRO_FACTORY_NAME factoryName,
+        pb.PRO_MED_ID medProdctCode,
+        pb.PRO_IF_MED,
+        CASE
+        WHEN pb.PRO_IF_MED  = '1' THEN
+        '是'
+        WHEN pb.PRO_MED_ID IS NOT NULL THEN
+        '是' ELSE '否'
+        END ifMed,
+        concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+        concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+        concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+        pb.PRO_CLASS,
+        SUM(
+        CASE
+
+        WHEN gssh.GSSH_BILL_NO_RETURN IS NULL THEN
+        IFNULL( gsbc.GSBC_QTY, 0 ) ELSE IFNULL( gsbc.GSBC_QTY, 0 )* - 1
+        END
+        ) qty,
+        pb.PRO_SLAE_CLASS AS saleClass,
+        pb.PRO_SCLASS AS prosClass,
+        case pb.PRO_NO_PURCHASE
+        when '1' then '是'
+        when '0' then '否'
+        end AS purchase,
+        pb.PRO_POSITION proPosition,
+        pb.PRO_ZDY1 AS zdy1,
+        pb.PRO_ZDY2 AS zdy2,
+        pb.PRO_ZDY3 AS zdy3,
+        pb.PRO_ZDY4 AS zdy4,
+        pb.PRO_ZDY5 AS zdy5
+        FROM
+        GAIA_SD_SALE_H gssh
+        LEFT JOIN GAIA_STORE_DATA sd ON gssh.CLIENT = sd.CLIENT AND gssh.GSSH_BR_ID = sd.STO_CODE
+        LEFT JOIN GAIA_SD_BATCH_CHANGE gsbc ON (
+        gssh.CLIENT = gsbc.CLIENT
+        AND gssh.GSSH_BR_ID = gsbc.GSBC_BR_ID
+        AND gssh.GSSH_BILL_NO = gsbc.GSBC_VOUCHER_ID
+        AND gssh.GSSH_DATE = gsbc.GSBC_DATE
+        )
+        LEFT JOIN GAIA_BATCH_INFO bi ON ( bi.CLIENT = gsbc.CLIENT AND bi.BAT_PRO_CODE = gsbc.GSBC_PRO_ID AND bi.BAT_BATCH = gsbc.GSBC_BATCH )
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON ( pb.CLIENT = gsbc.CLIENT AND pb.PRO_SITE = gsbc.GSBC_BR_ID AND pb.PRO_SELF_CODE = gsbc.GSBC_PRO_ID )
+        LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON (bi.CLIENT = sup.CLIENT AND bi.BAT_SITE_CODE = sup.SUP_SITE AND bi.BAT_SUPPLIER_CODE = sup.SUP_SELF_CODE )
+
+        LEFT JOIN (
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS
+        )
+        proClass
+        GROUP BY
+        classId
+        ) pc ON pc.classId = pb.PRO_CLASS
+        WHERE
+        gssh.CLIENT = #{client}
+        AND gssh.GSSH_HIDE_FLAG = '0'
+        <if test="startDate != null and startDate != ''">
+            AND gssh.GSSH_DATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND gssh.GSSH_DATE &lt;= #{endDate}
+        </if>
+
+        <if test="proArr != null and proArr.size > 0">
+            and gsbc.GSBC_PRO_ID in
+            <foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="supplierCode != null and supplierCode != ''">
+            AND  bi.BAT_SUPPLIER_CODE  = #{supplierCode}
+        </if>
+        <if test="factory != null and factory != ''">
+            AND (pb.PRO_FACTORY_CODE LIKE '%${factory}%' OR pb.PRO_FACTORY_NAME LIKE '%${factory}%')
+        </if>
+        <if test="brId != null and brId != ''">
+            AND sd.STO_CODE  = #{brId}
+        </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and sd.STO_CODE  in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="expiryDay != null and expiryDay !=''">
+            and DATEDIFF(date_format( bi.BAT_EXPIRY_DATE, '%Y-%m-%d' ),date_format( now(), '%Y-%m-%d' )) &lt;=#{expiryDay}
+        </if>
+        <if test="classArrs != null and classArrs.size > 0">
+            and pb.PRO_CLASS  in
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="medProdctStatus != null and medProdctStatus != ''">
+            <if test="medProdctStatus == '1'.toString() ">
+                AND ( pb.PRO_IF_MED = #{medProdctStatus} OR ifnull(pb.PRO_MED_ID,'') != '')
+            </if>
+            <if test="medProdctStatus == '0'.toString() ">
+                AND (pb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(pb.PRO_MED_ID,'') = '' AND ifnull(pb.PRO_IF_MED ,'') = ''))
+            </if>
+        </if>
+        <if test="zdy1 != null and zdy1.length > 0">
+            and pb.PRO_ZDY1 in
+            <foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy2 != null and zdy2.length > 0">
+            and pb.PRO_ZDY2 in
+            <foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy3 != null and zdy3.length > 0">
+            and pb.PRO_ZDY3 in
+            <foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy4 != null and zdy4.length > 0">
+            and pb.PRO_ZDY4 in
+            <foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="zdy5 != null and zdy5.length > 0">
+            and pb.PRO_ZDY5 in
+            <foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="saleClass != null and saleClass.length > 0">
+            and pb.PRO_SLAE_CLASS in
+            <foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="proPosition != null and proPosition.length > 0">
+            and pb.PRO_POSITION in
+            <foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="prosClass != null and prosClass.length > 0">
+            and pb.PRO_SCLASS in
+            <foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="purchase != null and purchase != ''">
+            and pb.PRO_NO_PURCHASE = #{purchase}
+        </if>
+        GROUP BY
+        gssh.GSSH_BR_ID,
+        gsbc.GSBC_PRO_ID,
+        gsbc.GSBC_BATCH
+        ORDER BY
+        gssh.GSSH_BR_ID,
+        gsbc.GSBC_PRO_ID,
+        gsbc.GSBC_BATCH
+    </select>
+    <select id="getClientInventoryList" resultType="java.lang.String">
+        select DISTINCT(GSSB_PRO_ID) from GAIA_SD_BATCH_IMPORT_DETAIL where CLIENT_ID = #{clientId}
+    </select>
+
+</mapper>

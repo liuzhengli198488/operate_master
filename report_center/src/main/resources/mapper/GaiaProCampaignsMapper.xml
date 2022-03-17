@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaProCampaignsMapper">
+    <select id="selectCampainsProDetails" resultType="com.gys.report.entity.ProCampaignsOutData"
+            parameterType="com.gys.entity.data.salesSummary.SalesSummaryData">
+        SELECT
+            d.GSSD_BR_ID stoCode,
+            IFNULL( c.STO_SHORT_NAME, c.STO_NAME ) stoName,
+            e.USER_ID userId,
+            e.USER_NAM userName,
+            a.PRO_SX1 proActiveType,
+            d.GSSD_DATE gssdDate,
+            h.GSSH_BILL_NO billNo,
+            d.GSSD_PRO_ID proCode,
+            b.PRO_NAME proName,
+            b.PRO_COMMONNAME proCommonname,
+            b.PRO_DEPICT proDepict,
+            ROUND(d.GSSD_QTY,2) gssdQty,
+            ROUND(( d.GSSD_PRC1 * d.GSSD_QTY ),2) gssdnormalAmt,
+            ROUND(d.GSSD_AMT,2) gssdAmt,
+            ROUND(( d.GSSD_PRC1 * d.GSSD_QTY - d.GSSD_AMT ),2) discountAmt,
+            b.PRO_FACTORY_NAME proFactoryName,
+            b.PRO_SPECS proSpecs,
+            concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+            concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+            concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+            b.PRO_MED_ID medProdctCode
+        FROM GAIA_SD_SALE_D d
+            LEFT JOIN GAIA_PRODUCT_SX a ON d.CLIENT = a.CLIENT AND d.GSSD_BR_ID = a.PRO_SITE AND d.GSSD_PRO_ID = a.PRO_SELF_CODE
+            LEFT JOIN GAIA_SD_SALE_H h ON d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO = h.GSSH_BILL_NO AND d.GSSD_BR_ID = h.GSSH_BR_ID
+            LEFT JOIN GAIA_PRODUCT_BUSINESS b ON d.CLIENT = b.CLIENT AND d.GSSD_BR_ID = b.PRO_SITE AND d.GSSD_PRO_ID = b.PRO_SELF_CODE
+            LEFT JOIN ( SELECT * FROM(
+            SELECT 	PRO_BIG_CLASS_CODE AS classId,
+            PRO_BIG_CLASS_CODE,
+            PRO_BIG_CLASS_NAME,
+            NULL AS PRO_MID_CLASS_CODE,
+            NULL AS PRO_MID_CLASS_NAME,
+            NULL AS PRO_CLASS_CODE,
+            NULL AS PRO_CLASS_NAME
+            FROM GAIA_PRODUCT_CLASS
+            UNION ALL
+            SELECT  PRO_MID_CLASS_CODE AS classId,
+            PRO_BIG_CLASS_CODE,
+            PRO_BIG_CLASS_NAME,
+            PRO_MID_CLASS_CODE,
+            PRO_MID_CLASS_NAME,
+            NULL AS PRO_CLASS_CODE,
+            NULL AS PRO_CLASS_NAME
+            FROM GAIA_PRODUCT_CLASS
+            UNION ALL
+            SELECT  PRO_CLASS_CODE AS classId,
+            PRO_BIG_CLASS_CODE,
+            PRO_BIG_CLASS_NAME,
+            PRO_MID_CLASS_CODE,
+            PRO_MID_CLASS_NAME,
+            PRO_CLASS_CODE,
+            PRO_CLASS_NAME
+            FROM GAIA_PRODUCT_CLASS
+            ) proClass  GROUP BY classId
+            ) pc ON pc.classId = b.PRO_CLASS
+            LEFT JOIN GAIA_STORE_DATA c ON d.CLIENT = c.CLIENT AND d.GSSD_BR_ID = c.STO_CODE
+            LEFT JOIN GAIA_USER_DATA e ON d.CLIENT = e.CLIENT AND d.GSSD_SALER_ID = e.USER_ID
+        WHERE
+            d.CLIENT = #{client}
+            AND a.PRO_SELF_CODE IS NOT NULL
+            AND d.GSSD_SALER_ID IS NOT NULL
+            <if test="storeCode != null and storeCode != ''">
+                AND d.GSSD_BR_ID = #{storeCode}
+            </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and d.GSSD_BR_ID in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+                AND d.GSSD_PRO_ID IN
+                <foreach collection="proArr" open="(" separator="," item="item" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="gssdSalerId != null and gssdSalerId != ''">
+                AND d.GSSD_SALER_ID = #{gssdSalerId}
+            </if>
+            <if test="proActiveType != null and proActiveType != ''">
+                AND a.PRO_SX1 = #{proActiveType}
+            </if>
+            <if test="sxMonth != null and sxMonth != ''">
+                AND d.GSSD_DATE like concat(#{sxMonth},'%')
+                AND a.PRO_YEAR_MOUTH = #{sxMonth}
+            </if>
+        <if test="medProdctStatus != null and medProdctStatus != ''">
+            <if test="medProdctStatus == '0'.toString() ">
+                AND (b.PRO_MED_PRODCTCODE is null OR b.PRO_MED_PRODCTCODE = '')
+            </if>
+            <if test="medProdctStatus == '1'.toString() ">
+                AND (b.PRO_MED_PRODCTCODE is not null AND b.PRO_MED_PRODCTCODE != '')
+            </if>
+        </if>
+        <if test="classArrs != null and classArrs.size > 0">
+            and b.PRO_CLASS  in
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        ORDER BY d.GSSD_BR_ID,e.USER_ID,a.PRO_SX1,d.GSSD_PRO_ID
+    </select>
+    <select id="selectCampainsProTotal" resultType="com.gys.report.entity.ProCampaignsOutData"
+            parameterType="com.gys.entity.data.salesSummary.SalesSummaryData">
+        SELECT
+        d.GSSD_BR_ID stoCode,
+        IFNULL( c.STO_SHORT_NAME, c.STO_NAME ) stoName,
+        e.USER_ID userId,
+        e.USER_NAM userName,
+        a.PRO_SX1 proActiveType,
+        d.GSSD_PRO_ID proCode,
+        b.PRO_NAME proName,
+        b.PRO_COMMONNAME proCommonname,
+        b.PRO_DEPICT proDepict,
+        ROUND(SUM(d.GSSD_QTY),2) gssdQty,
+        ROUND(( SUM(d.GSSD_PRC1 * d.GSSD_QTY)),2) gssdnormalAmt,
+        ROUND(SUM(d.GSSD_AMT),2) gssdAmt,
+        ROUND(SUM(( d.GSSD_PRC1 * d.GSSD_QTY - d.GSSD_AMT)),2) discountAmt,
+        b.PRO_FACTORY_NAME proFactoryName,
+        b.PRO_SPECS proSpecs,
+        concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+        concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+        concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass
+        FROM GAIA_SD_SALE_D d
+        LEFT JOIN GAIA_PRODUCT_SX a ON d.CLIENT = a.CLIENT AND d.GSSD_BR_ID = a.PRO_SITE AND d.GSSD_PRO_ID = a.PRO_SELF_CODE
+        LEFT JOIN GAIA_SD_SALE_H h ON d.CLIENT = h.CLIENT AND d.GSSD_BILL_NO = h.GSSH_BILL_NO AND d.GSSD_BR_ID = h.GSSH_BR_ID
+        LEFT JOIN GAIA_PRODUCT_BUSINESS b ON d.CLIENT = b.CLIENT AND d.GSSD_BR_ID = b.PRO_SITE AND d.GSSD_PRO_ID = b.PRO_SELF_CODE
+        LEFT JOIN GAIA_STORE_DATA c ON d.CLIENT = c.CLIENT AND d.GSSD_BR_ID = c.STO_CODE
+        LEFT JOIN GAIA_USER_DATA e ON d.CLIENT = e.CLIENT AND d.GSSD_SALER_ID = e.USER_ID       LEFT JOIN ( SELECT * FROM(
+        SELECT 	PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        UNION ALL
+        SELECT  PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        UNION ALL
+        SELECT  PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM GAIA_PRODUCT_CLASS
+        ) proClass  GROUP BY classId
+        ) pc ON pc.classId = b.PRO_CLASS
+        WHERE
+        d.CLIENT = #{client}
+        AND a.PRO_SELF_CODE IS NOT NULL
+        AND d.GSSD_SALER_ID IS NOT NULL
+        <if test="storeCode != null and storeCode != ''">
+            AND d.GSSD_BR_ID = #{storeCode}
+        </if>
+        <if test="siteArr != null and siteArr.length > 0">
+            and d.GSSD_BR_ID  in
+            <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="proArr != null and proArr.length > 0">
+            AND d.GSSD_PRO_ID IN
+            <foreach collection="proArr" open="(" separator="," item="item" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="gssdSalerId != null and gssdSalerId != ''">
+            AND d.GSSD_SALER_ID = #{gssdSalerId}
+        </if>
+        <if test="proActiveType != null and proActiveType != ''">
+            AND a.PRO_SX1 = #{proActiveType}
+        </if>
+        <if test="sxMonth != null and sxMonth != ''">
+            AND d.GSSD_DATE like concat(#{sxMonth},'%')
+            AND a.PRO_YEAR_MOUTH = #{sxMonth}
+        </if>
+        <if test="classArrs != null and classArrs.size > 0">
+            and b.PRO_CLASS  in
+            <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="flag == 1">
+            AND (b.PRO_OUT != '1' or b.PRO_OUT is null)
+        </if>
+
+        GROUP BY d.GSSD_BR_ID,e.USER_ID,d.GSSD_PRO_ID
+        ORDER BY d.GSSD_BR_ID,e.USER_ID,a.PRO_SX1,d.GSSD_PRO_ID
+    </select>
+</mapper>

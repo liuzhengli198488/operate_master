@@ -1,0 +1,584 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.GaiaXhlDMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaXhlD">
+        <id column="ID" jdbcType="BIGINT" property="id" />
+        <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+        <result column="STORE_ID" jdbcType="VARCHAR" property="storeId" />
+        <result column="TJ_DATE" jdbcType="TIMESTAMP" property="tjDate" />
+        <result column="ORDER_NUM" jdbcType="DECIMAL" property="orderNum" />
+        <result column="ORDER_NUM_LESS" jdbcType="DECIMAL" property="orderNumLess" />
+        <result column="DN_NUM" jdbcType="DECIMAL" property="dnNum" />
+        <result column="DN_NUM_LESS" jdbcType="DECIMAL" property="dnNumLess" />
+        <result column="SEND_NUM" jdbcType="DECIMAL" property="sendNum" />
+        <result column="SEND_NUM_LESS" jdbcType="DECIMAL" property="sendNumLess" />
+        <result column="GZ_NUM" jdbcType="DECIMAL" property="gzNum" />
+        <result column="GZ_NUM_LESS" jdbcType="DECIMAL" property="gzNumLess" />
+        <result column="FINAL_NUM" jdbcType="DECIMAL" property="finalNum" />
+        <result column="FINAL_NUM_LESS" jdbcType="DECIMAL" property="finalNumLess" />
+        <result column="ORDER_PRODUCT_NUM" jdbcType="DECIMAL" property="orderProductNum" />
+        <result column="ORDER_PRODUCT_NUM_LESS" jdbcType="DECIMAL" property="orderProductNumLess" />
+        <result column="DN_PRODUCT_NUM" jdbcType="DECIMAL" property="dnProductNum" />
+        <result column="DN_PRODUCT_NUM_LESS" jdbcType="DECIMAL" property="dnProductNumLess" />
+        <result column="SEND_PRODUCT_NUM" jdbcType="DECIMAL" property="sendProductNum" />
+        <result column="SEND_PRODUCT_NUM_LESS" jdbcType="DECIMAL" property="sendProductNumLess" />
+        <result column="GZ_PRODUCT_NUM" jdbcType="DECIMAL" property="gzProductNum" />
+        <result column="GZ_PRODUCT_NUM_LESS" jdbcType="DECIMAL" property="gzProductNumLess" />
+        <result column="FINAL_PRODUCT_NUM" jdbcType="DECIMAL" property="finalProductNum" />
+        <result column="FINAL_PRODUCT_NUM_LESS" jdbcType="DECIMAL" property="finalProductNumLess" />
+        <result column="ORDER_AMOUNT" jdbcType="DECIMAL" property="orderAmount" />
+        <result column="ORDER_AMOUNT_LESS" jdbcType="DECIMAL" property="orderAmountLess" />
+        <result column="DN_AMOUNT" jdbcType="DECIMAL" property="dnAmount" />
+        <result column="DN_AMOUNT_LESS" jdbcType="DECIMAL" property="dnAmountLess" />
+        <result column="SEND_AMOUNT" jdbcType="DECIMAL" property="sendAmount" />
+        <result column="SEND_AMOUNT_LESS" jdbcType="DECIMAL" property="sendAmountLess" />
+        <result column="GZ_AMOUNT" jdbcType="DECIMAL" property="gzAmount" />
+        <result column="GZ_AMOUNT_LESS" jdbcType="DECIMAL" property="gzAmountLess" />
+        <result column="FINAL_ORDER_AMOUNT" jdbcType="DECIMAL" property="finalOrderAmount" />
+        <result column="FINAL_ORDER_AMOUNT_LESS" jdbcType="DECIMAL" property="finalOrderAmountLess" />
+        <result column="WM_PSDH" jdbcType="VARCHAR" property="wmPsdh" />
+        <result column="WM_PSDH_LESS" jdbcType="VARCHAR" property="wmPsdhLess" />
+        <result column="DELETE_FLAG" jdbcType="INTEGER" property="deleteFlag" />
+        <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+        <result column="VERSION" jdbcType="INTEGER" property="version" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        ID, CLIENT, STORE_ID, TJ_DATE, ORDER_NUM, ORDER_NUM_LESS, DN_NUM, DN_NUM_LESS, SEND_NUM,
+    SEND_NUM_LESS, GZ_NUM, GZ_NUM_LESS, FINAL_NUM, FINAL_NUM_LESS, ORDER_PRODUCT_NUM,
+    ORDER_PRODUCT_NUM_LESS, DN_PRODUCT_NUM, DN_PRODUCT_NUM_LESS, SEND_PRODUCT_NUM, SEND_PRODUCT_NUM_LESS,
+    GZ_PRODUCT_NUM, GZ_PRODUCT_NUM_LESS, FINAL_PRODUCT_NUM, FINAL_PRODUCT_NUM_LESS, ORDER_AMOUNT,
+    ORDER_AMOUNT_LESS, DN_AMOUNT, DN_AMOUNT_LESS, SEND_AMOUNT, SEND_AMOUNT_LESS, GZ_AMOUNT,
+    GZ_AMOUNT_LESS, FINAL_ORDER_AMOUNT, FINAL_ORDER_AMOUNT_LESS, WM_PSDH, WM_PSDH_LESS,
+    DELETE_FLAG, CREATE_TIME, UPDATE_TIME, VERSION
+    </sql>
+
+    <select id="getById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from GAIA_XHL_D
+        where ID = #{id,jdbcType=BIGINT}
+    </select>
+
+    <insert id="add" parameterType="com.gys.entity.GaiaXhlD" keyProperty="id" useGeneratedKeys="true">
+        insert into GAIA_XHL_D
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                CLIENT,
+            </if>
+            <if test="storeId != null">
+                STORE_ID,
+            </if>
+            <if test="tjDate != null">
+                TJ_DATE,
+            </if>
+            <if test="orderNum != null">
+                ORDER_NUM,
+            </if>
+            <if test="orderNumLess != null">
+                ORDER_NUM_LESS,
+            </if>
+            <if test="dnNum != null">
+                DN_NUM,
+            </if>
+            <if test="dnNumLess != null">
+                DN_NUM_LESS,
+            </if>
+            <if test="sendNum != null">
+                SEND_NUM,
+            </if>
+            <if test="sendNumLess != null">
+                SEND_NUM_LESS,
+            </if>
+            <if test="gzNum != null">
+                GZ_NUM,
+            </if>
+            <if test="gzNumLess != null">
+                GZ_NUM_LESS,
+            </if>
+            <if test="finalNum != null">
+                FINAL_NUM,
+            </if>
+            <if test="finalNumLess != null">
+                FINAL_NUM_LESS,
+            </if>
+            <if test="orderProductNum != null">
+                ORDER_PRODUCT_NUM,
+            </if>
+            <if test="orderProductNumLess != null">
+                ORDER_PRODUCT_NUM_LESS,
+            </if>
+            <if test="dnProductNum != null">
+                DN_PRODUCT_NUM,
+            </if>
+            <if test="dnProductNumLess != null">
+                DN_PRODUCT_NUM_LESS,
+            </if>
+            <if test="sendProductNum != null">
+                SEND_PRODUCT_NUM,
+            </if>
+            <if test="sendProductNumLess != null">
+                SEND_PRODUCT_NUM_LESS,
+            </if>
+            <if test="gzProductNum != null">
+                GZ_PRODUCT_NUM,
+            </if>
+            <if test="gzProductNumLess != null">
+                GZ_PRODUCT_NUM_LESS,
+            </if>
+            <if test="finalProductNum != null">
+                FINAL_PRODUCT_NUM,
+            </if>
+            <if test="finalProductNumLess != null">
+                FINAL_PRODUCT_NUM_LESS,
+            </if>
+            <if test="orderAmount != null">
+                ORDER_AMOUNT,
+            </if>
+            <if test="orderAmountLess != null">
+                ORDER_AMOUNT_LESS,
+            </if>
+            <if test="dnAmount != null">
+                DN_AMOUNT,
+            </if>
+            <if test="dnAmountLess != null">
+                DN_AMOUNT_LESS,
+            </if>
+            <if test="sendAmount != null">
+                SEND_AMOUNT,
+            </if>
+            <if test="sendAmountLess != null">
+                SEND_AMOUNT_LESS,
+            </if>
+            <if test="gzAmount != null">
+                GZ_AMOUNT,
+            </if>
+            <if test="gzAmountLess != null">
+                GZ_AMOUNT_LESS,
+            </if>
+            <if test="finalOrderAmount != null">
+                FINAL_ORDER_AMOUNT,
+            </if>
+            <if test="finalOrderAmountLess != null">
+                FINAL_ORDER_AMOUNT_LESS,
+            </if>
+            <if test="wmPsdh != null">
+                WM_PSDH,
+            </if>
+            <if test="wmPsdhLess != null">
+                WM_PSDH_LESS,
+            </if>
+            <if test="deleteFlag != null">
+                DELETE_FLAG,
+            </if>
+            <if test="createTime != null">
+                CREATE_TIME,
+            </if>
+            <if test="updateTime != null">
+                UPDATE_TIME,
+            </if>
+            <if test="version != null">
+                VERSION,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                #{client,jdbcType=VARCHAR},
+            </if>
+            <if test="storeId != null">
+                #{storeId,jdbcType=VARCHAR},
+            </if>
+            <if test="tjDate != null">
+                #{tjDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="orderNum != null">
+                #{orderNum,jdbcType=DECIMAL},
+            </if>
+            <if test="orderNumLess != null">
+                #{orderNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="dnNum != null">
+                #{dnNum,jdbcType=DECIMAL},
+            </if>
+            <if test="dnNumLess != null">
+                #{dnNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="sendNum != null">
+                #{sendNum,jdbcType=DECIMAL},
+            </if>
+            <if test="sendNumLess != null">
+                #{sendNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="gzNum != null">
+                #{gzNum,jdbcType=DECIMAL},
+            </if>
+            <if test="gzNumLess != null">
+                #{gzNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="finalNum != null">
+                #{finalNum,jdbcType=DECIMAL},
+            </if>
+            <if test="finalNumLess != null">
+                #{finalNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="orderProductNum != null">
+                #{orderProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="orderProductNumLess != null">
+                #{orderProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="dnProductNum != null">
+                #{dnProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="dnProductNumLess != null">
+                #{dnProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="sendProductNum != null">
+                #{sendProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="sendProductNumLess != null">
+                #{sendProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="gzProductNum != null">
+                #{gzProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="gzProductNumLess != null">
+                #{gzProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="finalProductNum != null">
+                #{finalProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="finalProductNumLess != null">
+                #{finalProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="orderAmount != null">
+                #{orderAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="orderAmountLess != null">
+                #{orderAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="dnAmount != null">
+                #{dnAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="dnAmountLess != null">
+                #{dnAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="sendAmount != null">
+                #{sendAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="sendAmountLess != null">
+                #{sendAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="gzAmount != null">
+                #{gzAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="gzAmountLess != null">
+                #{gzAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="finalOrderAmount != null">
+                #{finalOrderAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="finalOrderAmountLess != null">
+                #{finalOrderAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="wmPsdh != null">
+                #{wmPsdh,jdbcType=VARCHAR},
+            </if>
+            <if test="wmPsdhLess != null">
+                #{wmPsdhLess,jdbcType=VARCHAR},
+            </if>
+            <if test="deleteFlag != null">
+                #{deleteFlag,jdbcType=INTEGER},
+            </if>
+            <if test="createTime != null">
+                #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updateTime != null">
+                #{updateTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="version != null">
+                #{version,jdbcType=INTEGER},
+            </if>
+        </trim>
+    </insert>
+
+    <update id="update" parameterType="com.gys.entity.GaiaXhlD">
+        update GAIA_XHL_D
+        <set>
+            <if test="client != null">
+                CLIENT = #{client,jdbcType=VARCHAR},
+            </if>
+            <if test="storeId != null">
+                STORE_ID = #{storeId,jdbcType=VARCHAR},
+            </if>
+            <if test="tjDate != null">
+                TJ_DATE = #{tjDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="orderNum != null">
+                ORDER_NUM = #{orderNum,jdbcType=DECIMAL},
+            </if>
+            <if test="orderNumLess != null">
+                ORDER_NUM_LESS = #{orderNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="dnNum != null">
+                DN_NUM = #{dnNum,jdbcType=DECIMAL},
+            </if>
+            <if test="dnNumLess != null">
+                DN_NUM_LESS = #{dnNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="sendNum != null">
+                SEND_NUM = #{sendNum,jdbcType=DECIMAL},
+            </if>
+            <if test="sendNumLess != null">
+                SEND_NUM_LESS = #{sendNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="gzNum != null">
+                GZ_NUM = #{gzNum,jdbcType=DECIMAL},
+            </if>
+            <if test="gzNumLess != null">
+                GZ_NUM_LESS = #{gzNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="finalNum != null">
+                FINAL_NUM = #{finalNum,jdbcType=DECIMAL},
+            </if>
+            <if test="finalNumLess != null">
+                FINAL_NUM_LESS = #{finalNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="orderProductNum != null">
+                ORDER_PRODUCT_NUM = #{orderProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="orderProductNumLess != null">
+                ORDER_PRODUCT_NUM_LESS = #{orderProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="dnProductNum != null">
+                DN_PRODUCT_NUM = #{dnProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="dnProductNumLess != null">
+                DN_PRODUCT_NUM_LESS = #{dnProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="sendProductNum != null">
+                SEND_PRODUCT_NUM = #{sendProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="sendProductNumLess != null">
+                SEND_PRODUCT_NUM_LESS = #{sendProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="gzProductNum != null">
+                GZ_PRODUCT_NUM = #{gzProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="gzProductNumLess != null">
+                GZ_PRODUCT_NUM_LESS = #{gzProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="finalProductNum != null">
+                FINAL_PRODUCT_NUM = #{finalProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="finalProductNumLess != null">
+                FINAL_PRODUCT_NUM_LESS = #{finalProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="orderAmount != null">
+                ORDER_AMOUNT = #{orderAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="orderAmountLess != null">
+                ORDER_AMOUNT_LESS = #{orderAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="dnAmount != null">
+                DN_AMOUNT = #{dnAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="dnAmountLess != null">
+                DN_AMOUNT_LESS = #{dnAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="sendAmount != null">
+                SEND_AMOUNT = #{sendAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="sendAmountLess != null">
+                SEND_AMOUNT_LESS = #{sendAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="gzAmount != null">
+                GZ_AMOUNT = #{gzAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="gzAmountLess != null">
+                GZ_AMOUNT_LESS = #{gzAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="finalOrderAmount != null">
+                FINAL_ORDER_AMOUNT = #{finalOrderAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="finalOrderAmountLess != null">
+                FINAL_ORDER_AMOUNT_LESS = #{finalOrderAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="wmPsdh != null">
+                WM_PSDH = #{wmPsdh,jdbcType=VARCHAR},
+            </if>
+            <if test="wmPsdhLess != null">
+                WM_PSDH_LESS = #{wmPsdhLess,jdbcType=VARCHAR},
+            </if>
+            <if test="deleteFlag != null">
+                DELETE_FLAG = #{deleteFlag,jdbcType=INTEGER},
+            </if>
+            <if test="createTime != null">
+                CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updateTime != null">
+                UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="version != null">
+                VERSION = #{version,jdbcType=INTEGER},
+            </if>
+        </set>
+        where ID = #{id,jdbcType=BIGINT}
+    </update>
+
+    <select id="findList" resultMap="BaseResultMap" parameterType="com.gys.entity.GaiaXhlD">
+        select <include refid="Base_Column_List"/>
+        from GAIA_XHL_D
+        where DELETE_FLAG = 0
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        <if test="storeId != null and storeId != ''">
+            and STORE_ID = #{storeId}
+        </if>
+        <if test="tjDate != null">
+            and date(TJ_DATE) = date(#{tjDate})
+        </if>
+    </select>
+
+    <select id="countXhl" resultType="com.gys.entity.GaiaXhlD" parameterType="com.gys.entity.data.XhlDCond">
+        select
+            CLIENT client,TJ_DATE tjDate,SUM(ORDER_NUM) orderNum,SUM(ORDER_NUM_LESS) orderNumLess,SUM(DN_NUM) dnNum,SUM(DN_NUM_LESS) dnNumLess,SUM(SEND_NUM) sendNum,SUM(SEND_NUM_LESS) sendNumLess,SUM(GZ_NUM) gzNum,SUM(GZ_NUM_LESS) gzNumLess,SUM(FINAL_NUM) finalNum,
+            SUM(FINAL_NUM_LESS) finalNumLess,SUM(ORDER_PRODUCT_NUM) orderProductNum,SUM(ORDER_PRODUCT_NUM_LESS) orderProductNumLess,SUM(DN_PRODUCT_NUM) dnProductNum,SUM(DN_PRODUCT_NUM_LESS) dnProductNumLess,SUM(SEND_PRODUCT_NUM) sendProductNum,SUM(SEND_PRODUCT_NUM_LESS) sendProductNumLess,SUM(GZ_PRODUCT_NUM) gzProductNum,SUM(GZ_PRODUCT_NUM_LESS) gzProductNumLess,
+            SUM(FINAL_PRODUCT_NUM) finalProductNum,SUM(FINAL_PRODUCT_NUM_LESS) finalProductNumLess,SUM(ORDER_AMOUNT) orderAmount,SUM(ORDER_AMOUNT_LESS) orderAmountLess,SUM(DN_AMOUNT) dnAmount,SUM(DN_AMOUNT_LESS) dnAmountLess,SUM(SEND_AMOUNT) sendAmount,SUM(SEND_AMOUNT_LESS) sendAmountLess,SUM(GZ_AMOUNT) gzAmount,SUM(GZ_AMOUNT_LESS) gzAmountLess,
+            SUM(FINAL_ORDER_AMOUNT)  finalOrderAmount,SUM(FINAL_ORDER_AMOUNT_LESS)  finalOrderAmountLess
+        from GAIA_XHL_D
+        where DELETE_FLAG = 0
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        <if test="dnDate != null and dnDate != ''">
+            and date(TJ_DATE) = #{dnDate}
+        </if>
+        group by client
+    </select>
+
+    <select id="getUnique" parameterType="com.gys.entity.GaiaXhlD" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from GAIA_XHL_D
+        where DELETE_FLAG = 0
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        <if test="storeId != null and storeId != ''">
+            and STORE_ID = #{storeId}
+        </if>
+        <if test="tjDate != null">
+            and date(TJ_DATE)=date(#{tjDate})
+        </if>
+    </select>
+
+    <select id="getClientList" resultType="java.lang.String">
+        select CLIENT from GAIA_WMS_DIAOBO_Z group by CLIENT
+    </select>
+
+    <select id="getStoreXhlByDate" parameterType="com.gys.entity.data.XhlDCond" resultType="com.gys.entity.GaiaXhlD">
+        select  client,storeId,tjDate,sum(orderNum) orderNum,sum(dnNum) dnNum,sum(sendNum) sendNum,sum(gzNum) gzNum,sum(finalNum) finalNum,
+               sum(orderProductNum) orderProductNum,sum(dnProductNum) dnProductNum,sum(sendProductNum) sendProductNum,sum(gzProductNum) gzProductNum,sum(finalProductNum) finalProductNum,
+               sum(orderAmount) orderAmount,sum(dnAmount) dnAmount,sum(sendAmount) sendAmount,sum(gzAmount) gzAmount,sum(finalOrderAmount) finalOrderAmount,group_concat(wmPsdh) wmPsdh
+        from (
+                 select a.CLIENT client,b.WM_KH_BH storeId,date_format(b.WM_CJRQ,'%Y-%m-%d %T') tjDate,
+                        sum(a.ORDER_NUMBER) orderNum,sum(a.WM_CKYSL) dnNum,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)) sendNum,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)) gzNum,
+                        sum(if(b.WM_SFGZ = '1', a.ORDER_NUMBER, 0)) finalNum,
+                        count(d.orderProductNum) orderProductNum,sum(if(a.WM_CKYSL>0,1,0)) dnProductNum,
+                        sum(if(b.WM_SFGZ = '1' and a.WM_CKYSL > 0, 1, 0)) sendProductNum,sum(if(b.WM_SFGZ = '1' and a.WM_GZSL > 0, 1, 0)) gzProductNum,
+                        sum(if(b.WM_SFGZ='1' and a.ORDER_NUMBER>0,1,0)) finalProductNum,
+                        sum(a.WM_CKJ*a.ORDER_NUMBER) orderAmount,sum(a.WM_CKYSL*a.WM_CKJ) dnAmount,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)*a.WM_CKJ) sendAmount,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)*a.WM_CKJ) gzAmount,
+                        sum(if(b.WM_SFGZ='1',a.ORDER_NUMBER,0)*a.WM_CKJ) finalOrderAmount,
+                        group_concat(distinct b.WM_PSDH) wmPsdh
+                 from GAIA_WMS_DIAOBO_M a
+                          left join GAIA_WMS_DIAOBO_Z b on a.CLIENT=b.CLIENT and a.WM_PSDH=b.WM_PSDH
+                          left join GAIA_DC_DATA dc on b.CLIENT=dc.CLIENT and b.PRO_SITE=dc.DC_CODE
+                          left join GAIA_SD_REPLENISH_H c on b.CLIENT=c.CLIENT and b.WM_KH_BH=c.GSRH_BR_ID and b.WM_DDH=c.GSRH_VOUCHER_ID
+                          left join (
+                     select CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID,count(*) orderProductNum
+                     from GAIA_SD_REPLENISH_D where CLIENT=#{client}  group by CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID
+                 ) d on c.CLIENT=d.CLIENT and c.GSRH_BR_id=d.GSRD_BR_ID and c.GSRH_VOUCHER_ID=d.GSRD_VOUCHER_ID
+                 where a.CLIENT=#{client} and b.WM_CJRQ=#{dnDate} and c.GSRH_PATTERN in ('0','1','2','4') and (dc.DC_INVENT='0' or dc.DC_INVENT is null or dc.DC_WTDC is null or dc.DC_WTDC='')
+                 group by a.CLIENT,b.WM_KH_BH
+                 union
+                 select a.CLIENT client,b.WM_KH_BH storeId,date_format(b.WM_CJRQ,'%Y-%m-%d %T') tjDate,
+                        sum(a.ORDER_NUMBER) orderNum,sum(a.WM_CKYSL) dnNum,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)) sendNum,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)) gzNum,
+                        sum(if(b.WM_SFGZ = '1', a.ORDER_NUMBER, 0)) finalNum,
+                        count(d.orderProductNum) orderProductNum,sum(if(a.WM_CKYSL>0,1,0)) dnProductNum,
+                        sum(if(b.WM_SFGZ = '1' and a.WM_CKYSL > 0, 1, 0)) sendProductNum,sum(if(b.WM_SFGZ = '1' and a.WM_GZSL > 0, 1, 0)) gzProductNum,
+                        sum(if(b.WM_SFGZ='1' and a.ORDER_NUMBER>0,1,0)) finalProductNum,
+                        sum(a.WM_CKJ*a.ORDER_NUMBER) orderAmount,sum(a.WM_CKYSL*a.WM_CKJ) dnAmount,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)*a.WM_CKJ) sendAmount,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)*a.WM_CKJ) gzAmount,
+                        sum(if(b.WM_SFGZ='1',a.ORDER_NUMBER,0)*a.WM_CKJ) finalOrderAmount,
+                        group_concat(distinct b.WM_PSDH) wmPsdh
+                 from GAIA_WMS_DIAOBO_M a
+                          left join GAIA_WMS_DIAOBO_Z b on a.CLIENT=b.CLIENT and a.WM_PSDH=b.WM_PSDH
+                          left join GAIA_DC_DATA dc on b.CLIENT=dc.CLIENT and b.PRO_SITE=dc.DC_CODE
+                          left join GAIA_SO_ITEM i on a.CLIENT=i.CLIENT and b.WM_DDH=i.SO_ID and a.WM_SP_BM=i.SO_PRO_CODE
+                          left join GAIA_SD_REPLENISH_H c on i.CLIENT=c.CLIENT and b.WM_KH_BH=c.GSRH_BR_ID and i.SO_REFER_ORDER=c.GSRH_VOUCHER_ID
+                          left join (
+                     select CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID,count(*) orderProductNum
+                     from GAIA_SD_REPLENISH_D where CLIENT=#{client}  group by CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID
+                 ) d on c.CLIENT=d.CLIENT and c.GSRH_BR_id=d.GSRD_BR_ID and c.GSRH_VOUCHER_ID=d.GSRD_VOUCHER_ID
+                 where a.CLIENT=#{client} and b.WM_CJRQ=#{dnDate} and c.GSRH_PATTERN in ('0','1','2','4') and (dc.DC_INVENT='0' or dc.DC_INVENT is null or dc.DC_WTDC is null or dc.DC_WTDC='')
+                 group by a.CLIENT,b.WM_KH_BH
+             ) temp group by client,storeId
+    </select>
+
+    <select id="getStoreXhlByDateWithOutShopGoods" parameterType="com.gys.entity.data.XhlDCond" resultType="com.gys.entity.GaiaXhlD">
+        select client,storeId,tjDate,sum(orderNumLess) orderNumLess,sum(dnNumLess) dnNumLess,sum(sendNumLess) sendNumLess,sum(gzNumLess) gzNumLess,sum(finalNumLess) finalNumLess,
+               sum(orderProductNumLess) orderProductNumLess,sum(dnProductNumLess) dnProductNumLess,sum(sendProductNumless) sendProductNumLess,sum(gzProductNumLess) gzProductNumLess,sum(finalProductNumLess) finalProductNumLess,
+               sum(orderAmountLess) orderAmountLess,sum(dnAmountLess) dnAmountLess,sum(sendAmountLess) sendAmountLess,sum(gzAmountLess) gzAmountLess,sum(finalOrderAmountLess) finalOrderAmountLess,group_concat(wmPsdhLess) wmPsdhLess
+        from (
+                 select a.CLIENT client,b.WM_KH_BH storeId,date_format(b.WM_CJRQ,'%Y-%m-%d %T') tjDate,
+                        sum(a.ORDER_NUMBER) orderNumLess,sum(a.WM_CKYSL) dnNumLess,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)) sendNumLess,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)) gzNumLess,
+                        sum(if(b.WM_SFGZ = '1', a.ORDER_NUMBER, 0)) finalNumLess,
+                        count(d.orderProductNum) orderProductNumLess,sum(if(a.WM_CKYSL>0,1,0)) dnProductNumLess,
+                        sum(if(b.WM_SFGZ = '1' and a.WM_CKYSL > 0, 1, 0)) sendProductNumLess,sum(if(b.WM_SFGZ = '1' and a.WM_GZSL > 0, 1, 0)) gzProductNumLess,
+                        sum(if(b.WM_SFGZ='1' and a.ORDER_NUMBER>0,1,0)) finalProductNumLess,
+                        sum(a.WM_CKJ*a.ORDER_NUMBER) orderAmountLess,sum(a.WM_CKYSL*a.WM_CKJ) dnAmountLess,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)*a.WM_CKJ) sendAmountLess,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)*a.WM_CKJ) gzAmountLess,
+                        sum(if(b.WM_SFGZ='1',a.ORDER_NUMBER,0)*a.WM_CKJ) finalOrderAmountLess,
+                        group_concat(distinct b.WM_PSDH) wmPsdhLess
+                 from GAIA_WMS_DIAOBO_M a
+                          left join GAIA_WMS_DIAOBO_Z b on a.CLIENT=b.CLIENT and a.WM_PSDH=b.WM_PSDH
+                          left join GAIA_DC_DATA dc on b.CLIENT=dc.CLIENT and b.PRO_SITE=dc.DC_CODE
+                          left join GAIA_SD_REPLENISH_H c on b.CLIENT=c.CLIENT and b.WM_KH_BH=c.GSRH_BR_ID and b.WM_DDH=c.GSRH_VOUCHER_ID
+                          left join (
+                     select CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID,count(*) orderProductNum
+                     from GAIA_SD_REPLENISH_D where CLIENT=#{client}  group by CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID
+                 ) d on c.CLIENT=d.CLIENT and c.GSRH_BR_id=d.GSRD_BR_ID and c.GSRH_VOUCHER_ID=d.GSRD_VOUCHER_ID
+                 where a.CLIENT=#{client} and b.WM_CJRQ=#{dnDate} and c.GSRH_PATTERN in ('0','1','4') and (dc.DC_INVENT='0' or dc.DC_INVENT is null or dc.DC_WTDC is null or dc.DC_WTDC='')
+                 group by a.CLIENT,b.WM_KH_BH
+                 union
+                 select a.CLIENT client,b.WM_KH_BH storeId,date_format(b.WM_CJRQ,'%Y-%m-%d %T') tjDate,
+                        sum(a.ORDER_NUMBER) orderNum,sum(a.WM_CKYSL) dnNum,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)) sendNum,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)) gzNum,
+                        sum(if(b.WM_SFGZ = '1', a.ORDER_NUMBER, 0)) finalNum,
+                        count(d.orderProductNum) orderProductNum,sum(if(a.WM_CKYSL>0,1,0)) dnProductNum,
+                        sum(if(b.WM_SFGZ = '1' and a.WM_CKYSL > 0, 1, 0)) sendProductNum,sum(if(b.WM_SFGZ = '1' and a.WM_GZSL > 0, 1, 0)) gzProductNum,
+                        sum(if(b.WM_SFGZ='1' and a.ORDER_NUMBER>0,1,0)) finalProductNum,
+                        sum(a.WM_CKJ*a.ORDER_NUMBER) orderAmount,sum(a.WM_CKYSL*a.WM_CKJ) dnAmount,
+                        sum(if(b.WM_SFGZ='1',a.WM_CKYSL,0)*a.WM_CKJ) sendAmount,sum(if(b.WM_SFGZ='1',a.WM_GZSL,0)*a.WM_CKJ) gzAmount,
+                        sum(if(b.WM_SFGZ='1',a.ORDER_NUMBER,0)*a.WM_CKJ) finalOrderAmount,
+                        group_concat(distinct b.WM_PSDH) wmPsdh
+                 from GAIA_WMS_DIAOBO_M a
+                          left join GAIA_WMS_DIAOBO_Z b on a.CLIENT=b.CLIENT and a.WM_PSDH=b.WM_PSDH
+                          left join GAIA_DC_DATA dc on b.CLIENT=dc.CLIENT and b.PRO_SITE=dc.DC_CODE
+                          left join GAIA_SO_ITEM i on a.CLIENT=i.CLIENT and b.WM_DDH=i.SO_ID and a.WM_SP_BM=i.SO_PRO_CODE
+                          left join GAIA_SD_REPLENISH_H c on i.CLIENT=c.CLIENT and b.WM_KH_BH=c.GSRH_BR_ID and i.SO_REFER_ORDER=c.GSRH_VOUCHER_ID
+                          left join (
+                     select CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID,count(*) orderProductNum
+                     from GAIA_SD_REPLENISH_D where CLIENT=#{client}  group by CLIENT,GSRD_BR_ID,GSRD_VOUCHER_ID
+                 ) d on c.CLIENT=d.CLIENT and c.GSRH_BR_id=d.GSRD_BR_ID and c.GSRH_VOUCHER_ID=d.GSRD_VOUCHER_ID
+                 where a.CLIENT=#{client} and b.WM_CJRQ=#{dnDate} and c.GSRH_PATTERN in ('0','1','4') and (dc.DC_INVENT='0' or dc.DC_INVENT is null or dc.DC_WTDC is null or dc.DC_WTDC='')
+                 group by a.CLIENT,b.WM_KH_BH
+             ) temp group by client,storeId
+    </select>
+</mapper>    

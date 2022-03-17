@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.MaterialDocumentMapper">
+    <select id="noLogList" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="com.gys.common.data.MaterialDocumentOutData">
+        select DISTINCT c.FRANC_NAME francName,t.code as francAddr,a.MAT_DN_ID matDnId,a.MAT_CREATE_DATE createDate,
+        a.MAT_PO_ID matPoId,a.MAT_PRO_CODE matProCODE,a.MAT_QTY matQty,a.MAT_AMT matAmt
+        from GAIA_MATERIAL_DOC_LOG a
+        LEFT JOIN GAIA_FRANCHISEE c on c.CLIENT = a.CLIENT
+        LEFT JOIN(select concat(DC_CODE,'-',DC_SHORT_NAME) as addr,DC_CODE code,CLIENT from GAIA_DC_DATA
+        union
+        select concat(STO_CODE,'-',STO_SHORT_NAME) as addr,STO_CODE code,CLIENT from GAIA_STORE_DATA )t on t.code = a.MAT_SITE_CODE and a.CLIENT = t.CLIENT
+        where not EXISTS (select 1 from GAIA_MATERIAL_DOC where a.CLIENT = CLIENT and a.MAT_DN_ID = MAT_DN_ID)
+        <if test="startTime != null and startTime != ''">
+            AND a.MAT_POST_DATE <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.MAT_POST_DATE <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="francName != null and francName != ''">
+            AND c.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="francAddr != null and francAddr != ''">
+            AND a.MAT_SITE_CODE = #{francAddr}
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and  a.MAT_PO_ID in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and  a.MAT_DN_ID in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY a.MAT_POST_DATE DESC
+    </select>
+
+    <select id="listSuccessDocument" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="com.gys.common.data.MaterialDocumentOutData">
+        select  b.FRANC_NAME francName,a.MAT_CREATE_DATE createDate,t.addr as francAddr,a.MAT_DN_ID matDnId,
+        a.MAT_PO_ID matPoId,a.MAT_PRO_CODE matProCODE,a.MAT_QTY matQty,a.MAT_MOV_AMT matMovAmt,a.MAT_RATE_MOV matRateMov
+        ,IFNULL(a.MAT_ADD_AMT,0) matAddAmt ,IFNULL(a.MAT_ADD_TAX,0) matAddTax
+        ,c.PRO_DEPICT proName,c.PRO_SPECS proSpecs,c.PRO_FACTORY_NAME proFactoryName,c.PRO_UNIT proUnit,
+        d.TAX_CODE_VALUE taxValue,a.MAT_CREATE_TIME matCreateTime,case when a.MAT_DEBIT_CREDIT ='H' then '负' else '正' end matDebitCredit
+        from GAIA_MATERIAL_DOC a
+        LEFT JOIN GAIA_FRANCHISEE b on b.CLIENT = a.CLIENT
+        LEFT JOIN GAIA_PRODUCT_BUSINESS c on c.PRO_SELF_CODE =a.MAT_PRO_CODE and c.CLIENT =a.CLIENT and a.MAT_SITE_CODE = c.PRO_SITE
+        LEFT JOIN GAIA_TAX_CODE d on d.TAX_CODE = c.PRO_INPUT_TAX
+        LEFT JOIN(select concat(DC_CODE,'-',DC_SHORT_NAME) as addr,DC_CODE code,CLIENT from GAIA_DC_DATA
+        union
+        select concat(STO_CODE,'-',STO_SHORT_NAME) as addr,STO_CODE code,CLIENT from GAIA_STORE_DATA )t on t.code = a.MAT_SITE_CODE and a.CLIENT = t.CLIENT
+        where
+        1=1
+        <if test="startTime != null and startTime != ''">
+            AND a.MAT_POST_DATE <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.MAT_POST_DATE <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="type != null and type != ''">
+            AND a.MAT_TYPE = #{type}
+        </if>
+        <if test="francName != null and francName != ''">
+            AND b.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="francAddr != null and francAddr != ''">
+            AND a.MAT_SITE_CODE = #{francAddr}
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and  a.MAT_PO_ID in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and  a.MAT_DN_ID in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY a.MAT_POST_DATE DESC
+    </select>
+
+    <select id="listErrorForCDOrCX" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="com.gys.common.data.MaterialDocumentOutData">
+        select a.CLIENT,c.FRANC_NAME francName,
+        t.addr as francAddr,
+        a.PO_CREATE_DATE createDate,a.WM_RKDH matDnId,a.WM_CGDDH matPoId,a.WM_SP_BM matProCode,a.WM_SHSL matQty
+        from GAIA_WMS_RKYS a
+        LEFT JOIN GAIA_FRANCHISEE c on c.CLIENT = a.CLIENT
+        LEFT JOIN(select concat(DC_CODE,'-',DC_SHORT_NAME) as addr,DC_CODE code,CLIENT from GAIA_DC_DATA
+        union
+        select concat(STO_CODE,'-',STO_SHORT_NAME) as addr,STO_CODE code,CLIENT from GAIA_STORE_DATA )t on t.code = a.PRO_SITE and a.CLIENT = t.CLIENT
+        where not EXISTS (select 1 from GAIA_MATERIAL_DOC_LOG where a.CLIENT = CLIENT and a.WM_RKDH = MAT_DN_ID)
+        <if test="startTime != null and startTime != ''">
+            AND a.WM_YSRQ <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.WM_YSRQ <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="francName != null and francName != ''">
+            AND c.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="francAddr != null and francAddr != ''">
+            AND a.PRO_SITE = #{francAddr}
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and a.WM_CGDDH in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and a.WM_RKDH in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        union
+        select a.CLIENT,c.FRANC_NAME francName,''francAddr,
+        a.GSEH_DATE createDate,a.GSEH_VOUCHER_ACCEPT_ID matDnId,a.GSEH_VOUCHER_ID matPoId,''matProCode,''matQty
+        from GAIA_SD_EXAMINE_H a
+        LEFT JOIN GAIA_FRANCHISEE c on c.CLIENT = a.CLIENT
+        where not EXISTS (select 1 from GAIA_MATERIAL_DOC_LOG where a.CLIENT = CLIENT and a.GSEH_VOUCHER_ACCEPT_ID =
+        MAT_DN_ID) and a.GSEH_VOUCHER_ACCEPT_ID like 'CS%'
+        <if test="startTime != null and startTime != ''">
+            AND a.GSEH_DATE <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.GSEH_DATE <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="francName != null and francName != ''">
+            AND c.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and a.GSEH_VOUCHER_ID in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and a.GSEH_VOUCHER_ACCEPT_ID in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>)t
+        ORDER BY t.createDate DESC
+    </select>
+
+    <select id="listErrorForPDOrPXOrXD" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="com.gys.common.data.MaterialDocumentOutData">
+        select a.CLIENT,c.FRANC_NAME francName,
+        t.addr as francAddr,
+        a.WM_CJRQ createDate,a.WM_PSDH matDnId,a.WM_DDH matPoId
+        from GAIA_WMS_DIAOBO_Z a
+        LEFT JOIN GAIA_FRANCHISEE c on c.CLIENT = a.CLIENT
+        LEFT JOIN(select concat(DC_CODE,'-',DC_SHORT_NAME) as addr,DC_CODE code,CLIENT from GAIA_DC_DATA
+        union
+        select concat(STO_CODE,'-',STO_SHORT_NAME) as addr,STO_CODE code,CLIENT from GAIA_STORE_DATA )t on t.code = a.PRO_SITE and a.CLIENT = t.CLIENT
+        where a.WM_SFGZ=1 and not EXISTS (select 1 from GAIA_MATERIAL_DOC_LOG where a.CLIENT = CLIENT and a.WM_PSDH = MAT_DN_ID)
+        <if test="startTime != null and startTime != ''">
+            AND a.WM_XGRQ <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.WM_XGRQ <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="francName != null and francName != ''">
+            AND c.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="francAddr != null and francAddr != ''">
+            AND a.PRO_SITE = #{francAddr}
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and  a.WM_DDH in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and  a.WM_PSDH in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY a.WM_XGRQ DESC
+    </select>
+
+    <select id="listErrorForTD" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="com.gys.common.data.MaterialDocumentOutData">
+        select DISTINCT a.CLIENT,c.FRANC_NAME francName,
+        t.addr as francAddr,
+        a.WM_SCRQ createDate,a.WM_TKDH matDnId,a.WM_DDXH matPoId,a.WM_SP_BM matProCode,a.WM_JSSL matQty
+        from GAIA_WMS_TKYS a
+        LEFT JOIN GAIA_FRANCHISEE c on c.CLIENT = a.CLIENT
+        LEFT JOIN(select concat(DC_CODE,'-',DC_SHORT_NAME) as addr,DC_CODE code,CLIENT from GAIA_DC_DATA
+        union
+        select concat(STO_CODE,'-',STO_SHORT_NAME) as addr,STO_CODE code,CLIENT from GAIA_STORE_DATA )t on t.code = a.PRO_SITE and a.CLIENT = t.CLIENT
+        where a.STATE=2 and  not EXISTS (select 1 from GAIA_MATERIAL_DOC_LOG where a.CLIENT = CLIENT and a.WM_TKDH = MAT_DN_ID)
+        <if test="startTime != null and startTime != ''">
+            AND a.WM_YSRQ <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.WM_YSRQ <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="francName != null and francName != ''">
+            AND c.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="francAddr != null and francAddr != ''">
+            AND a.PRO_SITE = #{francAddr}
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and  a.WM_DDXH in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and  a.WM_TKDH in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY a.WM_YSRQ DESC
+    </select>
+
+    <select id="listErrorForGD" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="com.gys.common.data.MaterialDocumentOutData">
+        select DISTINCT a.CLIENT,c.FRANC_NAME francName,
+        t.addr as francAddr,
+        a.WM_CJRQ createDate,a.WM_TGYSDH matDnId,a.WM_TGYSDDH matPoId
+        from GAIA_WMS_TUIGONG_Z a
+        LEFT JOIN GAIA_FRANCHISEE c on c.CLIENT = a.CLIENT
+        LEFT JOIN(select concat(DC_CODE,'-',DC_SHORT_NAME) as addr,DC_CODE code,CLIENT from GAIA_DC_DATA
+        union
+        select concat(STO_CODE,'-',STO_SHORT_NAME) as addr,STO_CODE code,CLIENT from GAIA_STORE_DATA )t on t.code = a.PRO_SITE and a.CLIENT = t.CLIENT
+        where a.WM_SFGZ = 0 and  not EXISTS (select 1 from GAIA_MATERIAL_DOC_LOG where a.CLIENT = CLIENT and a.WM_TGYSDH = MAT_DN_ID)
+        <if test="startTime != null and startTime != ''">
+            AND a.WM_XGRQ <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.WM_XGRQ <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="francName != null and francName != ''">
+            AND c.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="francAddr != null and francAddr != ''">
+            AND a.PRO_SITE = #{francAddr}
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and  a.WM_TGYSDDH in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and  a.WM_TGYSDH in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY a.WM_XGRQ DESC
+    </select>
+
+    <select id="listErrorForLSOrLX" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="com.gys.common.data.MaterialDocumentOutData">
+        select DISTINCT a.CLIENT,c.FRANC_NAME francName,
+        a.GSSH_DATE createDate,a.GSSH_BILL_NO matDnId,a.GSSH_BILL_NO matPoId
+        from GAIA_SD_SALE_H a
+        LEFT JOIN GAIA_FRANCHISEE c on c.CLIENT = a.CLIENT
+        where a.GSSH_HIDE_FLAG=0 and a.GSSH_BILL_NO like 'SD%' and not EXISTS (select 1 from GAIA_MATERIAL_DOC_LOG where a.CLIENT = CLIENT and a.GSSH_BILL_NO = MAT_DN_ID)
+        <if test="startTime != null and startTime != ''">
+            AND a.GSSH_DATE <![CDATA[>=]]> date_format(#{startTime},'%Y%m%d')
+        </if>
+        <if test="cliEnt != null and cliEnt != ''">
+            AND a.CLIENT = #{cliEnt}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.GSSH_DATE <![CDATA[<=]]> date_format(#{endTime},'%Y%m%d')
+        </if>
+        <if test="francName != null and francName != ''">
+            AND c.FRANC_NAME like concat('%',#{francName},'%')
+        </if>
+        <if test="francAddr != null and francAddr != ''">
+            AND a.PRO_SITE = #{francAddr}
+        </if>
+        <if test="matPoIdList != null and matPoIdList.length > 0">
+            and  a.GSSH_BILL_NO in
+            <foreach collection="matPoIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="matDnIdList != null and matDnIdList.length > 0">
+            and  a.GSSH_BILL_NO in
+            <foreach collection="matDnIdList" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY a.GSSH_DATE DESC
+    </select>
+
+    <select id="listClient"  resultType="hashmap">
+        select CLIENT cliEnt,FRANC_NAME name from GAIA_FRANCHISEE  ORDER BY CLIENT asc
+    </select>
+
+    <select id="listClientDCAndStorage" parameterType="com.gys.common.data.MaterialDocumentInData" resultType="hashmap">
+        select * from (select concat(DC_CODE,'-',DC_SHORT_NAME) as name,a.DC_CODE code from GAIA_DC_DATA a where
+        <if test="cliEnt != null and cliEnt != ''">
+             a.CLIENT = #{cliEnt}
+        </if>
+        union
+        select concat(STO_CODE,'-',STO_SHORT_NAME) as naem,STO_CODE code from GAIA_STORE_DATA b where
+        <if test="cliEnt != null and cliEnt != ''">
+             b.CLIENT = #{cliEnt}
+        </if>)t
+        ORDER BY t.code asc
+    </select>
+</mapper>

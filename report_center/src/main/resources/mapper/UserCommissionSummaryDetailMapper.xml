@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.UserCommissionSummaryDetailMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.gys.entity.data.salesSummary.UserCommissionSummaryDetail">
+        <id column="ID" property="id"/>
+        <result column="CLIENT" property="client"/>
+        <result column="PLAN_ID" property="planId"/>
+        <result column="PLAN_NAME" property="planName"/>
+        <result column="SUB_PLAN_ID" property="subPlanId"/>
+        <result column="SUB_PLAN_NAME" property="subPlanName"/>
+        <result column="PLAN_START_DATE" property="planStartDate"/>
+        <result column="PLAN_END_DATE" property="planEndDate"/>
+        <result column="COMMISSION_TYPE" property="commissionType"/>
+        <result column="SALER_ID" property="salerId"/>
+        <result column="SALER_NAME" property="salerName"/>
+        <result column="STO_CODE" property="stoCode"/>
+        <result column="STO_NAME" property="stoName"/>
+        <result column="SALE_DATE" property="saleDate"/>
+        <result column="BILL_NO" property="billNo"/>
+        <result column="PRO_ID" property="proId"/>
+        <result column="PRO_NAME" property="proName"/>
+        <result column="PRO_COMMONNAME" property="proCommonname"/>
+        <result column="PRO_SPECS" property="proSpecs"/>
+        <result column="PRO_UNIT" property="proUnit"/>
+        <result column="PRO_FACTORY_CODE" property="proFactoryCode"/>
+        <result column="PRO_FACTORY_NAME" property="proFactoryName"/>
+        <result column="BATCH_NO" property="batchNo"/>
+        <result column="VALID_DATE" property="validDate"/>
+        <result column="QTY" property="qty"/>
+        <result column="PRO_LSJ" property="proLsj"/>
+        <result column="COST_AMT" property="costAmt"/>
+        <result column="YS_AMT" property="ysAmt"/>
+        <result column="AMT" property="amt"/>
+        <result column="GROSS_PROFIT_AMT" property="grossProfitAmt"/>
+        <result column="GROSS_PROFIT_RATE" property="grossProfitRate"/>
+        <result column="ZK_AMT" property="zkAmt"/>
+        <result column="ZK_RATE" property="zkRate"/>
+        <result column="COMMISSION_AMT" property="commissionAmt"/>
+        <result column="COMMISSION_SALES_RATIO" property="commissionSalesRatio"/>
+        <result column="COMMISSION_GROSS_PROFIT_RATIO" property="commissionGrossProfitRatio"/>
+        <result column="EMP_ID" property="empId"/>
+        <result column="EMP_NAME" property="empName"/>
+        <result column="DOCTOR_ID" property="doctorId"/>
+        <result column="DOCTOR_NAME" property="doctorName"/>
+        <result column="PRO_CLASS" property="proClass"/>
+        <result column="PRO_CLASS_NAME" property="proClassName"/>
+        <result column="PRO_BIG_CLASS_NAME" property="proBigClassName"/>
+        <result column="PRO_MID_CLASS_NAME" property="proMidClassName"/>
+        <result column="PRO_SLAE_CLASS" property="proSlaeClass"/>
+        <result column="PRO_POSITION" property="proPosition"/>
+        <result column="BAT_SUPPLIER_SALESMAN" property="batSupplierSalesman"/>
+        <result column="BAT_SUPPLIER_CODE" property="batSupplierCode"/>
+        <result column="SUP_NAME" property="supName"/>
+        <result column="CREATE_DATE" property="createDate"/>
+        <result column="UPDATE_DATE" property="updateDate"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        ID, CLIENT, PLAN_ID, PLAN_NAME, SUB_PLAN_ID, SUB_PLAN_NAME, PLAN_START_DATE, PLAN_END_DATE, COMMISSION_TYPE,
+        SALER_ID, SALER_NAME, STO_CODE, STO_NAME, SALE_DATE, BILL_NO, PRO_ID, PRO_NAME, PRO_COMMONNAME, PRO_SPECS, PRO_UNIT, PRO_FACTORY_CODE, PRO_FACTORY_NAME, BATCH_NO, VALID_DATE, QTY, PRO_LSJ, COST_AMT, YS_AMT, AMT, GROSS_PROFIT_AMT, GROSS_PROFIT_RATE, ZK_AMT, ZK_RATE, COMMISSION_AMT, COMMISSION_SALES_RATIO, COMMISSION_GROSS_PROFIT_RATIO, EMP_ID, EMP_NAME, DOCTOR_ID, DOCTOR_NAME, PRO_CLASS, PRO_CLASS_NAME, PRO_BIG_CLASS_NAME, PRO_MID_CLASS_NAME, PRO_SLAE_CLASS, PRO_POSITION, BAT_SUPPLIER_SALESMAN, BAT_SUPPLIER_CODE, SUP_NAME, CREATE_DATE, UPDATE_DATE
+    </sql>
+    <delete id="deleteClietnts">
+        delete from GAIA_USER_COMMISSION_SUMMARY_DETAIL
+        <where>
+            <if test="clients!=null and clients.size()>0">
+                and CLIENT in
+                <foreach collection="clients" index="index" item="client" open="(" close=")" separator=",">
+                    #{client}
+                </foreach>
+            </if>
+        </where>
+    </delete>
+    <select id="getClientList" resultType="java.util.Map">
+        SELECT
+            CLIENT client,
+            IFNULL(FRANC_NAME, '') francName,
+            FRANC_NO francNo,
+            FRANC_LEGAL_PERSON francLegalPerson,
+            FRANC_QUA francQua,
+            FRANC_ADDR francAddr,
+            FRANC_CRE_DATE francCreDate,
+            FRANC_CRE_TIME francCreTime,
+            FRANC_CRE_ID francCreId,
+            FRANC_MODI_DATE francModiDate,
+            FRANC_MODI_TIME francModiTime,
+            FRANC_MODI_ID francModiId,
+            FRANC_LOGO francLogo,
+            FRANC_TYPE1 francType1,
+            FRANC_TYPE2 francType2,
+            FRANC_TYPE3 francType3,
+            FRANC_ASS francAss,
+            FRANC_PROV francProv,
+            FRANC_CITY francCity
+        FROM GAIA_FRANCHISEE
+        WHERE FRANC_STATUS ='0'
+    </select>
+
+    <sql id="BASE_WHERE_CONDITION" >
+        <where>
+            CLIENT = #{client}
+            AND PLAN_ID = #{planId}
+            <![CDATA[
+                AND SALE_DATE >= #{startDate}
+                AND SALE_DATE <= #{endDate}
+            ]]>
+            <if test="subPlanId!=null and subPlanId!=''" >
+                AND SUB_PLAN_ID = #{subPlanId}
+            </if>
+            <if test="stoCodes!=null and stoCodes.size>0">
+                AND STO_CODE IN
+                <foreach collection="stoCodes" item="stoCode" open="(" close=")" separator=",">
+                    #{stoCode}
+                </foreach>
+            </if>
+            <if test="type!=null and type!=''">
+                AND COMMISSION_TYPE = #{type}
+            </if>
+            <if test="saleName!=null and saleName!=''" >
+                AND SALER_ID = #{saleName}
+            </if>
+            <if test="nameSearchType != null and nameSearchType!= '' and nameSearchType == '1'.toString() ">
+                <if test="nameSearchIdList != null and nameSearchIdList.size() > 0">
+                    AND SALER_ID in
+                    <foreach collection="nameSearchIdList" item="item" index="index" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </if>
+            </if>
+            <if test="nameSearchType != null and nameSearchType!= '' and nameSearchType == '2'.toString() ">
+                <if test="nameSearchIdList != null and nameSearchIdList.size() > 0">
+                    AND EMP_ID in
+                    <foreach collection="nameSearchIdList" item="item" index="index" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </if>
+            </if>
+            <if test="nameSearchType != null and nameSearchType!= '' and nameSearchType == '3'.toString() ">
+                <if test="nameSearchIdList != null and nameSearchIdList.size() > 0">
+                    AND DOCTOR_ID in
+                    <foreach collection="nameSearchIdList" item="item" index="index" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </if>
+            </if>
+            <if test="proCode != null and proCode!=''">
+                AND (PRO_NAME LIKE CONCAT('%', #{proCode}, '%')
+                OR PRO_COMMONNAME LIKE CONCAT('%', #{proCode}, '%' )
+                OR PRO_ID LIKE CONCAT('%', #{proCode}, '%' )
+                )
+            </if>
+            <if test="factoryName != null and factoryName!=''">
+                AND PRO_FACTORY_NAME LIKE CONCAT('%', #{factoryName}, '%')
+            </if>
+            <if test="proClass != null and proClass.size() > 0">
+                AND PRO_CLASS IN
+                <foreach collection="proClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="proPosition != null and proPosition.size() > 0">
+                AND PRO_POSITION IN
+                <foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="saleClass != null and saleClass.size() > 0">
+                AND PRO_SLAE_CLASS in
+                <foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="gssName != null and gssName!=''">
+                AND BAT_SUPPLIER_SALESMAN like  CONCAT('%', #{gssName}, '%')
+            </if>
+            <if test="supSelfCode != null and supSelfCode!=''">
+                AND BAT_SUPPLIER_CODE in  CONCAT('(', #{supSelfCode}, ')')
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectCommissionDetailByCondition" resultType="com.gys.common.data.EmpSaleDetailResVo">
+        SELECT
+            CLIENT AS client,
+            PLAN_ID AS planId,
+            PLAN_NAME AS planName,
+            SUB_PLAN_ID AS CPlanId,
+            SUB_PLAN_NAME AS CPlanName,
+            PLAN_START_DATE AS startDate,
+            PLAN_END_DATE AS endDate,
+            COMMISSION_TYPE AS type,
+            SALER_ID AS salerId,
+            SALER_NAME AS salerName,
+            STO_CODE AS stoCode,
+            STO_NAME AS stoName,
+            SALE_DATE AS saleDate,
+            BILL_NO AS gssdBillNo,
+            PRO_ID AS proSelfCode,
+            PRO_NAME AS proName,
+            PRO_COMMONNAME AS proCommonName,
+            PRO_SPECS AS proSpecs,
+            PRO_UNIT AS proUnit,
+            PRO_FACTORY_NAME AS factoryName,
+            BATCH_NO AS batBatchNo,
+            VALID_DATE AS gssdValidDate,
+            QTY AS qyt,
+            PRO_LSJ AS proLsj,
+            COST_AMT AS costAmt,
+            YS_AMT AS ysAmt,
+            AMT AS amt,
+            GROSS_PROFIT_AMT AS grossProfitAmt,
+            GROSS_PROFIT_RATE AS grossProfitRate,
+            ZK_AMT AS zkAmt,
+            ZK_RATE AS zkl,
+            COMMISSION_AMT AS tiTotal,
+            COMMISSION_SALES_RATIO AS deductionWageAmtRate,
+            COMMISSION_GROSS_PROFIT_RATIO AS deductionWageGrossProfitRate,
+            EMP_ID AS gsshEmpId,
+            EMP_NAME AS gsshEmpName,
+            DOCTOR_ID AS doctorId,
+            DOCTOR_NAME AS doctorName,
+            PRO_CLASS_NAME AS proClassCode,
+            PRO_BIG_CLASS_NAME AS proBigClassCode,
+            PRO_MID_CLASS_NAME AS proMidClassCode,
+            PRO_SLAE_CLASS AS proSlaeClass,
+            PRO_POSITION AS proPosition,
+            BAT_SUPPLIER_SALESMAN AS batSupplierSalesman,
+            BAT_SUPPLIER_CODE AS batSupplierCode,
+            SUP_NAME AS batSupplierName
+        FROM GAIA_USER_COMMISSION_SUMMARY_DETAIL
+        <include refid="BASE_WHERE_CONDITION" />
+    </select>
+
+    <select id="selectCommissionDetailByConditionWithTiChenProRes" resultType="com.gys.entity.data.MonthPushMoney.TiChenProRes">
+        SELECT
+            CLIENT AS client,
+            STO_CODE AS brId,
+            COST_AMT AS costAmt,
+            YS_AMT AS ysAmt,
+            AMT AS amt,
+            GROSS_PROFIT_AMT AS grossProfitAmt,
+            GROSS_PROFIT_RATE AS grossProfitRate,
+            ZK_AMT AS zkAmt,
+            COMMISSION_AMT AS commissionAmt,
+            'false' AS realTime
+        FROM GAIA_USER_COMMISSION_SUMMARY_DETAIL
+        <include refid="BASE_WHERE_CONDITION" />
+    </select>
+
+    <select id="selectCommissionDetailByConditionWithMap" resultType="map">
+        SELECT
+            CLIENT AS client,
+            PLAN_ID AS planId,
+            SUB_PLAN_ID AS subPlanId,
+            STO_CODE AS brId,
+            PRO_ID AS PROCODE,
+            QTY AS qyt,
+            COST_AMT AS costAmt,
+            YS_AMT AS ysAmt,
+            AMT AS amt,
+            GROSS_PROFIT_AMT AS grossProfitAmt,
+            ZK_AMT AS zkAmt,
+            COMMISSION_AMT AS commissionAmt,
+            'false' AS realTime
+        FROM GAIA_USER_COMMISSION_SUMMARY_DETAIL
+        <include refid="BASE_WHERE_CONDITION" />
+    </select>
+
+    <select id="selectCommissionDetailByConditionWithStoreCommissionSummary" resultType="com.gys.entity.data.commissionplan.StoreCommissionSummary">
+        SELECT
+            CLIENT AS client,
+            PLAN_ID AS planId,
+            PLAN_START_DATE AS planStartDate,
+            PLAN_END_DATE AS planEndDate,
+            SALE_DATE AS saleDateStr,
+            SALER_ID AS saleManCode,
+            SALER_NAME AS saleManName,
+            IFNULL(SUB_PLAN_ID, '') AS subPlanId,
+            STO_CODE AS stoCode,
+            STO_NAME AS stoName,
+            PRO_ID AS proId,
+            QTY AS qyt,
+            COST_AMT AS costAmt,
+            YS_AMT AS ysAmt,
+            AMT AS amt,
+            GROSS_PROFIT_AMT AS grossProfitAmt,
+            ZK_AMT AS zkAmt,
+            COMMISSION_AMT AS commissionAmt,
+            'false' AS realTime
+        FROM GAIA_USER_COMMISSION_SUMMARY_DETAIL
+        <include refid="BASE_WHERE_CONDITION" />
+    </select>
+
+    <select id="selectUserName" resultType="map" >
+        SELECT USER_ID userId, USER_NAM userName
+        FROM GAIA_USER_DATA
+        <where>
+            <if test="client!=null and client!=''">
+                AND CLIENT = #{client}
+            </if>
+        </where>
+    </select>
+
+</mapper>

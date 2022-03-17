@@ -1,0 +1,1317 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.gys.mapper.GaiaXhlHMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaXhlH">
+        <id column="ID" jdbcType="BIGINT" property="id" />
+        <result column="CLIENT" jdbcType="VARCHAR" property="client" />
+        <result column="TJ_DATE" jdbcType="TIMESTAMP" property="tjDate" />
+        <result column="YEAR_NAME" jdbcType="VARCHAR" property="yearName" />
+        <result column="WEEK_NUM" jdbcType="INTEGER" property="weekNum" />
+        <result column="TJ_TYPE" jdbcType="INTEGER" property="tjType" />
+        <result column="UP_QUANTITY" jdbcType="DECIMAL" property="upQuantity" />
+        <result column="UP_QUANTITY_LESS" jdbcType="DECIMAL" property="upQuantityLess" />
+        <result column="DOWN_QUANTITY" jdbcType="DECIMAL" property="downQuantity" />
+        <result column="DOWN_QUANTITY_LESS" jdbcType="DECIMAL" property="downQuantityLess" />
+        <result column="QUANTITY_RATE" jdbcType="DECIMAL" property="quantityRate" />
+        <result column="QUANTITY_RATE_LESS" jdbcType="DECIMAL" property="quantityRateLess" />
+        <result column="UP_AMOUNT" jdbcType="DECIMAL" property="upAmount" />
+        <result column="UP_AMOUNT_LESS" jdbcType="DECIMAL" property="upAmountLess" />
+        <result column="DOWN_AMOUNT" jdbcType="DECIMAL" property="downAmount" />
+        <result column="DOWN_AMOUNT_LESS" jdbcType="DECIMAL" property="downAmountLess" />
+        <result column="AMOUNT_RATE" jdbcType="DECIMAL" property="amountRate" />
+        <result column="AMOUNT_RATE_LESS" jdbcType="DECIMAL" property="amountRateLess" />
+        <result column="UP_PRODUCT_NUM" jdbcType="DECIMAL" property="upProductNum" />
+        <result column="UP_PRODUCT_NUM_LESS" jdbcType="DECIMAL" property="upProductNumLess" />
+        <result column="DOWN_PRODUCT_NUM" jdbcType="DECIMAL" property="downProductNum" />
+        <result column="DOWN_PRODUCT_NUM_LESS" jdbcType="DECIMAL" property="downProductNumLess" />
+        <result column="PRODUCT_RATE" jdbcType="DECIMAL" property="productRate" />
+        <result column="PRODUCT_RATE_LESS" jdbcType="DECIMAL" property="productRateLess" />
+        <result column="INDUSTRY_AVERAGE" jdbcType="DECIMAL" property="industryAverage" />
+        <result column="DELETE_FLAG" jdbcType="INTEGER" property="deleteFlag" />
+        <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+        <result column="VERSION" jdbcType="INTEGER" property="version" />
+        <result column="VIEW_SOURCE" jdbcType="INTEGER" property="viewSource" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        ID, CLIENT, TJ_DATE, YEAR_NAME, WEEK_NUM, TJ_TYPE, UP_QUANTITY, UP_QUANTITY_LESS,
+    DOWN_QUANTITY, DOWN_QUANTITY_LESS, QUANTITY_RATE, QUANTITY_RATE_LESS, UP_AMOUNT,
+    UP_AMOUNT_LESS, DOWN_AMOUNT, DOWN_AMOUNT_LESS, AMOUNT_RATE, AMOUNT_RATE_LESS, UP_PRODUCT_NUM,
+    UP_PRODUCT_NUM_LESS, DOWN_PRODUCT_NUM, DOWN_PRODUCT_NUM_LESS, PRODUCT_RATE, PRODUCT_RATE_LESS,
+    INDUSTRY_AVERAGE, DELETE_FLAG, CREATE_TIME, UPDATE_TIME, VERSION, VIEW_SOURCE
+    </sql>
+    <delete id="del">
+        delete from GAIA_WMS_TJ_XHL l
+        <where>
+            <if test="client!=null and client!=''">
+                and l.CLIENT = #{client}
+            </if>
+            <if test="proSite!=null and proSite!=''">
+                and l.PRO_SITE = #{proSite}
+            </if>
+            <if test="selDate!=null and selDate!=''">
+                and l.ZY_RQ = #{proSite}
+            </if>
+        </where>
+    </delete>
+
+    <select id="getById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from GAIA_XHL_H
+        where ID = #{id,jdbcType=BIGINT}
+    </select>
+
+    <insert id="add" parameterType="com.gys.entity.GaiaXhlH" keyProperty="id" useGeneratedKeys="true">
+        insert into GAIA_XHL_H
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                CLIENT,
+            </if>
+            <if test="tjDate != null">
+                TJ_DATE,
+            </if>
+            <if test="yearName != null">
+                YEAR_NAME,
+            </if>
+            <if test="weekNum != null">
+                WEEK_NUM,
+            </if>
+            <if test="tjType != null">
+                TJ_TYPE,
+            </if>
+            <if test="upQuantity != null">
+                UP_QUANTITY,
+            </if>
+            <if test="upQuantityLess != null">
+                UP_QUANTITY_LESS,
+            </if>
+            <if test="downQuantity != null">
+                DOWN_QUANTITY,
+            </if>
+            <if test="downQuantityLess != null">
+                DOWN_QUANTITY_LESS,
+            </if>
+            <if test="quantityRate != null">
+                QUANTITY_RATE,
+            </if>
+            <if test="quantityRateLess != null">
+                QUANTITY_RATE_LESS,
+            </if>
+            <if test="upAmount != null">
+                UP_AMOUNT,
+            </if>
+            <if test="upAmountLess != null">
+                UP_AMOUNT_LESS,
+            </if>
+            <if test="downAmount != null">
+                DOWN_AMOUNT,
+            </if>
+            <if test="downAmountLess != null">
+                DOWN_AMOUNT_LESS,
+            </if>
+            <if test="amountRate != null">
+                AMOUNT_RATE,
+            </if>
+            <if test="amountRateLess != null">
+                AMOUNT_RATE_LESS,
+            </if>
+            <if test="upProductNum != null">
+                UP_PRODUCT_NUM,
+            </if>
+            <if test="upProductNumLess != null">
+                UP_PRODUCT_NUM_LESS,
+            </if>
+            <if test="downProductNum != null">
+                DOWN_PRODUCT_NUM,
+            </if>
+            <if test="downProductNumLess != null">
+                DOWN_PRODUCT_NUM_LESS,
+            </if>
+            <if test="productRate != null">
+                PRODUCT_RATE,
+            </if>
+            <if test="productRateLess != null">
+                PRODUCT_RATE_LESS,
+            </if>
+            <if test="industryAverage != null">
+                INDUSTRY_AVERAGE,
+            </if>
+            <if test="deleteFlag != null">
+                DELETE_FLAG,
+            </if>
+            <if test="createTime != null">
+                CREATE_TIME,
+            </if>
+            <if test="updateTime != null">
+                UPDATE_TIME,
+            </if>
+            <if test="version != null">
+                VERSION,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                #{client,jdbcType=VARCHAR},
+            </if>
+            <if test="tjDate != null">
+                #{tjDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="yearName != null">
+                #{yearName,jdbcType=VARCHAR},
+            </if>
+            <if test="weekNum != null">
+                #{weekNum,jdbcType=INTEGER},
+            </if>
+            <if test="tjType != null">
+                #{tjType,jdbcType=INTEGER},
+            </if>
+            <if test="upQuantity != null">
+                #{upQuantity,jdbcType=DECIMAL},
+            </if>
+            <if test="upQuantityLess != null">
+                #{upQuantityLess,jdbcType=DECIMAL},
+            </if>
+            <if test="downQuantity != null">
+                #{downQuantity,jdbcType=DECIMAL},
+            </if>
+            <if test="downQuantityLess != null">
+                #{downQuantityLess,jdbcType=DECIMAL},
+            </if>
+            <if test="quantityRate != null">
+                #{quantityRate,jdbcType=DECIMAL},
+            </if>
+            <if test="quantityRateLess != null">
+                #{quantityRateLess,jdbcType=DECIMAL},
+            </if>
+            <if test="upAmount != null">
+                #{upAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="upAmountLess != null">
+                #{upAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="downAmount != null">
+                #{downAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="downAmountLess != null">
+                #{downAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="amountRate != null">
+                #{amountRate,jdbcType=DECIMAL},
+            </if>
+            <if test="amountRateLess != null">
+                #{amountRateLess,jdbcType=DECIMAL},
+            </if>
+            <if test="upProductNum != null">
+                #{upProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="upProductNumLess != null">
+                #{upProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="downProductNum != null">
+                #{downProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="downProductNumLess != null">
+                #{downProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="productRate != null">
+                #{productRate,jdbcType=DECIMAL},
+            </if>
+            <if test="productRateLess != null">
+                #{productRateLess,jdbcType=DECIMAL},
+            </if>
+            <if test="industryAverage != null">
+                #{industryAverage,jdbcType=DECIMAL},
+            </if>
+            <if test="deleteFlag != null">
+                #{deleteFlag,jdbcType=INTEGER},
+            </if>
+            <if test="createTime != null">
+                #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updateTime != null">
+                #{updateTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="version != null">
+                #{version,jdbcType=INTEGER},
+            </if>
+        </trim>
+    </insert>
+    <insert id="save1">
+        insert into GAIA_WMS_TJ_XHL(ID,CLIENT,PRO_SITE,ZY_RQ,ZY_XL,SL_MZL,JE_MZL,PX_MZL)
+        value (#{tjXhl.id},#{tjXhl.client},#{tjXhl.proSite},#{tjXhl.zyRq},#{tjXhl.zyXl},#{tjXhl.slMzl},#{tjXhl.jeMzl},#{tjXhl.pxMzl})
+    </insert>
+
+    <update id="update" parameterType="com.gys.entity.GaiaXhlH">
+        update GAIA_XHL_H
+        <set>
+            <if test="client != null">
+                CLIENT = #{client,jdbcType=VARCHAR},
+            </if>
+            <if test="tjDate != null">
+                TJ_DATE = #{tjDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="yearName != null">
+                YEAR_NAME = #{yearName,jdbcType=VARCHAR},
+            </if>
+            <if test="weekNum != null">
+                WEEK_NUM = #{weekNum,jdbcType=INTEGER},
+            </if>
+            <if test="tjType != null">
+                TJ_TYPE = #{tjType,jdbcType=INTEGER},
+            </if>
+            <if test="upQuantity != null">
+                UP_QUANTITY = #{upQuantity,jdbcType=DECIMAL},
+            </if>
+            <if test="upQuantityLess != null">
+                UP_QUANTITY_LESS = #{upQuantityLess,jdbcType=DECIMAL},
+            </if>
+            <if test="downQuantity != null">
+                DOWN_QUANTITY = #{downQuantity,jdbcType=DECIMAL},
+            </if>
+            <if test="downQuantityLess != null">
+                DOWN_QUANTITY_LESS = #{downQuantityLess,jdbcType=DECIMAL},
+            </if>
+            <if test="quantityRate != null">
+                QUANTITY_RATE = #{quantityRate,jdbcType=DECIMAL},
+            </if>
+            <if test="quantityRateLess != null">
+                QUANTITY_RATE_LESS = #{quantityRateLess,jdbcType=DECIMAL},
+            </if>
+            <if test="upAmount != null">
+                UP_AMOUNT = #{upAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="upAmountLess != null">
+                UP_AMOUNT_LESS = #{upAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="downAmount != null">
+                DOWN_AMOUNT = #{downAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="downAmountLess != null">
+                DOWN_AMOUNT_LESS = #{downAmountLess,jdbcType=DECIMAL},
+            </if>
+            <if test="amountRate != null">
+                AMOUNT_RATE = #{amountRate,jdbcType=DECIMAL},
+            </if>
+            <if test="amountRateLess != null">
+                AMOUNT_RATE_LESS = #{amountRateLess,jdbcType=DECIMAL},
+            </if>
+            <if test="upProductNum != null">
+                UP_PRODUCT_NUM = #{upProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="upProductNumLess != null">
+                UP_PRODUCT_NUM_LESS = #{upProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="downProductNum != null">
+                DOWN_PRODUCT_NUM = #{downProductNum,jdbcType=DECIMAL},
+            </if>
+            <if test="downProductNumLess != null">
+                DOWN_PRODUCT_NUM_LESS = #{downProductNumLess,jdbcType=DECIMAL},
+            </if>
+            <if test="productRate != null">
+                PRODUCT_RATE = #{productRate,jdbcType=DECIMAL},
+            </if>
+            <if test="productRateLess != null">
+                PRODUCT_RATE_LESS = #{productRateLess,jdbcType=DECIMAL},
+            </if>
+            <if test="industryAverage != null">
+                INDUSTRY_AVERAGE = #{industryAverage,jdbcType=DECIMAL},
+            </if>
+            <if test="deleteFlag != null">
+                DELETE_FLAG = #{deleteFlag,jdbcType=INTEGER},
+            </if>
+            <if test="createTime != null">
+                CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updateTime != null">
+                UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="version != null">
+                VERSION = #{version,jdbcType=INTEGER},
+            </if>
+            <if test="viewSource != null">
+                VIEW_SOURCE = #{viewSource},
+            </if>
+        </set>
+        where ID = #{id,jdbcType=BIGINT}
+    </update>
+
+    <select id="getUnique" parameterType="com.gys.entity.GaiaXhlH" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from GAIA_XHL_H
+        where DELETE_FLAG = 0
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        <if test="tjType != null">
+            and TJ_TYPE = #{tjType}
+        </if>
+        <if test="tjDate != null">
+            and date(TJ_DATE)=date(#{tjDate})
+        </if>
+    </select>
+
+    <select id="findList" resultMap="BaseResultMap" parameterType="com.gys.entity.GaiaXhlH">
+        select <include refid="Base_Column_List"/>
+        from GAIA_XHL_H
+        where DELETE_FLAG = 0
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        <if test="tjType != null">
+            and TJ_TYPE = #{tjType}
+        </if>
+        <if test="tjDate != null">
+            and date(TJ_DATE)=date(#{tjDate})
+        </if>
+    </select>
+
+    <select id="getLastTimeData" resultMap="BaseResultMap" parameterType="java.lang.String">
+        select <include refid="Base_Column_List"/>
+        from GAIA_XHL_H
+        where DELETE_FLAG = 0
+        and CLIENT = #{client} and TJ_DATE &lt; now()
+        order by TJ_DATE desc
+        limit 3
+    </select>
+
+    <select id="getWeekRate" resultMap="BaseResultMap" parameterType="java.util.Map">
+        select <include refid="Base_Column_List"/>
+        from GAIA_XHL_H
+        where DELETE_FLAG=0
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        <if test="tjType != null">
+            and TJ_TYPE = #{tjType}
+        </if>
+        <if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+            and TJ_DATE between #{startTime} and #{endTime}
+        </if>
+        ORDER BY TJ_DATE
+    </select>
+
+    <select id="getWeekAverageRate" resultType="com.gys.entity.GaiaXhlH" parameterType="java.util.Map">
+        select TJ_DATE tjDate,sum(UP_PRODUCT_NUM) upProductNum, sum(UP_PRODUCT_NUM_LESS) upProductNumLess,sum(DOWN_PRODUCT_NUM) downProductNum ,sum(DOWN_PRODUCT_NUM_LESS) downProductNumLess, INDUSTRY_AVERAGE industryAverage
+        from GAIA_XHL_H
+        where DELETE_FLAG=0
+        <if test="tjType != null">
+            and TJ_TYPE = #{tjType}
+        </if>
+        <if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+            and TJ_DATE between #{startTime} and #{endTime}
+        </if>
+        group by date(TJ_DATE)
+        order by TJ_DATE
+    </select>
+
+    <select id="getBefore7WeekRate" resultType="com.gys.entity.GaiaXhlH" parameterType="java.util.Map">
+        select TJ_DATE tjDate,WEEK_NUM weekNum,YEAR_NAME yearName,
+            sum(UP_PRODUCT_NUM) upProductNum,
+            sum(UP_PRODUCT_NUM_LESS) upProductNumLess,
+            sum(DOWN_PRODUCT_NUM) downProductNum,
+            sum(DOWN_PRODUCT_NUM_LESS) downProductNumLess,
+            sum(UP_QUANTITY) upQuantity,
+            sum(UP_QUANTITY_LESS) upQuantityLess,
+            sum(DOWN_QUANTITY) downQuantity,
+            sum(DOWN_QUANTITY_LESS) downQuantityLess,
+            sum(UP_AMOUNT) upAmount,
+            sum(UP_AMOUNT_LESS) upAmountLess,
+            sum(DOWN_AMOUNT) downAmount,
+            sum(DOWN_AMOUNT_LESS) downAmountLess,
+            INDUSTRY_AVERAGE     industryAverage
+        from GAIA_XHL_H
+        where DELETE_FLAG=0
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        <if test="tjType != null">
+            and TJ_TYPE = #{tjType}
+        </if>
+        <if test="yearName != null and yearName != ''">
+            and YEAR_NAME = #{yearName}
+        </if>
+        <if test="startWeekNum != null and endWeekNum != null">
+            and WEEK_NUM &gt;= #{startWeekNum} and WEEK_NUM &lt;= #{endWeekNum}
+        </if>
+        group by WEEK_NUM
+        order by WEEK_NUM
+    </select>
+
+    <select id="getCurrentYearRate" resultType="com.gys.entity.GaiaXhlH" parameterType="java.util.Map">
+        select month(TJ_DATE) yearName,
+        sum(UP_PRODUCT_NUM) upProductNum,
+        sum(UP_PRODUCT_NUM_LESS) upProductNumLess,
+        sum(DOWN_PRODUCT_NUM) downProductNum,
+        sum(DOWN_PRODUCT_NUM_LESS) downProductNumLess,
+        sum(UP_QUANTITY) upQuantity,
+        sum(UP_QUANTITY_LESS) upQuantityLess,
+        sum(DOWN_QUANTITY) downQuantity,
+        sum(DOWN_QUANTITY_LESS) downQuantityLess,
+        sum(UP_AMOUNT) upAmount,
+        sum(UP_AMOUNT_LESS) upAmountLess,
+        sum(DOWN_AMOUNT) downAmount,
+        sum(DOWN_AMOUNT_LESS) downAmountLess,
+        INDUSTRY_AVERAGE     industryAverage
+        from GAIA_XHL_H
+        where DELETE_FLAG = 0 and month(TJ_DATE) &lt; month(now())
+        <if test="year != null and year != ''">
+            and  YEAR_NAME = #{year}
+        </if>
+        <if test="tjType != null">
+            and TJ_TYPE = #{tjType}
+        </if>
+        <if test="client != null and client != ''">
+            and CLIENT = #{client}
+        </if>
+        group by month(TJ_DATE)
+        order by TJ_DATE
+    </select>
+    <select id="selectDate" resultMap="BaseResultMap">
+        SELECT
+            ID,
+            CLIENT,
+            TJ_DATE,
+            YEAR_NAME,
+            WEEK_NUM,
+            TJ_TYPE,
+            UP_QUANTITY,
+            UP_QUANTITY_LESS,
+            DOWN_QUANTITY,
+            DOWN_QUANTITY_LESS,
+            QUANTITY_RATE,
+            QUANTITY_RATE_LESS,
+            UP_AMOUNT,
+            UP_AMOUNT_LESS,
+            DOWN_AMOUNT,
+            DOWN_AMOUNT_LESS,
+            AMOUNT_RATE,
+            AMOUNT_RATE_LESS,
+            UP_PRODUCT_NUM,
+            UP_PRODUCT_NUM_LESS,
+            DOWN_PRODUCT_NUM,
+            DOWN_PRODUCT_NUM_LESS,
+            PRODUCT_RATE,
+            PRODUCT_RATE_LESS,
+            INDUSTRY_AVERAGE,
+            DELETE_FLAG,
+            CREATE_TIME,
+            UPDATE_TIME,
+            VERSION
+        FROM `GAIA_XHL_H`
+        WHERE 1=1
+        GROUP BY CLIENT, TJ_DATE, TJ_TYPE
+        ORDER BY TJ_DATE DESC limit 0,6
+    </select>
+    <sql id="historyCondition">
+        <if test="clientId!=null and clientId.size==1">
+            and `Z`.`CLIENT` in
+            <foreach collection="clientId" index="index" item="client" open="(" separator="," close=")">
+                #{client}
+            </foreach>
+            <if test="dcId!=null and dcId.size>0">
+                and `Z`.`PRO_SITE` in
+                <foreach collection="dcId" index="index" item="dc" open="(" separator="," close=")">
+                     #{dc}
+                </foreach>
+            </if>
+        </if>
+        <if test="clientId!=null and clientId.size>1">
+            and `Z`.`CLIENT` in
+            <foreach collection="clientId" index="index" item="client" open="(" separator="," close=")">
+                #{client}
+            </foreach>
+        </if>
+        <if test="pleaseOrderDate.startRange != null and pleaseOrderDate.startRange != '' ">
+            AND `Z`.`PLEASE_ORDER_TIME` >= #{pleaseOrderDate.startRange}
+        </if>
+        <if test="pleaseOrderDate.endRange != null and pleaseOrderDate.endRange != '' ">
+            AND `Z`.`PLEASE_ORDER_TIME` &lt;= #{pleaseOrderDate.endRange}
+        </if>
+        <if test="deliveryOrderDate.startRange != null and deliveryOrderDate.startRange != '' ">
+            AND `Z`.`WM_CJRQ` &gt;= #{deliveryOrderDate.startRange}
+        </if>
+        <if test="deliveryOrderDate.endRange != null and deliveryOrderDate.endRange != '' ">
+            AND `Z`.`WM_CJRQ` &lt;= #{deliveryOrderDate.endRange}
+        </if>
+        <if test="postingDate.startRange != null and postingDate.startRange != '' ">
+            AND `Z`.`WM_XGRQ` >= #{postingDate.startRange}
+        </if>
+        <if test="postingDate.endRange != null and postingDate.endRange != '' ">
+            AND `Z`.`WM_XGRQ` &lt;= #{postingDate.endRange}
+        </if>
+        <if test="customerNo.startRange != null and customerNo.startRange != '' ">
+            AND `Z`.`WM_KH_BH` &gt;= #{customerNo.startRange}
+        </if>
+        <if test="customerNo.endRange != null and customerNo.endRange != '' ">
+            AND `Z`.`WM_KH_BH` &lt;= #{customerNo.endRange}
+        </if>
+        <if test="commodityCategory != null and commodityCategory != '' ">
+            AND `P`.`PRO_CLASS` LIKE CONCAT( #{commodityCategory}, '%' )
+        </if>
+        <if test="commodityCondition != null and commodityCondition != '' ">
+            AND `M`.`WM_SP_BM` = #{commodityCondition}
+        </if>
+
+    </sql>
+    <select id="selectHistoryList" resultType="com.gys.entity.GaiaViewWmsTjXhl">
+        SELECT
+        h.GSRH_PATTERN as replenishStyle,
+        ANY_value(`t`.`client`) AS `clientId`,
+        t.clientName,
+        ANY_value(`t`.`porsite`) AS `dcId`,
+        t.dcName,
+        ANY_value(`t`.`customerno`) AS `customerno`,
+        ANY_value(`t`.`customername`) AS `customername`,
+        ANY_value(`t`.`pleaseorderdate`) AS `pleaseorderdate`,
+        `t`.`deliveryorderno` AS `deliveryorderno`,
+        ANY_value(`t`.`openorderdate`) AS `openorderdate`,
+        ANY_value(`t`.`postingdate`) AS `postingdate`,
+        ANY_value(`t`.`deliveryno`) AS `deliveryno`,
+        ANY_value(`t`.`ispost`) AS `ispost`,
+        ANY_value(`t`.`commoditycode`) AS `commoditycode`,
+        ANY_value(`t`.`orderPrice`) AS `orderPrice`,
+        ANY_value(`t`.`matmovprice`) AS `matmovprice`,
+        ANY_value(`t`.`commoditycategory`) AS `commoditycategory`,
+        ANY_value(`t`.`commodityname`) AS `commodityname`,
+        ANY_value(`t`.`specifications`) AS `specifications`,
+        ANY_value(`t`.`manufacturer`) AS `manufacturer`,
+        ANY_value(`t`.`unit`) AS `unit`,
+        ANY_value(`t`.`orderquantity`) AS `orderquantity`,
+        sum(`t`.`deliveryquantity`) AS `deliveryquantity`,
+        sum(`t`.`deliverypostedquantityrate`) AS `deliverypostedquantityrate`,
+        `t`.`lineNo` AS `lineNo`
+        FROM(
+        SELECT
+        `Z`.`CLIENT` AS `client`,
+        Z.FRANC_NAME as clientName,
+        `Z`.`PRO_SITE` AS `porsite`,
+        Z.DC_NAME as dcName,
+        `Z`.`WM_KH_BH` AS `customerno`,
+        `C`.`CUS_NAME` AS `customername`,
+        `Z`.`PLEASE_ORDER_TIME` AS `pleaseorderdate`,
+        `Z`.`WM_DDH` AS `deliveryorderno`,
+        `Z`.`WM_CJRQ` AS `openorderdate`,
+        `Z`.`WM_XGRQ` AS `postingdate`,
+        `Z`.`WM_PSDH` AS `deliveryno`,
+        `Z`.`WM_SFGZ` AS `ispost`,
+        `M`.`WM_SP_BM` AS `commoditycode`,
+        `M`.`WM_CKJ` AS `orderPrice`,
+        `A`.`MAT_MOV_PRICE` AS `matmovprice`,
+        `P`.`PRO_CLASS` AS `commoditycategory`,
+        `P`.`PRO_DEPICT` AS `commodityname`,
+        `P`.`PRO_SPECS` AS `specifications`,
+        `P`.`PRO_FACTORY_NAME` AS `manufacturer`,
+        `P`.`PRO_UNIT` AS `unit`,
+        `M`.`ORDER_NUMBER` AS `orderquantity`,
+        `M`.`WM_CKYSL` AS `deliveryquantity`,
+        `M`.`WM_GZSL` AS `deliverypostedquantityrate`,
+        `M`.`PO_LINE_NO` AS `lineNo`
+        FROM
+        ( SELECT
+        `Z`.`CLIENT`,
+        `Z`.`PRO_SITE`,
+        `Z`.`WM_KH_BH`,
+        `Z`.`PLEASE_ORDER_TIME`,
+        `Z`.`WM_DDH`,
+        `Z`.`WM_CJRQ`,
+        `Z`.`WM_XGRQ`,
+        `Z`.`WM_PSDH`,
+        `Z`.`WM_SFGZ`,
+        e.FRANC_NAME,
+        d.DC_NAME
+        FROM
+        GAIA_WMS_DIAOBO_Z Z
+        LEFT JOIN GAIA_FRANCHISEE e ON Z.CLIENT = e.CLIENT
+        LEFT JOIN GAIA_DC_DATA d ON Z.CLIENT = d.CLIENT
+        AND Z.PRO_SITE = d.DC_CODE
+        ) AS Z
+        JOIN `GAIA_WMS_DIAOBO_M` `M` ON `Z`.`WM_PSDH` = `M`.`WM_PSDH`
+        AND `Z`.`CLIENT` = `M`.`CLIENT`
+        AND `Z`.`PRO_SITE` = `M`.`PRO_SITE`
+        JOIN `GAIA_PRODUCT_BUSINESS` `P` ON `P`.`PRO_SELF_CODE` = `M`.`WM_SP_BM`
+        AND `P`.`CLIENT` = `Z`.`CLIENT`
+        AND `P`.`PRO_SITE` = `Z`.`PRO_SITE`
+        LEFT JOIN
+        (SELECT
+        `CUSTOMER`.`CUS_SELF_CODE` AS `CUS_CODE`,
+        `CUSTOMER`.`CUS_NAME` AS `CUS_NAME`,
+        `CUSTOMER`.`CUS_SHORT_NAME` AS `CUS_SHORT_NAME`,
+        `CUSTOMER`.`CLIENT` AS `CLIENT`,
+        `CUSTOMER`.`PRO_SITE` AS `PRO_SITE`,
+        `CUSTOMER`.`CUS_SELF_CODE` AS `CUS_SELF_CODE`,
+        `CUSTOMER`.`CUS_REG_ADD` AS `CUS_REG_ADD`,
+        `CUSTOMER`.`CUS_DELIVERY_ADD` AS `CUS_DELIVERY_ADD`,
+        `CUSTOMER`.`CUS_CLASS` AS `CUS_CLASS`,
+        `CUSTOMER`.`CUS_BUSSINESS_CONTACT` AS `CUS_BUSSINESS_CONTACT`,
+        `CUSTOMER`.`CUS_CONTACT_TEL` AS `CUS_CONTACT_TEL`,
+        `CUSTOMER`.`SOURCE` AS `SOURCE`,
+        `CUSTOMER`.`CUS_KHQSTP` AS `CUS_KHQSTP`,
+        `KH`.`WM_JHW` AS `WM_JHW`,(
+        CASE
+
+        WHEN (
+        length(
+        concat_ws(
+        ', ',
+        `KH`.`WM_KH_XL1`,
+        `KH`.`WM_KH_XL2`,
+        `KH`.`WM_KH_XL3`,
+        `KH`.`WM_KH_XL4`,
+        `KH`.`WM_KH_XL5`,
+        `KH`.`WM_KH_XL6`,
+        `KH`.`WM_KH_XL7`
+        )) = 0
+        ) THEN
+        'X800' ELSE concat_ws(
+        ', ',
+        `KH`.`WM_KH_XL1`,
+        `KH`.`WM_KH_XL2`,
+        `KH`.`WM_KH_XL3`,
+        `KH`.`WM_KH_XL4`,
+        `KH`.`WM_KH_XL5`,
+        `KH`.`WM_KH_XL6`,
+        `KH`.`WM_KH_XL7`
+        )
+        END
+        ) AS `LINE_CODE`
+        FROM
+        ((
+        SELECT
+        `BUSINESS`.`CUS_CODE` AS `CUS_CODE`,
+        `BUSINESS`.`CUS_NAME` AS `CUS_NAME`,
+        `BUSINESS`.`CUS_NAME` AS `CUS_SHORT_NAME`,
+        `BUSINESS`.`CLIENT` AS `CLIENT`,
+        `BUSINESS`.`CUS_SITE` AS `PRO_SITE`,
+        `BUSINESS`.`CUS_SELF_CODE` AS `CUS_SELF_CODE`,
+        `BUSINESS`.`CUS_REG_ADD` AS `CUS_REG_ADD`,
+        `BUSINESS`.`CUS_DELIVERY_ADD` AS `CUS_DELIVERY_ADD`,
+        `BUSINESS`.`CUS_CLASS` AS `CUS_CLASS`,
+        `BUSINESS`.`CUS_BUSSINESS_CONTACT` AS `CUS_BUSSINESS_CONTACT`,
+        `BUSINESS`.`CUS_CONTACT_TEL` AS `CUS_CONTACT_TEL`,
+        'C' AS `SOURCE`,
+        `BUSINESS`.`CUS_KHQSTP` AS `CUS_KHQSTP`
+        FROM
+        `GAIA_CUSTOMER_BUSINESS` `BUSINESS`
+        WHERE
+        ( `BUSINESS`.`CUS_CLASS` <![CDATA[!= ]]> 3 ) UNION
+        SELECT
+        `STORE`.`STO_CODE` AS `CUS_CODE`,
+        `STORE`.`STO_NAME` AS `CUS_NAME`,
+        `STORE`.`STO_SHORT_NAME` AS `CUS_SHORT_NAME`,
+        `STORE`.`CLIENT` AS `CLIENT`,
+        `STORE`.`STO_DC_CODE` AS `PRO_SITE`,
+        `STORE`.`STO_CODE` AS `CUS_SELF_CODE`,
+        concat( `STORE`.`STO_ADD`, `STORE`.`STO_PROVINCE`, `STORE`.`STO_CITY`, `STORE`.`STO_DISTRICT` ) AS `CUS_REG_ADD`,
+        `STORE`.`STO_ADD` AS `CUS_DELIVERY_ADD`,
+        'MD' AS `CUS_CLASS`,
+        '' AS `CUS_BUSSINESS_CONTACT`,
+        '' AS `CUS_CONTACT_TEL`,
+        'S' AS `SOURCE`,
+        `STORE`.`STO_SHRQXTP` AS `CUS_KHQSTP`
+        FROM
+        `GAIA_STORE_DATA` `STORE`
+        WHERE
+        ( `STORE`.`STO_DELIVERY_MODE` <![CDATA[!= ]]> '4' ) UNION
+        SELECT DISTINCT
+        `STORE`.`STO_CODE` AS `CUS_CODE`,
+        `STORE`.`STO_NAME` AS `CUS_NAME`,
+        `STORE`.`STO_SHORT_NAME` AS `CUS_SHORT_NAME`,
+        `STORE`.`CLIENT` AS `CLIENT`,
+        `TESHU`.`WM_CK_BM` AS `PRO_SITE`,
+        `STORE`.`STO_CODE` AS `CUS_SELF_CODE`,
+        concat( `STORE`.`STO_ADD`, `STORE`.`STO_PROVINCE`, `STORE`.`STO_CITY`, `STORE`.`STO_DISTRICT` ) AS `CUS_REG_ADD`,
+        `STORE`.`STO_ADD` AS `CUS_DELIVERY_ADD`,
+        'MD' AS `CUS_CLASS`,
+        '' AS `CUS_BUSSINESS_CONTACT`,
+        '' AS `CUS_CONTACT_TEL`,
+        'S' AS `SOURCE`,
+        `STORE`.`STO_SHRQXTP` AS `CUS_KHQSTP`
+        FROM
+        (
+        `GAIA_STORE_DATA` `STORE`
+        JOIN `GAIA_WMS_TESHUPINLEIPEISONG` `TESHU` ON (((
+        `STORE`.`CLIENT` = `TESHU`.`CLIENT`
+        )
+        AND ( `STORE`.`STO_DELIVERY_MODE` <![CDATA[!= ]]> '4' )
+        AND ( `STORE`.`STO_CODE` = `TESHU`.`WM_MD_BM` ))))) `CUSTOMER`
+        LEFT JOIN `GAIA_WMS_KEHU` `KH` ON (((
+        `KH`.`CLIENT` = `CUSTOMER`.`CLIENT`
+        )
+        AND ( `KH`.`PRO_SITE` = `CUSTOMER`.`PRO_SITE` )
+        AND ( `KH`.`WM_KH_BH` = `CUSTOMER`.`CUS_SELF_CODE` ))))) as `C`
+
+        ON `Z`.`CLIENT` = `C`.`CLIENT`
+        AND `Z`.`PRO_SITE` = `C`.`PRO_SITE`
+        AND `Z`.`WM_KH_BH` = `C`.`CUS_CODE`
+        LEFT JOIN `GAIA_MATERIAL_ASSESS` `A` ON `A`.`CLIENT` = `M`.`CLIENT`
+        AND `A`.`MAT_ASSESS_SITE` = `M`.`PRO_SITE`
+        AND `A`.`MAT_PRO_CODE` = `M`.`WM_SP_BM`
+        <where>
+        <include refid="historyCondition"/>
+        </where>
+            ) AS t
+        left join GAIA_SD_REPLENISH_H as h on t.client = h.CLIENT and t.deliveryorderno = h.GSRH_VOUCHER_ID
+        <where>
+            <if test="replenishStyle!=null and replenishStyle!=''">
+                and h.GSRH_PATTERN = #{replenishStyle}
+            </if>
+        </where>
+        GROUP BY t.deliveryorderno,t.lineNo
+    </select>
+    <select id="selectHistoryTotal"
+            resultType="com.gys.entity.data.dropdata.GetHistoryPostedUnloadRateTotalDTO">
+        SELECT
+        COUNT(t.ID) AS total,
+        SUM(`t`.`ORDER_NUMBER`) AS `orderQuantityTotal`,
+        SUM(`t`.`WM_CKYSL`) AS `deliveryQuantityTotal`,
+        SUM(`t`.`WM_GZSL`) AS `deliveryPostedQuantityRateTotal`
+        FROM(
+        SELECT
+        ANY_value(`Z`.ID) AS ID,
+        ANY_value(`M`.`ORDER_NUMBER`) AS ORDER_NUMBER,
+        ANY_value(`M`.`WM_CKYSL`) AS WM_CKYSL,
+        ANY_value(`M`.`WM_GZSL`) AS WM_GZSL,
+        Z.CLIENT as client,
+        `Z`.`WM_DDH` AS `deliveryorderno`
+        FROM
+        `GAIA_WMS_DIAOBO_Z` `Z`
+        JOIN `GAIA_WMS_DIAOBO_M` `M` ON `Z`.`WM_PSDH` = `M`.`WM_PSDH`
+        AND `Z`.`CLIENT` = `M`.`CLIENT`
+        JOIN `GAIA_PRODUCT_BUSINESS` `P` ON `P`.`PRO_SELF_CODE` = `M`.`WM_SP_BM`
+        AND `P`.`CLIENT` = `Z`.`CLIENT`
+        AND `P`.`PRO_SITE` = `Z`.`PRO_SITE`
+        left join GAIA_SD_REPLENISH_H as h on Z.CLIENT = h.CLIENT and `Z`.`WM_DDH` = h.GSRH_VOUCHER_ID and Z.PRO_SITE = h.GSRH_ADDR
+        <where>
+            <if test="replenishStyle!=null and replenishStyle!=''">
+                and h.GSRH_PATTERN = #{replenishStyle}
+            </if>
+            <include refid="historyCondition"/>
+        </where>
+        GROUP BY `Z`.`WM_DDH`,`M`.`PO_LINE_NO`) AS t
+    </select>
+    <select id="selectTotalNumber" resultType="java.lang.Integer">
+        SELECT
+        COUNT(t.ID) AS total
+        FROM(
+        SELECT
+        ANY_value(`Z`.ID) AS ID
+        FROM
+        `GAIA_WMS_DIAOBO_Z` `Z`
+        JOIN `GAIA_WMS_DIAOBO_M` `M` ON `Z`.`WM_PSDH` = `M`.`WM_PSDH`
+        AND `Z`.`CLIENT` = `M`.`CLIENT`
+        JOIN `GAIA_PRODUCT_BUSINESS` `P` ON `P`.`PRO_SELF_CODE` = `M`.`WM_SP_BM`
+        AND `P`.`CLIENT` = `Z`.`CLIENT`
+        AND `P`.`PRO_SITE` = `Z`.`PRO_SITE`
+        left join GAIA_SD_REPLENISH_H as h on Z.CLIENT = h.CLIENT and `Z`.`WM_DDH` = h.GSRH_VOUCHER_ID and Z.PRO_SITE = h.GSRH_ADDR
+        <where>
+            <if test="replenishStyle!=null and replenishStyle!=''">
+                and h.GSRH_PATTERN = #{replenishStyle}
+            </if>
+            AND `M`.`WM_CKYSL` > 0
+            <include refid="historyCondition"/>
+        </where>
+        GROUP BY `Z`.`WM_DDH`,`M`.`PO_LINE_NO`) AS t
+    </select>
+    <select id="selectIsPostTotal" resultType="java.lang.Integer">
+        SELECT
+        COUNT(t.ID) AS total
+        FROM(
+        SELECT
+        ANY_value(`Z`.ID) AS ID
+        FROM
+        `GAIA_WMS_DIAOBO_Z` `Z`
+        JOIN `GAIA_WMS_DIAOBO_M` `M` ON `Z`.`WM_PSDH` = `M`.`WM_PSDH`
+        AND `Z`.`CLIENT` = `M`.`CLIENT`
+        JOIN `GAIA_PRODUCT_BUSINESS` `P` ON `P`.`PRO_SELF_CODE` = `M`.`WM_SP_BM`
+        AND `P`.`CLIENT` = `Z`.`CLIENT`
+        AND `P`.`PRO_SITE` = `Z`.`PRO_SITE`
+        left join GAIA_SD_REPLENISH_H as h on Z.CLIENT = h.CLIENT and `Z`.`WM_DDH` = h.GSRH_VOUCHER_ID and Z.PRO_SITE = h.GSRH_ADDR
+        <where>
+            <if test="replenishStyle!=null and replenishStyle!=''">
+                and h.GSRH_PATTERN = #{replenishStyle}
+            </if>
+            AND `Z`.`WM_SFGZ` = '1'
+            <include refid="historyCondition"/>
+        </where>
+        GROUP BY `Z`.`WM_DDH`,`M`.`PO_LINE_NO`) AS t
+    </select>
+    <select id="selectisPostDeliveryTotal" resultType="java.lang.Integer">
+        SELECT
+        COUNT(t.ID) AS total
+        FROM(
+        SELECT
+        ANY_value(`Z`.ID) AS ID
+        FROM
+        `GAIA_WMS_DIAOBO_Z` `Z`
+        JOIN `GAIA_WMS_DIAOBO_M` `M` ON `Z`.`WM_PSDH` = `M`.`WM_PSDH`
+        AND `Z`.`CLIENT` = `M`.`CLIENT`
+        JOIN `GAIA_PRODUCT_BUSINESS` `P` ON `P`.`PRO_SELF_CODE` = `M`.`WM_SP_BM`
+        AND `P`.`CLIENT` = `Z`.`CLIENT`
+        AND `P`.`PRO_SITE` = `Z`.`PRO_SITE`
+        left join GAIA_SD_REPLENISH_H as h on Z.CLIENT = h.CLIENT and `Z`.`WM_DDH` = h.GSRH_VOUCHER_ID and Z.PRO_SITE = h.GSRH_ADDR
+        <where>
+            <if test="replenishStyle!=null and replenishStyle!=''">
+                and h.GSRH_PATTERN = #{replenishStyle}
+            </if>
+            AND `Z`.`WM_SFGZ` = '1'
+            AND `M`.`WM_CKYSL` > 0
+            <include refid="historyCondition"/>
+        </where>
+        GROUP BY `Z`.`WM_DDH`,`M`.`PO_LINE_NO`) AS t
+    </select>
+    <select id="selectIsPostNumberTotal" resultType="java.lang.Integer">
+        SELECT
+        COUNT(t.ID) AS total
+        FROM(
+        SELECT
+        ANY_value(`Z`.ID) AS ID
+        FROM
+        `GAIA_WMS_DIAOBO_Z` `Z`
+        JOIN `GAIA_WMS_DIAOBO_M` `M` ON `Z`.`WM_PSDH` = `M`.`WM_PSDH`
+        AND `Z`.`CLIENT` = `M`.`CLIENT`
+        JOIN `GAIA_PRODUCT_BUSINESS` `P` ON `P`.`PRO_SELF_CODE` = `M`.`WM_SP_BM`
+        AND `P`.`CLIENT` = `Z`.`CLIENT`
+        AND `P`.`PRO_SITE` = `Z`.`PRO_SITE`
+        left join GAIA_SD_REPLENISH_H as h on Z.CLIENT = h.CLIENT and `Z`.`WM_DDH` = h.GSRH_VOUCHER_ID and Z.PRO_SITE = h.GSRH_ADDR
+        <where>
+            <if test="replenishStyle!=null and replenishStyle!=''">
+                and h.GSRH_PATTERN = #{replenishStyle}
+            </if>
+            AND `Z`.`WM_SFGZ` = '1'
+            AND `M`.`WM_GZSL` > 0
+            <include refid="historyCondition"/>
+        </where>
+        GROUP BY `Z`.`WM_DDH`,`M`.`PO_LINE_NO`) AS t
+    </select>
+    <select id="selectDcData" resultType="java.lang.String">
+        SELECT DC_CODE
+        FROM GAIA_DC_DATA
+        WHERE CLIENT = #{client}
+    </select>
+
+    <resultMap id="clienrDcList" type="com.gys.entity.data.dropdata.GetClientListDTO">
+        <result property="clientId" column="client"/>
+        <result property="clientName" column="clientName"/>
+        <collection property="dcList" ofType="com.gys.entity.data.dropdata.GetDcListDTO">
+            <result property="dcId" column="dcCode"/>
+            <result property="dcName" column="dcName"/>
+        </collection>
+    </resultMap>
+
+    <select id="getClientList" resultMap="clienrDcList">
+        SELECT
+        E.CLIENT AS client,
+        E.FRANC_NAME AS clientName,
+        A.DC_CODE as dcCode,
+        A.DC_NAME as dcName
+        FROM
+        GAIA_FRANCHISEE AS E
+        LEFT JOIN GAIA_DC_DATA A ON E.CLIENT = A.CLIENT
+        <where>
+            and E.FRANC_STATUS = 0
+            <if test="clientName!=null and clientName!=''">
+                and (E.CLIENT LIKE CONCAT('%', #{clientName}, '%' ) or E.FRANC_NAME LIKE CONCAT('%', #{clientName}, '%' ))
+            </if>
+        </where>
+        ORDER BY
+        E.CLIENT,A.DC_CODE
+    </select>
+    <select id="selectListByOpenOrderDate" resultType="com.gys.entity.GaiaViewWmsTjXhl">
+        SELECT
+            `Z`.`CLIENT` AS `client`,
+            `Z`.`PRO_SITE` AS `porsite`,
+            `Z`.`WM_KH_BH` AS `customerno`,
+            `C`.`CUS_NAME` AS `customername`,
+            `Z`.`PLEASE_ORDER_TIME` AS `pleaseorderdate`,
+            `Z`.`WM_DDH` AS `deliveryorderno`,
+            `Z`.`WM_CJRQ` AS `openorderdate`,
+            `Z`.`WM_XGRQ` AS `postingdate`,
+            `Z`.`WM_PSDH` AS `deliveryno`,
+            `Z`.`WM_SFGZ` AS `ispost`,
+            `M`.`WM_SP_BM` AS `commoditycode`,
+            `M`.`WM_CKJ` AS `orderPrice`,
+            `A`.`MAT_MOV_PRICE` AS `matmovprice`,
+            `P`.`PRO_CLASS` AS `commoditycategory`,
+            `P`.`PRO_NAME` AS `commodityname`,
+            `P`.`PRO_SPECS` AS `specifications`,
+            `P`.`PRO_FACTORY_NAME` AS `manufacturer`,
+            `P`.`PRO_UNIT` AS `unit`,
+            `M`.`ORDER_NUMBER` AS `orderquantity`,
+            `M`.`WM_CKYSL` AS `deliveryquantity`,
+            `M`.`WM_GZSL` AS `deliverypostedquantityrate`
+        FROM
+            `GAIA_WMS_DIAOBO_Z` `Z`
+                JOIN `GAIA_WMS_DIAOBO_M` `M` ON `Z`.`WM_PSDH` = `M`.`WM_PSDH`
+                AND `Z`.`CLIENT` = `M`.`CLIENT`
+                JOIN `GAIA_PRODUCT_BUSINESS` `P` ON `P`.`PRO_SELF_CODE` = `M`.`WM_SP_BM`
+                AND `P`.`CLIENT` = `Z`.`CLIENT`
+                AND `P`.`PRO_SITE` = `Z`.`PRO_SITE`
+                LEFT JOIN `GAIA_WMS_VIEW_CUSTOMER` `C` ON `Z`.`CLIENT` = `C`.`CLIENT`
+                AND `Z`.`PRO_SITE` = `C`.`PRO_SITE`
+                AND `Z`.`WM_KH_BH` = `C`.`CUS_CODE`
+                LEFT JOIN `GAIA_MATERIAL_ASSESS` `A` ON `A`.`CLIENT` = `M`.`CLIENT`
+                AND `A`.`MAT_ASSESS_SITE` = `M`.`PRO_SITE`
+                AND `A`.`MAT_PRO_CODE` = `M`.`WM_SP_BM`
+        WHERE
+            `Z`.`WM_CJRQ` = #{date} AND `M`.`ORDER_NUMBER` > 0
+    </select>
+    <select id="selectProList" resultType="com.gys.entity.ViewProduct">
+        SELECT DISTINCT
+        DISTINCT( t.PRO_CODE ) AS proCode,
+        t.PRO_NAME AS proName
+        FROM
+        (
+        SELECT
+        `BUSINESS`.`CLIENT` AS `CLIENT`,
+        `BUSINESS`.`PRO_SELF_CODE` AS `PRO_CODE`,
+        `BUSINESS`.`PRO_SITE` AS `PRO_SITE`,
+        `BUSINESS`.`PRO_SELF_CODE` AS `PRO_SELF_CODE`,
+        `BUSINESS`.`PRO_POSITION` AS `PRO_POSITION`,
+        `BUSINESS`.`PRO_MAX_QTY` AS `PRO_MAX_QTY`,
+        `BUSINESS`.`PRO_PACKAGE_FLAG` AS `PRO_PACKAGE_FLAG`,
+        `BUSINESS`.`PRO_KEY_CARE` AS `PRO_KEY_CARE`,
+        `BUSINESS`.`PRO_PYM` AS `PRO_PYM`,
+        `BUSINESS`.`PRO_BARCODE` AS `PRO_BARCODE`,
+        `BUSINESS`.`PRO_BARCODE2` AS `PRO_BARCODE2`,
+        `BUSINESS`.`PRO_DEPICT` AS `PRO_NAME`,
+        `BUSINESS`.`PRO_SPECS` AS `PRO_SPECS`,
+        `BUSINESS`.`PRO_FORM` AS `PRO_FORM`,
+        `BUSINESS`.`PRO_UNIT` AS `PRO_UNIT`,
+        `BUSINESS`.`PRO_FACTORY_NAME` AS `PRO_FACTORY_NAME`,
+        `BUSINESS`.`PRO_PLACE` AS `PRO_PLACE`,
+        `BUSINESS`.`PRO_REGISTER_NO` AS `PRO_REGISTER_NO`,
+        `BUSINESS`.`PRO_STORAGE_CONDITION` AS `PRO_STORAGE_CONDITION`,
+        `BUSINESS`.`PRO_STORAGE_AREA` AS `PRO_STORAGE_AREA`,
+        `BUSINESS`.`PRO_LONG` AS `PRO_LONG`,
+        `BUSINESS`.`PRO_WIDE` AS `PRO_WIDE`,
+        `BUSINESS`.`PRO_HIGH` AS `PRO_HIGH`,
+        `BUSINESS`.`PRO_MID_PACKAGE` AS `PRO_MID_PACKAGE`,
+        `BUSINESS`.`PRO_BIG_PACKAGE` AS `PRO_BIG_PACKAGE`,
+        `BUSINESS`.`PRO_ELECTRONIC_CODE` AS `PRO_ELECTRONIC_CODE`,
+        `BUSINESS`.`PRO_QS_CODE` AS `PRO_QS_CODE`,
+        `BUSINESS`.`PRO_CLASS` AS `PRO_CLASS`,
+        LEFT ( `BUSINESS`.`PRO_CLASS`, 1 ) AS `PRO_BIG_CLASS`,
+        `BUSINESS`.`PRO_FACTORY_CODE` AS `PRO_FACTORY_CODE`,
+        `BUSINESS`.`PRO_INPUT_TAX` AS `PRO_INPUT_TAX`,
+        `BUSINESS`.`PRO_FIX_BIN` AS `PRO_FIX_BIN`,
+        `BUSINESS`.`PRO_LIFE` AS `PRO_LIFE`,
+        `BUSINESS`.`PRO_LIFE_UNIT` AS `PRO_LIFE_UNIT`,
+        `BUSINESS`.`PRO_MED_QTY` AS `PRO_MED_QTY`,
+        `BUSINESS`.`PRO_LSJ` AS `PRO_LSJ`
+        FROM
+        `GAIA_PRODUCT_BUSINESS` `BUSINESS`
+        WHERE
+        ( `BUSINESS`.`PRO_STATUS` = 0 )
+        ) AS t
+        <where>
+            and (t.PRO_CODE like concat('%',#{productInfo},'%') or t.PRO_PYM like
+            concat('%',#{productInfo},'%')
+            or t.PRO_REGISTER_NO like concat('%',#{productInfo},'%') or t.PRO_NAME like
+            concat('%',#{productInfo},'%')
+            or t.PRO_BARCODE like concat('%',#{productInfo},'%') or t.PRO_BARCODE2 like
+            concat('%',#{productInfo},'%')
+            )
+        </where>
+        limit 0,50
+    </select>
+    <select id="getReplenishStyle" resultType="java.lang.String">
+        select DISTINCT(GSRH_PATTERN) from GAIA_SD_REPLENISH_H group by GSRH_PATTERN
+    </select>
+
+    <select id="getListDropList" resultType="com.gys.entity.data.xhl.vo.ReportInfoVo">
+    SELECT
+     DATE_FORMAT(xd.TJ_DATE,'%Y-%m-%d') date,
+	 ga1.AREA_NAME province,
+	 ga2.AREA_NAME city,
+	 xd.client  client,
+	 gf.FRANC_NAME clientName,
+	 xd.STORE_ID stoCode,
+	 gd.STO_NAME stoName,
+	 xd.ORDER_NUM orderNum,
+	 xd.DN_NUM dnNum,
+     xd.GZ_NUM gzNum,
+	 xd.SEND_NUM sendNum,
+	 xd.FINAL_NUM finalNum,
+	 xd.DN_AMOUNT  dnAmount,
+     xd.GZ_AMOUNT  gzAmount,
+	 xd.FINAL_ORDER_AMOUNT finalOrderAmount,
+	 xd.ORDER_AMOUNT orderAmount,
+	 xd.SEND_AMOUNT sendAmount,
+	 xd.DN_PRODUCT_NUM dnProductNum,
+     xd.GZ_PRODUCT_NUM gzProductNum,
+	 xd.FINAL_PRODUCT_NUM finalProductNum,
+	 xd.ORDER_PRODUCT_NUM orderProductNum,
+	 xd.SEND_PRODUCT_NUM sendProductNum,
+	 xh.INDUSTRY_AVERAGE industryAverage,
+     xh.VIEW_SOURCE  ,
+        CASE
+        WHEN xh.VIEW_SOURCE = 0 THEN
+        '未查看'
+        WHEN xh.VIEW_SOURCE = 1 THEN
+        '手机端'
+        WHEN xh.VIEW_SOURCE = 2 THEN
+        '网页端'
+        END viewSource
+     from  GAIA_XHL_D xd
+            LEFT JOIN GAIA_FRANCHISEE gf  on xd.CLIENT=gf.CLIENT
+            LEFT JOIN GAIA_AREA ga1  ON  gf.FRANC_PROV=ga1.AREA_ID
+            LEFT JOIN GAIA_AREA ga2  ON  gf.FRANC_CITY=ga2.AREA_ID
+            LEFT JOIN GAIA_STORE_DATA gd ON xd.CLIENT=gd.CLIENT AND gd.STO_CODE =xd.STORE_ID
+            LEFT JOIN GAIA_XHL_H xh  on xd.CLIENT=xh.CLIENT AND xd.TJ_DATE=xh.TJ_DATE
+        <where>
+            <if test="viewSource != null and viewSource.size>0">
+                and xh.VIEW_SOURCE in
+                <foreach collection="viewSource" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="cityId != null and cityId != ''">
+                and ga2.AREA_ID = #{cityId}
+            </if>
+            <if test="cityId != null and cityId != ''">
+                and ga2.AREA_ID = #{cityId}
+            </if>
+            <if test="clientIds != null and clientIds.size > 0">
+              and  xh.CLIENT  in
+                <foreach collection="clientIds" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="provinceList != null and provinceList.size > 0">
+              and    ga1.AREA_ID  in
+                <foreach collection="provinceList" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="cityList != null and cityList.size > 0">
+              and  ga2.AREA_ID  in
+                <foreach collection="cityList" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+            <if test="storeIds != null and storeIds.size > 0">
+            and  xd.STORE_ID  in
+                <foreach collection="storeIds" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="beginDate != null and beginDate != ''">
+                and  xh.TJ_DATE &gt;=#{beginDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                and  xh.TJ_DATE &lt;=#{endDate}
+            </if>
+          </where>
+          group by xd.CLIENT,xd.STORE_ID,xd.TJ_DATE
+          ORDER BY xd.TJ_DATE DESC
+    </select>
+
+    <select id="findXhlh" resultType="com.gys.entity.data.xhl.vo.ReportInfoSummaryVo">
+        SELECT
+        DATE_FORMAT(xh.TJ_DATE,'%Y-%m-%d') date,
+        ga1.AREA_NAME province,
+        ga2.AREA_NAME city,
+        xh.client client,
+        gf.FRANC_NAME clientName,
+
+        xh.DOWN_QUANTITY orderNum,
+        xh2.UP_QUANTITY  gzNum ,
+        xh3.DOWN_QUANTITY  finalNum ,
+
+        xh.QUANTITY_RATE distributionNumRate,
+        xh2.QUANTITY_RATE sendNumRate ,
+        xh3.QUANTITY_RATE finalNumRate,
+
+        xh.DOWN_AMOUNT orderAmount,
+        xh2.UP_AMOUNT gzAmount,
+        xh3.DOWN_AMOUNT finalOrderAmount,
+
+        xh.AMOUNT_RATE  distributionAmountRate,
+        xh2.AMOUNT_RATE  sendAmountRate,
+        xh3.AMOUNT_RATE finalAmountRate,
+
+        xh.DOWN_PRODUCT_NUM  orderProductNum,
+        xh2.UP_PRODUCT_NUM gzProductNum,
+        xh3.DOWN_PRODUCT_NUM  finalProductNum,
+
+        xh.PRODUCT_RATE  distributionProductRate,
+        xh2.PRODUCT_RATE sendProductRate,
+        xh3.PRODUCT_RATE finalProductRate,
+
+        xh.INDUSTRY_AVERAGE industryAverage,
+        xh.VIEW_SOURCE viewSource,
+        xh.TJ_TYPE ,
+        xh2.TJ_TYPE,
+        xh3.TJ_TYPE
+        FROM
+        GAIA_XHL_H xh
+        LEFT JOIN GAIA_FRANCHISEE gf ON xh.CLIENT = gf.CLIENT
+        LEFT JOIN GAIA_AREA ga1 ON gf.FRANC_PROV = ga1.AREA_ID
+        LEFT JOIN GAIA_AREA ga2 ON gf.FRANC_CITY = ga2.AREA_ID
+        LEFT JOIN GAIA_STORE_DATA gd ON xh.CLIENT = gd.CLIENT
+        LEFT JOIN GAIA_XHL_H xh2 ON xh.CLIENT = xh2.CLIENT AND xh.TJ_DATE=xh2.TJ_DATE AND xh2.TJ_TYPE='2'
+        LEFT JOIN GAIA_XHL_H xh3 ON xh.CLIENT = xh3.CLIENT AND xh.TJ_DATE=xh3.TJ_DATE AND xh3.TJ_TYPE='3'
+
+        <where>
+            <if test="viewSource != null and viewSource != ''">
+                and xh.VIEW_SOURCE = #{viewSource}
+            </if>
+            <if test="cityId != null and cityId != ''">
+                and ga2.AREA_ID = #{cityId}
+            </if>
+            <if test="cityId != null and cityId != ''">
+                and ga2.AREA_ID = #{cityId}
+            </if>
+            <if test="clientIds != null and clientIds.size > 0">
+                xh.CLIENT  in
+                <foreach collection="clientIds" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+            <if test="beginDate != null and beginDate != ''">
+                and  xh.TJ_DATE &gt;=DATE_FORMAT(#{beginDate},'%Y-%m-%d')
+            </if>
+            <if test="endDate != null and endDate != ''">
+                and  xh.TJ_DATE &lt;=DATE_FORMAT(#{endDate},'%Y-%m-%d')
+            </if>
+        </where>
+        GROUP BY xh.CLIENT,xh.TJ_DATE
+    </select>
+
+    <select id="getSummaryList" parameterType="com.gys.entity.data.xhl.dto.ReportSummaryDto" resultType="com.gys.entity.GaiaXhlH">
+        SELECT
+        ID id,
+        xh.CLIENT client,
+        TJ_DATE tjDate,
+        YEAR_NAME yearName,
+        WEEK_NUM weekNum,
+        TJ_TYPE tjType,
+        UP_QUANTITY upQuantity  ,
+        UP_QUANTITY_LESS  upQuantityLess ,
+        DOWN_QUANTITY  downQuantity,
+        DOWN_QUANTITY_LESS downQuantityLess,
+        QUANTITY_RATE  quantityRate,
+        QUANTITY_RATE_LESS quantityRateLess,
+        UP_AMOUNT upAmount,
+        UP_AMOUNT_LESS upAmountLess,
+        DOWN_AMOUNT  downAmount,
+        DOWN_AMOUNT_LESS  downAmountLess,
+        AMOUNT_RATE amountRate,
+        AMOUNT_RATE_LESS  amountRateLess,
+        UP_PRODUCT_NUM  upProductNum,
+        UP_PRODUCT_NUM_LESS upProductNumLess,
+        DOWN_PRODUCT_NUM  downProductNum,
+        DOWN_PRODUCT_NUM_LESS  downProductNumLess,
+        PRODUCT_RATE productRate,
+        PRODUCT_RATE_LESS productRateLess,
+        INDUSTRY_AVERAGE  industryAverage,
+        DELETE_FLAG  deleteFlag,
+        CREATE_TIME  createTime,
+        UPDATE_TIME updateTime,
+        VERSION version,
+        VIEW_SOURCE viewSource
+        FROM
+        GAIA_XHL_H xh
+        LEFT JOIN GAIA_FRANCHISEE gf ON xh.CLIENT = gf.CLIENT
+        LEFT JOIN GAIA_AREA ga1 ON gf.FRANC_PROV = ga1.AREA_ID
+        LEFT JOIN GAIA_AREA ga2 ON gf.FRANC_CITY = ga2.AREA_ID
+        <where>
+            <if test="clientIds != null and clientIds.size > 0">
+                and  xh.CLIENT  in
+                <foreach collection="clientIds" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="provinceList != null and provinceList.size > 0">
+                and    ga1.AREA_ID  in
+                <foreach collection="provinceList" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="cityList != null and cityList.size > 0">
+                and  ga2.AREA_ID  in
+                <foreach collection="cityList" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+            <if test="startDate != null and startDate != ''">
+                and  xh.TJ_DATE &gt;=#{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                and  xh.TJ_DATE &lt;=#{endDate}
+            </if>
+        </where>
+
+    </select>
+
+    <select id="getSummaryListLess" parameterType="com.gys.entity.data.xhl.dto.ReportSummaryDto" resultType="com.gys.entity.GaiaXhlH">
+        SELECT
+        ID id,
+        xh.CLIENT client,
+        TJ_DATE tjDate,
+        YEAR_NAME yearName,
+        WEEK_NUM weekNum,
+        TJ_TYPE tjType,
+        UP_QUANTITY_LESS upQuantity  ,
+        UP_QUANTITY_LESS  upQuantityLess ,
+        DOWN_QUANTITY_LESS  downQuantity,
+        DOWN_QUANTITY_LESS downQuantityLess,
+        QUANTITY_RATE_LESS  quantityRate,
+        QUANTITY_RATE_LESS quantityRateLess,
+        UP_AMOUNT_LESS upAmount,
+        UP_AMOUNT_LESS upAmountLess,
+        DOWN_AMOUNT_LESS  downAmount,
+        DOWN_AMOUNT_LESS  downAmountLess,
+        AMOUNT_RATE_LESS amountRate,
+        AMOUNT_RATE_LESS  amountRateLess,
+        UP_PRODUCT_NUM_LESS  upProductNum,
+        UP_PRODUCT_NUM_LESS upProductNumLess,
+        DOWN_PRODUCT_NUM_LESS  downProductNum,
+        DOWN_PRODUCT_NUM_LESS  downProductNumLess,
+        PRODUCT_RATE_LESS productRate,
+        PRODUCT_RATE_LESS productRateLess,
+        INDUSTRY_AVERAGE  industryAverage,
+        DELETE_FLAG  deleteFlag,
+        CREATE_TIME  createTime,
+        UPDATE_TIME updateTime,
+        VERSION version,
+        VIEW_SOURCE viewSource
+        FROM
+        GAIA_XHL_H xh
+        LEFT JOIN GAIA_FRANCHISEE gf ON xh.CLIENT = gf.CLIENT
+        LEFT JOIN GAIA_AREA ga1 ON gf.FRANC_PROV = ga1.AREA_ID
+        LEFT JOIN GAIA_AREA ga2 ON gf.FRANC_CITY = ga2.AREA_ID
+        <where>
+            <if test="clientIds != null and clientIds.size > 0">
+                and  xh.CLIENT  in
+                <foreach collection="clientIds" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="provinceList != null and provinceList.size > 0">
+                and    ga1.AREA_ID  in
+                <foreach collection="provinceList" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="cityList != null and cityList.size > 0">
+                and  ga2.AREA_ID  in
+                <foreach collection="cityList" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+            <if test="startDate != null and startDate != ''">
+                and  xh.TJ_DATE &gt;=#{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                and  xh.TJ_DATE &lt;=#{endDate}
+            </if>
+        </where>
+    </select>
+</mapper>

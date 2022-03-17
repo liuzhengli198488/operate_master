@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaEmployeeHealthRecordMapper">
+
+    <select id="getEmployeeHealthRecords" parameterType="com.gys.entity.EmployeeHealthRecordDto" resultType="com.gys.entity.EmployeeHealthRecordVo">
+        SELECT ID as id,
+        CLIENT as  client,
+        VOUCHER_ID as voucherId,
+        EMP_ID as  empId,
+        EMP_NAME as empName,
+        CHECK_DATE as checkDate,
+        CHECK_ORG as  checkOrg,
+        CHECK_ITEM as checkItem,
+        CHECK_RESULT as checkResult,
+        MEASURES as measures,
+        EMP_GENDER as empGender,
+        EMP_BIRTHDAY as empBirthday,
+        JOIN_DATE as joinDate,
+        EMP_POSITION as empPosition,
+        EMP_POST as empPost,
+        EMP_JOB as empJob,
+        DEP_NAME as depName,
+        GROUP_NAME as groupName,
+        CREATE_TIME as createTime,
+        substring_index(CREATE_USER,'-', 1)  as createUser,
+        REMARK as remark
+        FROM GAIA_EMPLOYEE_HEALTH_RECORD as gehr WHERE CLIENT = #{client,jdbcType=VARCHAR} and IS_DELETE = 0
+        <if test="voucherId != null and voucherId !=''">
+            <bind name="voucherId" value="voucherId + '%'"/>
+            and VOUCHER_ID like #{voucherId}
+        </if>
+        <if test="empId != null and empId !=''">
+            <bind name="empId" value="empId + '%'"/>
+            and EMP_ID like #{empId}
+        </if>
+        <if test="empName != null and empName !=''">
+            <bind name="empName" value="empName + '%'"/>
+            and EMP_NAME like #{empName}
+        </if>
+        <if test="checkOrg != null and checkOrg !=''">
+            <bind name="checkOrg" value="checkOrg + '%'"/>
+            and CHECK_ORG like #{checkOrg}
+        </if>
+        <if test="checkItem != null and checkItem !=''">
+            <bind name="checkItem" value="checkItem + '%'"/>
+            and CHECK_ITEM like #{checkItem}
+        </if>
+        <if test="checkResult != null and checkResult !=''">
+            <bind name="checkResult" value="checkResult + '%'"/>
+            and CHECK_RESULT like #{checkResult}
+        </if>
+        <if test="measures != null and measures !=''">
+            <bind name="measures" value="measures + '%'"/>
+            and MEASURES like #{measures}
+        </if>
+        <if test="queryStartDate != null and queryEndDate != null">
+            and CREATE_TIME BETWEEN #{queryStartDate} and #{queryEndDate}
+        </if>
+
+    </select>
+
+  <select id="reportEmployeeHealthRecords" parameterType="com.gys.entity.EmployeeHealthRecordDto" resultType="com.gys.entity.EmployeeHealthRecordReportVo">
+      SELECT VOUCHER_ID as voucherId,
+      CLIENT as  client,
+      EMP_ID as  empId,
+      EMP_NAME as empName,
+      CHECK_DATE as checkDate,
+      CHECK_ORG as  checkOrg,
+      CHECK_ITEM as checkItem,
+      CHECK_RESULT as checkResult,
+      MEASURES as measures,
+      case EMP_GENDER when '0' then '女' when '1' then '男'
+      else EMP_GENDER end as empGender,
+      EMP_BIRTHDAY as empBirthday,
+      JOIN_DATE as joinDate,
+      EMP_POSITION as empPosition,
+      EMP_POST as empPost,
+      EMP_JOB as empJob,
+      DEP_NAME as depName,
+      GROUP_NAME as groupName,
+      CREATE_TIME as createTime,
+      substring_index(CREATE_USER,'-', 1)  as createUser,
+      REMARK as remark
+       FROM GAIA_EMPLOYEE_HEALTH_RECORD as gehr WHERE CLIENT = #{client,jdbcType=VARCHAR} and IS_DELETE = 0
+      <if test="voucherId != null and voucherId !=''">
+        <bind name="voucherId" value="voucherId + '%'"/>
+          and VOUCHER_ID like #{voucherId}
+      </if>
+      <if test="empId != null and empId !=''">
+          <bind name="empId" value="empId + '%'"/>
+          and EMP_ID like #{empId}
+      </if>
+      <if test="empName != null and empName !=''">
+          <bind name="empName" value="empName + '%'"/>
+          and EMP_NAME like #{empName}
+      </if>
+      <if test="checkOrg != null and checkOrg !=''">
+          <bind name="checkOrg" value="checkOrg + '%'"/>
+          and CHECK_ORG like #{checkOrg}
+      </if>
+      <if test="checkItem != null and checkItem !=''">
+          <bind name="checkItem" value="checkItem + '%'"/>
+          and CHECK_ITEM like #{checkItem}
+      </if>
+      <if test="checkResult != null and checkResult !=''">
+          <bind name="checkResult" value="checkResult + '%'"/>
+          and CHECK_RESULT like #{checkResult}
+      </if>
+      <if test="measures != null and measures !=''">
+          <bind name="measures" value="measures + '%'"/>
+          and MEASURES like #{measures}
+      </if>
+      <if test="queryStartDate != null and queryEndDate != null">
+          and CREATE_TIME BETWEEN #{queryStartDate} and #{queryEndDate}
+      </if>
+
+  </select>
+
+</mapper>

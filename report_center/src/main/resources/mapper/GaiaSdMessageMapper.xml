@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdMessageMapper">
+    <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdMessage">
+        <id column="CLIENT" jdbcType="VARCHAR" property="client"/>
+        <id column="GSM_ID" jdbcType="VARCHAR" property="gsmId"/>
+        <id column="GSM_VOUCHER_ID" jdbcType="VARCHAR" property="gsmVoucherId"/>
+        <result column="GSM_TYPE" jdbcType="VARCHAR" property="gsmType"/>
+        <result column="GSM_REMARK" jdbcType="VARCHAR" property="gsmRemark"/>
+        <result column="GSM_FLAG" jdbcType="VARCHAR" property="gsmFlag"/>
+        <result column="GSM_PAGE" jdbcType="VARCHAR" property="gsmPage"/>
+        <result column="GSM_BUSINESS_VOUCHER_ID" jdbcType="VARCHAR" property="gsmBusinessVoucherId"/>
+        <result column="GSM_ARRIVE_DATE" jdbcType="VARCHAR" property="gsmArriveDate"/>
+        <result column="GSM_ARRIVE_TIME" jdbcType="VARCHAR" property="gsmArriveTime"/>
+        <result column="GSM_CHECK_DATE" jdbcType="VARCHAR" property="gsmCheckDate"/>
+        <result column="GSM_CHECK_TIME" jdbcType="VARCHAR" property="gsmCheckTime"/>
+        <result column="GSM_CHECK_EMP" jdbcType="VARCHAR" property="gsmCheckEmp"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+    CLIENT, GSM_ID, GSM_VOUCHER_ID, GSM_TYPE, GSM_REMARK, GSM_FLAG, GSM_PAGE, GSM_BUSINESS_VOUCHER_ID, 
+    GSM_ARRIVE_DATE, GSM_ARRIVE_TIME, GSM_CHECK_DATE, GSM_CHECK_TIME, GSM_CHECK_EMP
+  </sql>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.gys.entity.GaiaSdMessage">
+        update GAIA_SD_MESSAGE
+        SET
+        <trim suffixOverrides=",">
+            <if test="record.gsmType != null">
+                GSM_TYPE = #{record.gsmType,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmRemark != null">
+                GSM_REMARK = #{record.gsmRemark,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmFlag != null">
+                GSM_FLAG = #{record.gsmFlag,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmPage != null">
+                GSM_PAGE = #{record.gsmPage,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmBusinessVoucherId != null">
+                GSM_BUSINESS_VOUCHER_ID = #{record.gsmBusinessVoucherId,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmArriveDate != null">
+                GSM_ARRIVE_DATE = #{record.gsmArriveDate,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmArriveTime != null">
+                GSM_ARRIVE_TIME = #{record.gsmArriveTime,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmCheckDate != null">
+                GSM_CHECK_DATE = #{record.gsmCheckDate,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmCheckTime != null">
+                GSM_CHECK_TIME = #{record.gsmCheckTime,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmCheckEmp != null">
+                GSM_CHECK_EMP = #{record.gsmCheckEmp,jdbcType=VARCHAR},
+            </if>
+            <if test="record.gsmDeleteFlag != null and record.gsmDeleteFlag != ''">
+                GSM_DELETE_FLAG = #{record.gsmDeleteFlag},
+            </if>
+        </trim>
+        where CLIENT = #{record.client,jdbcType=VARCHAR}
+        and GSM_VOUCHER_ID = #{record.gsmVoucherId,jdbcType=VARCHAR}
+        <if test="record.gsmId != null and record.gsmId != ''">
+            and GSM_ID = #{record.gsmId,jdbcType=VARCHAR}
+        </if>
+        <if test="record.gsmPlatForm != null">
+            and GSM_PLATFORM = #{record.gsmPlatForm,jdbcType=VARCHAR}
+        </if>
+    </update>
+    <update id="updateReadFlag">
+        update GAIA_NOPLAN_MESSAGE set READ_FLAG = 'Y'
+        where CLIENT=#{client} and PRO_CODE=#{proCode} and IS_WEEK_MSG='N'
+    </update>
+    <update id="updateWeekReadFlag">
+        update GAIA_NOPLAN_MESSAGE set IS_WEEK_READ_FLAG='Y'
+        where CLIENT=#{client} and PRO_CODE=#{weekProCode} and IS_WEEK_MSG='Y'
+    </update>
+    <select id="listMessage" resultType="com.gys.entity.GaiaSdMessage">
+        select CLIENT client,GSM_ID gsmId,GSM_VOUCHER_ID gsmVoucherId,GSM_TYPE gsmType,GSM_REMARK gsmRemark,GSM_FLAG gsmFlag,GSM_PAGE gsmPage,GSM_TYPE_NAME gsmTypeName,GSM_VALUE gsmValue,GSM_WARNING_DAY gsmWarningDay
+        from GAIA_SD_MESSAGE where CLIENT = #{clientId} and GSM_ID = #{stoCode} AND GSM_PLATFORM = #{msPlatForm} AND GSM_DELETE_FLAG = '0'
+        ORDER BY GSM_VOUCHER_ID desc
+    </select>
+    <select id="listMessageDc" resultType="com.gys.entity.GaiaSdMessage">
+        select CLIENT client,GSM_ID gsmId,GSM_VOUCHER_ID gsmVoucherId,GSM_TYPE gsmType,GSM_REMARK gsmRemark,GSM_FLAG gsmFlag,GSM_PAGE gsmPage,GSM_TYPE_NAME gsmTypeName,GSM_VALUE gsmValue,GSM_WARNING_DAY gsmWarningDay
+        from GAIA_SD_MESSAGE
+        where CLIENT = #{clientId}
+          and GSM_ID = (SELECT STO_DC_CODE FROM GAIA_STORE_DATA WHERE CLIENT = #{clientId} AND STO_CODE = #{stoCode})
+          AND GSM_PLATFORM = #{msPlatForm} AND GSM_DELETE_FLAG = '0'
+        ORDER BY GSM_VOUCHER_ID desc
+    </select>
+    <select id="selectAuthConfig" resultType="com.gys.entity.GaiaResource">
+        select ID id,NAME name,TITLE title,PATH path,PAGE_PATH pagePath,REQUEST_PATH requestPath,ICON icon,TYPE type,BUTTON_TYPE buttonType, PARENT_ID parentId,STATUS status,SEQ seq,MODULE module
+        from GAIA_RESOURCE gr where (
+            gr.ID in (
+            select resource_id from GAIA_GROUP_DATA ggd
+            where (ggd.CLIENT,ggd.AUTH_GROUP_ID) in (
+            select gad.CLIENT,gad.AUTH_GROUP_ID from GAIA_AUTHCONFI_DATA gad where ggd.CLIENT=gad.CLIENT and ggd.AUTH_GROUP_ID= gad.AUTH_GROUP_ID AND gad.AUTHCONFI_USER=#{userId} and gad.CLIENT=#{clientId}
+            )
+            ) or  ID like 'GAIA_WF%'
+            )
+                                and status='1' and module='1'
+        UNION
+        select ID id,NAME name,TITLE title,PATH path,PAGE_PATH pagePath,REQUEST_PATH requestPath,ICON icon,TYPE type,BUTTON_TYPE buttonType, pgr1.PARENT_ID parentId,STATUS status,SEQ seq,MODULE module
+        from GAIA_RESOURCE pgr1 ,
+            (
+            select gr.PARENT_ID from GAIA_RESOURCE gr where gr.ID in(
+            select resource_id from GAIA_GROUP_DATA ggd
+            where (ggd.CLIENT,ggd.AUTH_GROUP_ID) in (
+            select gad.CLIENT,gad.AUTH_GROUP_ID from GAIA_AUTHCONFI_DATA gad where ggd.CLIENT=gad.CLIENT and ggd.AUTH_GROUP_ID= gad.AUTH_GROUP_ID AND gad.AUTHCONFI_USER=#{userId} and gad.CLIENT=#{clientId}
+            )
+            )  and status='1' and module='1' and ifnull(gr.PARENT_ID,'')!=''
+            )A where pgr1.ID = A. PARENT_ID
+        UNION
+        select ID id,NAME name,TITLE title,PATH path,PAGE_PATH pagePath,REQUEST_PATH requestPath,ICON icon,TYPE type,BUTTON_TYPE buttonType, pgr2.PARENT_ID parentId,STATUS status,SEQ seq,MODULE module
+        from GAIA_RESOURCE pgr2,
+            (
+            select pgr1.PARENT_ID from GAIA_RESOURCE pgr1,
+            (
+            select gr.PARENT_ID from GAIA_RESOURCE gr where gr.ID in(
+            select resource_id from GAIA_GROUP_DATA ggd
+            where (ggd.CLIENT,ggd.AUTH_GROUP_ID) in (
+            select gad.CLIENT,gad.AUTH_GROUP_ID from GAIA_AUTHCONFI_DATA gad where ggd.CLIENT=gad.CLIENT and ggd.AUTH_GROUP_ID= gad.AUTH_GROUP_ID AND gad.AUTHCONFI_USER=#{userId} and gad.CLIENT=#{clientId}
+            )
+            ) and status='1' and module='1' and ifnull(gr.PARENT_ID,'')!=''
+            ) A
+            where pgr1.ID =A.PARENT_ID and ifnull(pgr1.PARENT_ID,'')!=''
+            ) A
+        where pgr2.ID =A.PARENT_ID
+        ORDER BY LENGTH(ID),SEQ;
+    </select>
+
+    <select id="getUnique" parameterType="com.gys.entity.GaiaSdMessage" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from GAIA_SD_MESSAGE
+        <where>
+            <if test="client != null and client != ''">
+                and CLIENT = #{client}
+            </if>
+            <if test="gsmVoucherId != null and gsmVoucherId != ''">
+                and GSM_VOUCHER_ID = #{gsmVoucherId}
+            </if>
+        </where>
+    </select>
+    <select id="listMessageZz" resultType="com.gys.entity.GaiaSdMessage">
+        select CLIENT client,GSM_ID gsmId,GSM_VOUCHER_ID gsmVoucherId,GSM_TYPE gsmType,GSM_REMARK gsmRemark,GSM_FLAG gsmFlag,GSM_PAGE gsmPage,GSM_WARNING_DAY gsmWarningDay
+        from GAIA_SD_MESSAGE
+        where CLIENT = #{clientId}
+          and GSM_TYPE = 'GAIA_SD_0222'
+          AND GSM_PLATFORM = #{msPlatForm} AND GSM_DELETE_FLAG = '0'
+        ORDER BY GSM_VOUCHER_ID desc
+    </select>
+    <select id="selectNextVoucherId" resultType="java.lang.String">
+        select
+        <if test="type == 'store'">
+            concat( "GSMS",DATE_FORMAT(NOW(),'%Y'),
+        </if>
+        <if test="type == 'company'">
+            concat( "GSMC",DATE_FORMAT(NOW(),'%Y'),
+        </if>
+        <if test="type == 'all'">
+            concat( "GSMA",DATE_FORMAT(NOW(),'%Y'),
+        </if>
+        LPAD(right(IFNULL(MAX(GSM_VOUCHER_ID),0),6)+1, 6, '0'))
+        from GAIA_SD_MESSAGE
+        where CLIENT = #{clientId} AND GSM_PLATFORM = 'WEB'
+        <if test="type == 'store'">
+            AND GSM_VOUCHER_ID LIKE 'GSMS%'
+        </if>
+        <if test="type == 'company'">
+            AND GSM_VOUCHER_ID LIKE 'GSMC%'
+        </if>
+        <if test="type == 'all'">
+            AND GSM_VOUCHER_ID LIKE 'GSMA%'
+        </if>
+    </select>
+
+    <insert id="insertSelective" parameterType="com.gys.entity.GaiaSdMessage">
+        insert into GAIA_SD_MESSAGE
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                CLIENT,
+            </if>
+            <if test="gsmId != null">
+                GSM_ID,
+            </if>
+            <if test="gsmVoucherId != null">
+                GSM_VOUCHER_ID,
+            </if>
+            <if test="gsmType != null">
+                GSM_TYPE,
+            </if>
+            <if test="gsmRemark != null">
+                GSM_REMARK,
+            </if>
+            <if test="gsmFlag != null">
+                GSM_FLAG,
+            </if>
+            <if test="gsmPage != null">
+                GSM_PAGE,
+            </if>
+            <if test="gsmBusinessVoucherId != null">
+                GSM_BUSINESS_VOUCHER_ID,
+            </if>
+            <if test="gsmArriveDate != null">
+                GSM_ARRIVE_DATE,
+            </if>
+            <if test="gsmArriveTime != null">
+                GSM_ARRIVE_TIME,
+            </if>
+            <if test="gsmCheckDate != null">
+                GSM_CHECK_DATE,
+            </if>
+            <if test="gsmCheckTime != null">
+                GSM_CHECK_TIME,
+            </if>
+            <if test="gsmCheckEmp != null">
+                GSM_CHECK_EMP,
+            </if>
+            <if test="gsmTypeName != null">
+                GSM_TYPE_NAME,
+            </if>
+            <if test="gsmValue != null">
+                GSM_VALUE,
+            </if>
+            <if test="gsmPlatForm != null">
+                GSM_PLATFORM,
+            </if>
+            <if test="gsmWarningDay != null">
+                GSM_WARNING_DAY,
+            </if>
+            <if test="gsmDeleteFlag != null">
+                GSM_DELETE_FLAG,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="client != null">
+                #{client,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmId != null">
+                #{gsmId,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmVoucherId != null">
+                #{gsmVoucherId,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmType != null">
+                #{gsmType,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmRemark != null">
+                #{gsmRemark,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmFlag != null">
+                #{gsmFlag,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmPage != null">
+                #{gsmPage,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmBusinessVoucherId != null">
+                #{gsmBusinessVoucherId,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmArriveDate != null">
+                #{gsmArriveDate,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmArriveTime != null">
+                #{gsmArriveTime,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmCheckDate != null">
+                #{gsmCheckDate,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmCheckTime != null">
+                #{gsmCheckTime,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmCheckEmp != null">
+                #{gsmCheckEmp,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmTypeName != null">
+                #{gsmTypeName,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmValue != null">
+                #{gsmValue,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmPlatForm != null">
+                #{gsmPlatForm,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmWarningDay != null">
+                #{gsmWarningDay,jdbcType=VARCHAR},
+            </if>
+            <if test="gsmDeleteFlag != null">
+                #{gsmDeleteFlag,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+</mapper>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaSdElectronChangeMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaSdElectronChange">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="CLIENT" jdbcType="VARCHAR" property="client" />
+    <id column="GSEC_MEMBER_ID" jdbcType="VARCHAR" property="gsecMemberId" />
+    <id column="GSEC_ID" jdbcType="VARCHAR" property="gsecId" />
+    <id column="GSEB_ID" jdbcType="VARCHAR" property="gsebId" />
+    <id column="GSEC_STATUS" jdbcType="VARCHAR" property="gsecStatus" />
+    <result column="GSEC_AMT" jdbcType="DECIMAL" property="gsecAmt" />
+    <result column="GSEB_NAME" jdbcType="VARCHAR" property="gsebName" />
+    <result column="GSEC_FLAG" jdbcType="VARCHAR" property="gsecFlag" />
+    <result column="GSEC_BILL_NO" jdbcType="VARCHAR" property="gsecBillNo" />
+    <result column="GSEC_BR_ID" jdbcType="VARCHAR" property="gsecBrId" />
+    <result column="GSEC_SALE_DATE" jdbcType="VARCHAR" property="gsecSaleDate" />
+    <result column="GSEC_CREATE_DATE" jdbcType="VARCHAR" property="gsecCreateDate" />
+    <result column="GSEC_FAIL_DATE" jdbcType="VARCHAR" property="gsecFailDate" />
+    <result column="GSEC_GIVE_BILL_NO" jdbcType="VARCHAR" property="gsecGiveBillNo" />
+    <result column="GSEC_USE_EXPIRATION_DATE" jdbcType="VARCHAR" property="gsecUseExpirationDate" />
+    <result column="GSETS_ID" jdbcType="VARCHAR" property="gsetsId" />
+    <result column="GSETS_ATTRIBUTE" jdbcType="VARCHAR" property="gsetsAttribute" />
+    <result column="GSETS_DESCRIBE" jdbcType="VARCHAR" property="gsetsDescribe" />
+    <result column="GSEC_GIVE_BR_ID" jdbcType="VARCHAR" property="gsecGiveBrId" />
+    <result column="GSEC_GIVE_SALE_DATE" jdbcType="TIMESTAMP" property="gsecGiveSaleDate" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    CLIENT, GSEC_MEMBER_ID, GSEC_ID, GSEB_ID, GSEC_STATUS, GSEC_AMT, GSEB_NAME, GSEC_FLAG, 
+    GSEC_BILL_NO, GSEC_BR_ID, GSEC_SALE_DATE, GSEC_CREATE_DATE, GSEC_FAIL_DATE, GSEC_GIVE_BILL_NO, 
+    GSEC_USE_EXPIRATION_DATE, GSETS_ID, GSETS_ATTRIBUTE, GSETS_DESCRIBE, GSEC_GIVE_BR_ID, 
+    GSEC_GIVE_SALE_DATE
+  </sql>
+
+  <select id="getElectronChange" parameterType="com.gys.common.data.SdElectronChangeInData" resultType="com.gys.entity.GaiaSdElectronChange">
+    select
+    sto1.STO_NAME as gsecGiveBrId,
+    sec.GSEC_GIVE_BILL_NO as gsecGiveBillNo,
+    sec.GSEC_GIVE_SALE_DATE as gsecGiveSaleDate,
+    sto2.STO_NAME as gsecBrId,
+    sec.GSEC_BILL_NO as gsecBillNo,
+    sec.GSEC_SALE_DATE as gsecSaleDate,
+      case sec.GSEC_STATUS when 'N' then '否' else '是' end as gsecStatus,
+    sec.GSETS_ID as gsetsId,
+      case sec.GSETS_ATTRIBUTE when 'CM' then '消费型' when 'NM' then '新会员' when 'FM' then '老会员' else '' end as gsetsAttribute,
+    sec.GSETS_DESCRIBE as gsetsDescribe,
+    sec.GSEC_MEMBER_ID as gsecMemberId,
+    sec.GSEB_ID as gsebId,
+    sec.GSEC_AMT as gsecAmt,
+    sec.GSEB_NAME as gsebName
+    from GAIA_SD_ELECTRON_CHANGE sec
+    left join GAIA_STORE_DATA sto1 on sec.CLIENT = sto1.CLIENT and sec.GSEC_GIVE_BR_ID = sto1.STO_CODE
+    left join GAIA_STORE_DATA sto2 on sec.CLIENT = sto2.CLIENT and sec.GSEC_BR_ID = sto2.STO_CODE
+    where sec.CLIENT = #{client}
+      <if test="gsecGiveBrId != null and gsecGiveBrId.size() > 0">
+        and sec.GSEC_GIVE_BR_ID in
+        <foreach collection="gsecGiveBrId" open="(" separator="," item="item" close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="gsecBrId != null and gsecBrId.size() > 0">
+        and sec.GSEC_BR_ID in
+        <foreach collection="gsecBrId" open="(" separator="," item="item" close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="gsecStatus != null and gsecStatus != ''">
+        and sec.GSEC_STATUS = #{gsecStatus}
+      </if>
+      <if test="gsetsAttribute != null and gsetsAttribute.size() >0">
+        and sec.GSETS_ATTRIBUTE in
+        <foreach collection="gsetsAttribute" open="(" separator="," item="item" close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="gsecMemberId != null and gsecMemberId != ''">
+        and sec.GSEC_MEMBER_ID = #{gsecMemberId}
+      </if>
+      <if test="giveStartDate != null and giveStartDate != ''">
+        and sec.GSEC_GIVE_SALE_DATE <![CDATA[>= ]]> #{giveStartDate}
+      </if>
+      <if test="giveEndDate != null and giveEndDate != ''">
+        and sec.GSEC_GIVE_SALE_DATE <![CDATA[<= ]]> #{giveEndDate}
+      </if>
+      <if test="useStartDate != null and useStartDate != ''">
+        and sec.GSEC_SALE_DATE <![CDATA[>= ]]> #{useStartDate}
+      </if>
+      <if test="useEndDate != null and useEndDate != ''">
+        and sec.GSEC_SALE_DATE <![CDATA[<= ]]> #{useEndDate}
+      </if>
+      <if test="gsebId != null and gsebId != ''">
+        and sec.GSEB_ID = #{gsebId}
+      </if>
+  </select>
+</mapper>

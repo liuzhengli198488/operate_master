@@ -1,0 +1,5862 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaMaterialDocMapper">
+
+	<select id="selectSupplierDealPageBySiteCode" resultType="com.gys.report.entity.SupplierDealOutData">
+		SELECT
+		tab.*,
+		ifnull(sb.SUP_NAME,tab.supplierName) supName,
+		site.stoName siteName,
+		IFNULL(IFNULL(sto.STO_SHORT_NAME,sto.STO_NAME),site.stoName) stoName,
+		ud.USER_NAM userName
+		FROM
+		(
+		<!-- 中药代煎 采购 -->
+		<if test="matType == null or matType == '' or matType == 'CD' or matType == 'CX'">
+			SELECT
+			md.CLIENT,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_PO_ID poId,
+			md.MAT_TYPE matType,
+			sum(md.batFpje) batFpje,
+			CASE
+			md.MAT_TYPE
+			WHEN 'CD' THEN
+			'采购单'
+			WHEN 'CX' THEN
+			'代煎采购'
+			END AS matName,
+			ifnull(sum(md.batAmt),0) batAmt,
+			ifnull(sum(md.rateBat),0)rateBat,
+			ifnull(sum(md.batAmt) + sum(md.rateBat),0) totalAmount,
+			oc.supCode,
+			md.MAT_SITE_CODE siteCode,
+			IFNULL(IF(oc.stoCode='',null,oc.stoCode),md.MAT_SITE_CODE) stoCode,
+			oc.userCode,
+			sum(md.billingAmount)billingAmount,
+			oc.PO_HEAD_REMARK poHeadRemark,
+			oc.PO_SUPPLIER_SALESMAN as poSupplierSalesman,
+			'1' as supplierName
+			FROM
+			(
+			SELECT
+			gmd.CLIENT,
+			gmd.MAT_DOC_DATE,
+			gmd.MAT_DN_ID,
+			gmd.MAT_PO_ID,
+			gmd.MAT_TYPE,
+			gmd.MAT_SITE_CODE,
+			gmd.MAT_PRO_CODE,
+			gmd.MAT_BATCH,
+			IF(bi.BAT_FPH IS NULL OR bi.BAT_FPH = '', 0 , bi.BAT_FPH) * gmd.MAT_QTY AS batFpje,
+			sum( gmd.MAT_BAT_AMT  ) AS batAmt,
+			sum( gmd.MAT_RATE_BAT  ) AS rateBat,
+			sum( gmd.MAT_BAT_AMT + MAT_RATE_BAT ) billingAmount
+			FROM
+			GAIA_MATERIAL_DOC gmd
+			LEFT JOIN GAIA_BATCH_INFO bi ON gmd.CLIENT = bi.CLIENT AND gmd.MAT_PRO_CODE = bi.BAT_PRO_CODE AND gmd.MAT_BATCH = bi.BAT_BATCH
+			<where>
+				<if test="client != null and client != ''">
+					and gmd.CLIENT = #{client}
+				</if>
+				AND gmd.MAT_TYPE IN ( 'CD', 'CX' )
+				<if test="matType != null and matType != ''">
+					and  gmd.MAT_TYPE =#{matType}
+				</if>
+				<if test="siteCode != null and siteCode != ''">
+					and gmd.MAT_SITE_CODE = #{siteCode}
+				</if>
+				<if test="stoCode != null and stoCode != ''">
+					AND gmd.MAT_SITE_CODE =#{stoCode}
+				</if>
+				<if test="dnId != null and dnId != ''">
+					AND gmd.MAT_DN_ID = #{dnId}
+				</if>
+				<if test="startDate != null and startDate != ''">
+					AND gmd.MAT_DOC_DATE &gt;= #{startDate}
+				</if>
+				<if test="endDate != null and endDate != ''">
+					AND gmd.MAT_DOC_DATE &lt;= #{endDate}
+				</if>
+			</where>
+			GROUP BY
+			gmd.CLIENT,
+			gmd.MAT_DN_ID,
+			gmd.MAT_PRO_CODE,
+			gmd.MAT_SITE_CODE
+			) md
+			LEFT JOIN (
+			SELECT
+			rkys.CLIENT,
+			rkys.WM_GYS_BH supCode,
+			rkys.WM_RKDH danhao,
+			IFNULL( po.PO_DELIVERY_TYPE_STORE, po.PO_COMPANY_CODE ) stoCode,
+			rkys.CONSIGNEE userCode,
+			po.PO_HEAD_REMARK,
+			po.PO_SUPPLIER_SALESMAN
+			FROM
+			GAIA_WMS_RKYS rkys
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = rkys.CLIENT AND po.PO_ID = rkys.WM_CGDDH
+			<where>
+				<if test="client != null and client != ''">
+					and rkys.CLIENT = #{client}
+				</if>
+			</where>
+			GROUP BY
+			rkys.CLIENT,
+			rkys.WM_RKDH
+			UNION ALL
+			SELECT
+			po2.CLIENT,
+			po2.PO_SUPPLIER_ID supCode,
+			acc.GSAH_VOUCHER_ID danhao,
+			IFNULL( po2.PO_DELIVERY_TYPE_STORE, po2.PO_COMPANY_CODE ) stoCode,
+			acc.GSAH_EMP userCode,
+			po2.PO_HEAD_REMARK,
+			po2.PO_SUPPLIER_SALESMAN
+			FROM
+			GAIA_SD_ACCEPT_H acc
+			LEFT JOIN GAIA_PO_HEADER po2 ON po2.CLIENT = acc.CLIENT AND po2.PO_ID = acc.GSAH_POID
+			<where>
+				<if test="client != null and client != ''">
+					and po2.CLIENT = #{client}
+				</if>
+			</where>
+			)oc ON oc.CLIENT = md.CLIENT
+			AND oc.danhao = md.MAT_DN_ID
+			where not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = md.CLIENT and PRO_SELF_CODE=md.MAT_PRO_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+			GROUP BY
+			CLIENT,
+			MAT_DN_ID,
+			MAT_SITE_CODE
+		</if>
+		<if test="matType == null or matType == ''">
+			UNION ALL
+		</if>
+		<!-- 退供应商 -->
+		<if test="matType == null or matType == '' or matType == 'GD'">
+			SELECT
+			md.CLIENT,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_PO_ID poId,
+			md.MAT_TYPE matType,
+			sum( IF(bi.BAT_FPH IS NULL OR bi.BAT_FPH = '', 0 , bi.BAT_FPH) * md.MAT_QTY) * -1 batFpje,
+			'退厂单' AS matName,
+			ifnull(IF(sto.CLIENT IS NULL,sum( md.MAT_MOV_AMT ),sum( md.MAT_ADD_AMT ))* -1,0) batAmt,
+			ifnull(IF(sto.CLIENT IS NULL,sum( md.MAT_RATE_MOV ),sum( md.MAT_ADD_TAX ))* -1,0) rateBat,
+			ifnull(IF(sto.CLIENT IS NULL,sum( md.MAT_RATE_MOV + md.MAT_MOV_AMT ),sum( md.MAT_ADD_TAX + MAT_ADD_AMT ))* -1,0) totalAmount,
+			tgz.WM_GYS_BH supCode,
+			md.MAT_SITE_CODE siteCode,
+			IFNULL( IF ( po.PO_DELIVERY_TYPE_STORE = '', NULL, po.PO_DELIVERY_TYPE_STORE ), po.PO_COMPANY_CODE ) stoCode,
+			tgz.WM_CJR userCode,
+			sum(md.MAT_QTY * tgm.WM_CKJ)* -1 billingAmount,
+			po.PO_HEAD_REMARK poHeadRemark,
+			po.PO_SUPPLIER_SALESMAN,
+			tgz.WM_GYS_MC supplierName
+			FROM
+			GAIA_MATERIAL_DOC md
+			LEFT JOIN GAIA_WMS_TUIGONG_Z tgz ON md.CLIENT = tgz.CLIENT
+			AND tgz.WM_TGYSDH = md.MAT_DN_ID
+			AND tgz.WM_TGYSDDH = md.MAT_PO_ID
+			LEFT JOIN GAIA_WMS_TUIGONG_M tgm ON tgz.CLIENT = tgm.CLIENT
+			AND tgm.WM_TGYSDH = tgz.WM_TGYSDH
+			AND tgm.WM_SP_BM = md.MAT_PRO_CODE
+			AND tgm.WM_PCH = md.MAT_BATCH
+			AND tgm.PO_LINE_NO = md.MAT_PO_LINENO
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = md.CLIENT
+			AND po.PO_ID = md.MAT_PO_ID
+			LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = md.CLIENT
+			AND sto.STO_CODE = md.MAT_SITE_CODE
+			LEFT JOIN GAIA_BATCH_INFO bi ON md.CLIENT = bi.CLIENT AND md.MAT_PRO_CODE = bi.BAT_PRO_CODE AND md.MAT_BATCH = bi.BAT_BATCH
+			<where>
+				<if test="client != null and client != ''">
+					and md.CLIENT = #{client}
+				</if>
+			</where>
+			AND md.MAT_TYPE = 'GD'
+			AND not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = md.CLIENT and PRO_SELF_CODE=md.MAT_PRO_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+			<if test = "siteCode != null and siteCode != ''" >
+				AND md.MAT_SITE_CODE = #{siteCode}
+			</if >
+			<if test = "stoCode != null and stoCode != ''" >
+				AND md.MAT_SITE_CODE = #{stoCode}
+			</if >
+			<if test="dnId != null and dnId != ''">
+				AND md.MAT_DN_ID = #{dnId}
+			</if>
+			<if test="startDate != null and startDate != ''">
+				AND md.MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND md.MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			GROUP BY
+			md.CLIENT,
+			md.MAT_DN_ID,
+			md.MAT_SITE_CODE
+		</if>
+		) tab
+		LEFT JOIN (
+		SELECT
+		CLIENT,
+		DC_CODE stoCode,
+		DC_NAME stoName
+		FROM
+		GAIA_DC_DATA
+		<where>
+			<if test="client != null and client != ''">
+				and CLIENT = #{client}
+			</if>
+		</where>
+		UNION ALL
+		SELECT
+		CLIENT,
+		STO_CODE stoCode,
+		IFNULL( STO_SHORT_NAME, STO_NAME ) stoName
+		FROM
+		GAIA_STORE_DATA
+		<where>
+			<if test="client != null and client != ''">
+				and CLIENT = #{client}
+			</if>
+		</where>
+		) site ON site.stoCode = tab.siteCode
+		and site.CLIENT = tab.CLIENT
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sb ON
+		tab.CLIENT = sb.CLIENT
+		AND site.stoCode = sb.SUP_SITE
+		AND tab.supCode = sb.SUP_SELF_CODE
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT AND sto.STO_CODE = tab.stoCode
+		LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT AND ud.USER_ID = tab.userCode
+		WHERE
+		1 = 1
+		<if test="poHeadRemark != null and poHeadRemark != ''">
+			and tab.poHeadRemark like concat('%',#{poHeadRemark},'%')
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  tab.dnId = #{dnId}
+		</if>
+
+		<if test="supCode != null and supCode != ''">
+			and  tab.supCode = #{supCode}
+		</if>
+		ORDER BY
+		tab.postDate DESC,
+		tab.dnId DESC
+	</select>
+
+	<select id="selectSupplierDealByTotal" resultType="com.gys.report.entity.SupplierDealOutTotal">
+		SELECT
+		SUM(tab.batAmt) batAmt,
+		SUM(tab.rateBat) rateBat,
+		SUM(tab.totalAmount) totalAmount,
+		SUM(tab.billingAmount) billingAmount
+		FROM
+		(
+		<!-- 中药代煎 采购 -->
+		<if test="matType == null or matType == '' or matType == 'CD' or matType == 'CX'">
+			SELECT
+			md.CLIENT,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_TYPE matType,
+			CASE
+			md.MAT_TYPE
+			WHEN 'CD' THEN
+			'采购单'
+			WHEN 'CX' THEN
+			'代煎采购'
+			END AS matName,
+			md.batAmt,
+			md.rateBat,
+			md.batAmt + md.rateBat totalAmount,
+			oc.supCode,
+			md.MAT_SITE_CODE siteCode,
+			md.billingAmount
+
+			FROM
+			(
+			SELECT
+			CLIENT,
+			MAT_DOC_DATE,
+			MAT_DN_ID,
+			MAT_TYPE,
+			MAT_SITE_CODE,
+			MAT_PRO_CODE,
+			sum( MAT_BAT_AMT  ) AS batAmt,
+			sum( MAT_RATE_BAT  ) AS rateBat,
+			sum( MAT_BAT_AMT + MAT_RATE_BAT ) billingAmount
+			FROM
+			GAIA_MATERIAL_DOC
+			WHERE
+			CLIENT = #{client}
+			AND MAT_TYPE IN ( 'CD', 'CX' )
+			<if test="matType != null and matType != ''">
+				and  MAT_TYPE =#{matType}
+			</if>
+			<if test="siteCode != null and siteCode != ''">
+				and MAT_SITE_CODE = #{siteCode}
+			</if>
+			<if test="stoCode != null and stoCode != ''">
+				AND MAT_SITE_CODE =#{stoCode}
+			</if>
+			<if test="startDate != null and startDate != ''">
+				AND MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			<if test="dnId != null and dnId != ''">
+				AND MAT_DN_ID = #{dnId}
+			</if>
+			GROUP BY
+			CLIENT,
+			MAT_DN_ID,
+			MAT_PRO_CODE,
+			MAT_SITE_CODE
+			) md
+			LEFT JOIN (
+			SELECT
+			rkys.CLIENT,
+			rkys.WM_GYS_BH supCode,
+			rkys.WM_RKDH danhao
+			FROM
+			GAIA_WMS_RKYS rkys
+			WHERE
+			rkys.CLIENT = #{client}
+			GROUP BY
+			rkys.CLIENT,
+			rkys.WM_RKDH
+			UNION ALL
+			SELECT
+			po.CLIENT,
+			po.PO_SUPPLIER_ID supCode,
+			acc.GSAH_VOUCHER_ID danhao
+			FROM
+			GAIA_SD_ACCEPT_H acc
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = acc.CLIENT AND po.PO_ID =acc.GSAH_POID
+			WHERE
+			po.CLIENT = #{client}
+			)oc ON oc.CLIENT = md.CLIENT
+			AND oc.danhao = md.MAT_DN_ID
+			where not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = md.CLIENT and PRO_SELF_CODE=md.MAT_PRO_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+		</if>
+		<if test="matType == null or matType == ''">
+			UNION ALL
+		</if>
+		<!-- 中药代煎 采购 -->
+		<if test="matType == null or matType == '' or matType == 'GD'">
+			SELECT
+			md.CLIENT,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_TYPE matType,
+			'退厂单' AS matName,
+			IF(sto.CLIENT IS NULL,sum( md.MAT_MOV_AMT ),sum( md.MAT_ADD_AMT ))* -1 batAmt,
+			IF(sto.CLIENT IS NULL,sum( md.MAT_RATE_MOV ),sum( md.MAT_ADD_TAX ))* -1 rateBat,
+			IF(sto.CLIENT IS NULL,sum( md.MAT_RATE_MOV + md.MAT_MOV_AMT ),sum( md.MAT_ADD_TAX + MAT_ADD_AMT ))* -1 totalAmount,
+			tgz.WM_GYS_BH supCode,
+			md.MAT_SITE_CODE siteCode,
+			sum(md.MAT_QTY * tgm.WM_CKJ) * -1 billingAmount
+			FROM
+			GAIA_MATERIAL_DOC md
+			LEFT JOIN GAIA_WMS_TUIGONG_Z tgz ON md.CLIENT = tgz.CLIENT
+			AND tgz.WM_TGYSDH = md.MAT_DN_ID
+			AND tgz.WM_TGYSDDH = md.MAT_PO_ID
+			LEFT JOIN GAIA_WMS_TUIGONG_M tgm ON tgz.CLIENT = tgm.CLIENT
+			AND tgm.WM_TGYSDH = tgz.WM_TGYSDH
+			AND tgm.WM_SP_BM = md.MAT_PRO_CODE
+			AND tgm.WM_PCH = md.MAT_BATCH
+			AND tgm.PO_LINE_NO = md.MAT_PO_LINENO
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = md.CLIENT
+			AND po.PO_ID = md.MAT_PO_ID
+			LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = md.CLIENT
+			AND sto.STO_CODE = md.MAT_SITE_CODE
+			WHERE
+			md.CLIENT = #{client}
+			AND md.MAT_TYPE = 'GD'
+			and not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = md.CLIENT and PRO_SELF_CODE=md.MAT_PRO_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+			<if test = "siteCode != null and siteCode != ''" >
+				AND md.MAT_SITE_CODE = #{siteCode}
+			</if >
+			<if test = "stoCode != null and stoCode != ''" >
+				AND md.MAT_SITE_CODE = #{stoCode}
+			</if >
+			<if test="startDate != null and startDate != ''">
+				AND md.MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND md.MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			<if test="dnId != null and dnId != ''">
+				AND md.MAT_DN_ID = #{dnId}
+			</if>
+			GROUP BY
+			md.CLIENT,
+			md.MAT_DN_ID,
+			md.MAT_SITE_CODE
+		</if>
+		) tab
+		WHERE
+		1 = 1
+		<if test="supCode != null and supCode != ''">
+			and  tab.supCode = #{supCode}
+		</if>
+	</select>
+
+	<select id="selectSupplierDealDetailPage"
+			resultType="com.gys.report.entity.SupplierDealOutData">
+		SELECT
+		tab.*,
+		sb.SUP_NAME supName,
+		site.stoName siteName,
+		IFNULL( IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ), site.stoName ) stoName,
+		ud.USER_NAM userName,
+		pb.PRO_SELF_CODE proCode,
+		pb.PRO_COMMONNAME proName,
+		pb.PRO_SPECS specs,
+		pb.PRO_UNIT unit,
+		pb.PRO_FACTORY_NAME factoryName,
+		bi.BAT_BATCH_NO batchNo,
+		bi.BAT_FPH batFph,
+		pb.PRO_SLAE_CLASS AS saleClass,
+		pb.PRO_SCLASS AS prosClass,
+		pb.PRO_POSITION proPosition,
+		case pb.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		pb.PRO_ZDY1 AS zdy1,
+		pb.PRO_ZDY2 AS zdy2,
+		pb.PRO_ZDY3 AS zdy3,
+		pb.PRO_ZDY4 AS zdy4,
+		pb.PRO_ZDY5 AS zdy5,
+		IF(bi.BAT_FPH IS NULL AND bi.BAT_FPH = '', 0, tab.qty * bi.BAT_FPH) batFpje,
+		gtc.TAX_CODE_VALUE taxCodeValue,
+
+		bi.BAT_PRODUCT_DATE batProductDate,
+		bi.BAT_EXPIRY_DATE batExpiryDat
+		FROM
+		(
+		<!-- 中药代煎 采购 -->
+		<if test="matType == null or matType == '' or matType == 'CD' or matType == 'CX'">
+			SELECT
+			md.CLIENT,
+			md.MAT_SITE_CODE siteCode,
+			md.MAT_PRO_CODE proCode,
+			md.MAT_BATCH,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_TYPE matType,
+			CASE
+			md.MAT_TYPE
+			WHEN 'CD' THEN
+			'采购单'
+			WHEN 'CX' THEN
+			'代煎采购'
+			END AS matName,
+			ifnull(md.MAT_BAT_AMT,0) batAmt,
+			ifnull(md.MAT_RATE_BAT,0) rateBat,
+			ifnull(md.MAT_BAT_AMT + md.MAT_RATE_BAT,0) totalAmount,
+			( ( md.MAT_BAT_AMT + md.MAT_RATE_BAT ) / md.MAT_QTY) price,
+			md.MAT_QTY qty,
+			md.MAT_QTY * ( ( md.MAT_BAT_AMT + md.MAT_RATE_BAT ) / md.MAT_QTY) billingAmount,
+			oc.supCode,
+			IFNULL( IF ( oc.stoCode = '', NULL, oc.stoCode ), md.MAT_SITE_CODE ) stoCode,
+			oc.userCode,
+			oc.PO_HEAD_REMARK poHeadRemark,
+			oc.PO_SUPPLIER_SALESMAN  as poSupplierSalesman
+			FROM
+			GAIA_MATERIAL_DOC md
+			LEFT JOIN (
+			SELECT
+			rkys.CLIENT,
+			rkys.WM_GYS_BH supCode,
+			rkys.WM_RKDH danhao,
+			IFNULL( po.PO_DELIVERY_TYPE_STORE, po.PO_COMPANY_CODE ) stoCode,
+			rkys.CONSIGNEE userCode,
+			po.PO_HEAD_REMARK,
+			po.PO_SUPPLIER_SALESMAN
+			FROM
+			GAIA_WMS_RKYS rkys
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = rkys.CLIENT
+			AND po.PO_ID = rkys.WM_CGDDH
+			WHERE
+			rkys.CLIENT = #{client}
+			GROUP BY
+			rkys.CLIENT,
+			rkys.WM_RKDH UNION ALL
+			SELECT
+			po2.CLIENT,
+			po2.PO_SUPPLIER_ID supCode,
+			acc.GSAH_VOUCHER_ID danhao,
+			IFNULL( po2.PO_DELIVERY_TYPE_STORE, po2.PO_COMPANY_CODE ) stoCode,
+			acc.GSAH_EMP userCode,
+			po2.PO_HEAD_REMARK,
+			po2.PO_SUPPLIER_SALESMAN
+			FROM
+			GAIA_SD_ACCEPT_H acc
+			LEFT JOIN GAIA_PO_HEADER po2 ON po2.CLIENT = acc.CLIENT
+			AND po2.PO_ID = acc.GSAH_POID
+			WHERE
+			po2.CLIENT = #{client}
+			) oc ON oc.CLIENT = md.CLIENT
+			AND oc.danhao = md.MAT_DN_ID
+			WHERE
+			md.CLIENT = #{client}
+			AND md.MAT_TYPE IN ( 'CD', 'CX' )
+			<if test="matType != null and matType != ''">
+				and md.MAT_TYPE =#{matType}
+			</if>
+			<if test="startDate != null and startDate != ''">
+				and md.MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				and md.MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			<if test="dnId != null and dnId != ''">
+				and md.MAT_DN_ID  = #{dnId}
+			</if>
+		</if>
+		<if test="matType == null or matType == ''">
+			UNION ALL
+		</if>
+		<!-- 退供应商 -->
+		<if test="matType == null or matType == '' or matType == 'GD'">
+			SELECT
+			md.CLIENT,
+			md.MAT_SITE_CODE siteCode,
+			md.MAT_PRO_CODE proCode,
+			md.MAT_BATCH,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_TYPE matType,
+			'退厂单' AS matName,
+			ifnull(IF( sto.CLIENT IS NULL, md.MAT_MOV_AMT, md.MAT_ADD_AMT )* -1,0) batAmt,
+			ifnull(IF( sto.CLIENT IS NULL, md.MAT_RATE_MOV, md.MAT_ADD_TAX )* -1,0) rateBat,
+			ifnull(IF( sto.CLIENT IS NULL, md.MAT_RATE_MOV + md.MAT_MOV_AMT, md.MAT_ADD_TAX + md.MAT_ADD_AMT )* -1,0) totalAmount,
+			tgm.WM_CKJ price,
+			md.MAT_QTY *-1 qty,
+			md.MAT_QTY * tgm.WM_CKJ* -1 billingAmount,
+			tgz.WM_GYS_BH supCode,
+			IFNULL( IF ( po.PO_DELIVERY_TYPE_STORE = '', NULL, po.PO_DELIVERY_TYPE_STORE ), po.PO_COMPANY_CODE ) stoCode,
+			tgz.WM_CJR userCode,
+			po.PO_HEAD_REMARK poHeadRemark,
+			po.PO_SUPPLIER_SALESMAN
+			FROM
+			GAIA_MATERIAL_DOC md
+			LEFT JOIN GAIA_WMS_TUIGONG_Z tgz ON tgz.CLIENT = md.CLIENT
+			AND tgz.WM_TGYSDH = md.MAT_DN_ID
+			AND tgz.WM_TGYSDDH = md.MAT_PO_ID
+			LEFT JOIN GAIA_WMS_TUIGONG_M tgm ON tgm.CLIENT = tgz.CLIENT
+			AND tgm.WM_TGYSDH = tgz.WM_TGYSDH
+			AND tgm.WM_SP_BM = md.MAT_PRO_CODE
+			AND tgm.WM_PCH = md.MAT_BATCH
+			AND tgm.PO_LINE_NO = md.MAT_PO_LINENO
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = md.CLIENT
+			AND po.PO_ID = md.MAT_PO_ID
+			LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = md.CLIENT
+			AND sto.STO_CODE = md.MAT_SITE_CODE
+			WHERE
+			md.CLIENT = #{client}
+			AND md.MAT_TYPE = 'GD'
+			<if test="startDate != null and startDate != ''">
+				AND md.MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND md.MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			<if test="dnId != null and dnId != ''">
+				and md.MAT_DN_ID  = #{dnId}
+			</if>
+		</if>
+		) tab
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.proCode = pb.PRO_SELF_CODE
+		AND tab.CLIENT = pb.CLIENT
+		AND tab.siteCode = pb.PRO_SITE
+
+		LEFT JOIN GAIA_TAX_CODE gtc ON pb.PRO_INPUT_TAX = gtc.TAX_CODE
+
+		LEFT JOIN GAIA_BATCH_INFO bi ON
+		tab.CLIENT = bi.CLIENT
+		AND tab.proCode = bi.BAT_PRO_CODE
+		AND tab.MAT_BATCH = bi.BAT_BATCH
+
+		LEFT JOIN (
+		SELECT
+		DC_CODE stoCode,
+		DC_NAME stoName
+		FROM
+		GAIA_DC_DATA
+		WHERE
+		CLIENT = #{client} UNION ALL
+		SELECT
+		STO_CODE stoCode,
+		IFNULL( STO_SHORT_NAME, STO_NAME ) stoName
+		FROM
+		GAIA_STORE_DATA
+		WHERE
+		CLIENT = #{client}
+		) site ON site.stoCode = tab.siteCode
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sb ON tab.CLIENT = sb.CLIENT
+		AND site.stoCode = sb.SUP_SITE
+		AND tab.supCode = sb.SUP_SELF_CODE
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+		AND sto.STO_CODE = tab.stoCode
+		LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+		AND ud.USER_ID = tab.userCode
+		WHERE 1 = 1
+		<if test="taxCode != null and taxCode != ''">
+			and gtc.TAX_CODE = #{taxCode}
+		</if>
+		AND NOT EXISTS ( SELECT 1 FROM GAIA_SALES_CATALOG WHERE CLIENT = pb.CLIENT AND PRO_SELF_CODE = pb.PRO_SELF_CODE AND IS_DELETE = 0 AND `STATUS` IN ( 1, 2))
+
+		<if test="siteCode != null and siteCode != ''">
+			and tab.siteCode = #{siteCode}
+		</if>
+		<if test="stoCode != null and stoCode != ''">
+			and tab.siteCode = #{stoCode}
+		</if>
+		<if test="supCode != null and supCode != ''">
+			and tab.supCode = #{supCode}
+		</if>
+		<if test="proArr != null and proArr.length > 0 ">
+			and tab.proCode IN
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (pb.PRO_FACTORY_CODE LIKE '%${factory}%' OR pb.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and pb.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and pb.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and pb.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and pb.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and pb.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and pb.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and pb.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and pb.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and pb.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		<if test="poHeadRemark != null and poHeadRemark != ''">
+			and tab.poHeadRemark like concat('%',#{poHeadRemark},'%')
+		</if>
+        <if test="taxRate != null and taxRate != ''">
+			and gtc.TAX_CODE_VALUE = #{taxRate}
+		</if>
+		ORDER BY
+		tab.postDate DESC,
+		tab.dnId DESC,
+		tab.proCode
+	</select>
+
+	<select id="selectSupplierDealDetailByTotal"
+	        resultType="com.gys.report.entity.SupplierDealOutTotal">
+		SELECT
+		SUM(tab.batAmt) batAmt,
+		SUM(tab.rateBat) rateBat,
+		SUM(tab.totalAmount) totalAmount,
+		SUM(tab.qty) qty,
+		SUM(tab.billingAmount) billingAmount
+		FROM
+		(
+		<!-- 中药代煎 采购 -->
+		<if test="matType == null or matType == '' or matType == 'CD' or matType == 'CX'">
+			SELECT
+			md.CLIENT,
+			md.MAT_SITE_CODE siteCode,
+			md.MAT_PRO_CODE proCode,
+			md.MAT_BATCH,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_TYPE matType,
+			CASE
+			md.MAT_TYPE
+			WHEN 'CD' THEN
+			'采购单'
+			WHEN 'CX' THEN
+			'代煎采购'
+			END AS matName,
+			md.MAT_BAT_AMT batAmt,
+			md.MAT_RATE_BAT rateBat,
+			md.MAT_BAT_AMT + md.MAT_RATE_BAT totalAmount,
+			( ( md.MAT_BAT_AMT + md.MAT_RATE_BAT ) / md.MAT_QTY) price,
+			md.MAT_QTY qty,
+			md.MAT_QTY * ( ( md.MAT_BAT_AMT + md.MAT_RATE_BAT ) / md.MAT_QTY) billingAmount,
+			oc.supCode,
+			IFNULL( IF ( oc.stoCode = '', NULL, oc.stoCode ), md.MAT_SITE_CODE ) stoCode,
+			oc.userCode
+			FROM
+			GAIA_MATERIAL_DOC md
+			LEFT JOIN (
+			SELECT
+			rkys.CLIENT,
+			rkys.WM_GYS_BH supCode,
+			rkys.WM_RKDH danhao,
+			IFNULL( po.PO_DELIVERY_TYPE_STORE, po.PO_COMPANY_CODE ) stoCode,
+			rkys.CONSIGNEE userCode
+			FROM
+			GAIA_WMS_RKYS rkys
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = rkys.CLIENT
+			AND po.PO_ID = rkys.WM_CGDDH
+			WHERE
+			rkys.CLIENT = #{client}
+			GROUP BY
+			rkys.CLIENT,
+			rkys.WM_RKDH UNION ALL
+			SELECT
+			po2.CLIENT,
+			po2.PO_SUPPLIER_ID supCode,
+			acc.GSAH_VOUCHER_ID danhao,
+			IFNULL( po2.PO_DELIVERY_TYPE_STORE, po2.PO_COMPANY_CODE ) stoCode,
+			acc.GSAH_EMP userCode
+			FROM
+			GAIA_SD_ACCEPT_H acc
+			LEFT JOIN GAIA_PO_HEADER po2 ON po2.CLIENT = acc.CLIENT
+			AND po2.PO_ID = acc.GSAH_POID
+			WHERE
+			po2.CLIENT = #{client}
+			) oc ON oc.CLIENT = md.CLIENT
+			AND oc.danhao = md.MAT_DN_ID
+			WHERE
+			md.CLIENT = #{client}
+			AND md.MAT_TYPE IN ( 'CD', 'CX' )
+			<if test="matType != null and matType != ''">
+				and md.MAT_TYPE =#{matType}
+			</if>
+			<if test="startDate != null and startDate != ''">
+				AND md.MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND md.MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			<if test="dnId != null and dnId != ''">
+				and md.MAT_DN_ID  = #{dnId}
+			</if>
+		</if>
+		<if test="matType == null or matType == ''">
+			UNION ALL
+		</if>
+		<!-- 退供应商 -->
+		<if test="matType == null or matType == '' or matType == 'GD'">
+			SELECT
+			md.CLIENT,
+			md.MAT_SITE_CODE siteCode,
+			md.MAT_PRO_CODE proCode,
+			md.MAT_BATCH,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_TYPE matType,
+			'退厂单' AS matName,
+			IF( sto.CLIENT IS NULL, md.MAT_MOV_AMT, md.MAT_ADD_AMT )* -1 batAmt,
+			IF( sto.CLIENT IS NULL, md.MAT_RATE_MOV, md.MAT_ADD_TAX )* -1 rateBat,
+			IF( sto.CLIENT IS NULL, md.MAT_RATE_MOV + md.MAT_MOV_AMT, md.MAT_ADD_TAX + md.MAT_ADD_AMT )* -1 totalAmount,
+			tgm.WM_CKJ price,
+			md.MAT_QTY *-1 qty,
+			md.MAT_QTY * tgm.WM_CKJ* -1  billingAmount,
+			tgz.WM_GYS_BH supCode,
+			IFNULL( IF ( po.PO_DELIVERY_TYPE_STORE = '', NULL, po.PO_DELIVERY_TYPE_STORE ), po.PO_COMPANY_CODE ) stoCode,
+			tgz.WM_CJR userCode
+			FROM
+			GAIA_MATERIAL_DOC md
+			LEFT JOIN GAIA_WMS_TUIGONG_Z tgz ON tgz.CLIENT = md.CLIENT
+			AND tgz.WM_TGYSDH = md.MAT_DN_ID
+			AND tgz.WM_TGYSDDH = md.MAT_PO_ID
+			LEFT JOIN GAIA_WMS_TUIGONG_M tgm ON tgm.CLIENT = tgz.CLIENT
+			AND tgm.WM_TGYSDH = tgz.WM_TGYSDH
+			AND tgm.WM_SP_BM = md.MAT_PRO_CODE
+			AND tgm.WM_PCH = md.MAT_BATCH
+			AND tgm.PO_LINE_NO = md.MAT_PO_LINENO
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = md.CLIENT
+			AND po.PO_ID = md.MAT_PO_ID
+			LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = md.CLIENT
+			AND sto.STO_CODE = md.MAT_SITE_CODE
+			WHERE
+			md.CLIENT = #{client}
+			AND md.MAT_TYPE = 'GD'
+			<if test="startDate != null and startDate != ''">
+				AND md.MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND md.MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			<if test="dnId != null and dnId != ''">
+				and md.MAT_DN_ID  = #{dnId}
+			</if>
+		</if>
+		) tab
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.proCode = pb.PRO_SELF_CODE
+		AND tab.CLIENT = pb.CLIENT
+		AND tab.siteCode = pb.PRO_SITE
+		LEFT JOIN GAIA_BATCH_INFO bi ON
+		tab.CLIENT = bi.CLIENT
+		AND tab.proCode = bi.BAT_PRO_CODE
+		AND tab.MAT_BATCH = bi.BAT_BATCH
+
+		LEFT JOIN (
+		SELECT
+		DC_CODE stoCode,
+		DC_NAME stoName
+		FROM
+		GAIA_DC_DATA
+		WHERE
+		CLIENT = #{client} UNION ALL
+		SELECT
+		STO_CODE stoCode,
+		IFNULL( STO_SHORT_NAME, STO_NAME ) stoName
+		FROM
+		GAIA_STORE_DATA
+		WHERE
+		CLIENT = #{client}
+		) site ON site.stoCode = tab.siteCode
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sb ON tab.CLIENT = sb.CLIENT
+		AND site.stoCode = sb.SUP_SITE
+		AND tab.supCode = sb.SUP_SELF_CODE
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT
+		AND sto.STO_CODE = tab.stoCode
+		LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT
+		AND ud.USER_ID = tab.userCode
+		WHERE 1 = 1
+		AND NOT EXISTS ( SELECT 1 FROM GAIA_SALES_CATALOG WHERE CLIENT = pb.CLIENT AND PRO_SELF_CODE = pb.PRO_SELF_CODE AND IS_DELETE = 0 AND `STATUS` IN ( 1, 2))
+		<if test="siteCode != null and siteCode != ''">
+			and tab.siteCode = #{siteCode}
+		</if>
+		<if test="stoCode != null and stoCode != ''">
+			and tab.siteCode = #{stoCode}
+		</if>
+		<if test="supCode != null and supCode != ''">
+			and tab.supCode = #{supCode}
+		</if>
+		<if test="proArr != null and proArr.length > 0 ">
+			and tab.proCode IN
+			<foreach collection="proArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="factory != null and factory != ''">
+			AND (pb.PRO_FACTORY_CODE LIKE '%${factory}%' OR pb.PRO_FACTORY_NAME LIKE '%${factory}%')
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and pb.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and pb.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and pb.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and pb.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and pb.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and pb.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and pb.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and pb.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and pb.PRO_NO_PURCHASE = #{purchase}
+		</if>
+	</select>
+
+	<select id="selectWholesaleSalePage"
+			resultType="com.gys.report.entity.WholesaleSaleOutData">
+		SELECT
+		b.MAT_TYPE matType,
+		b.MAT_POST_DATE postDate,
+		b.siteCode,
+		b.siteName,
+		CASE
+		b.MAT_TYPE
+		WHEN 'XD' THEN
+		'销售单'
+		WHEN 'ED' THEN
+		'销退单'
+		WHEN 'PD' THEN
+		'配送单'
+		WHEN 'TD' THEN
+		'退库单'
+		WHEN 'MD' THEN
+		'调拨退库单'
+		WHEN 'ND' THEN
+		'调拨配送单'
+		WHEN 'PX' THEN
+		'代煎配送'
+		END AS matName,
+		b.MAT_DN_ID dnId,
+		b.rate,
+		SUM( b.qty ) qty,
+		SUM( b.movAmt ) movAmt,
+		SUM( b.rateMov ) rateMov,
+		SUM( b.movAmt + b.rateMov ) movTotalAmount,
+		SUM((b.qty * b.addPrice )/(1+b.rate)) addAmt,
+		SUM(( b.qty * b.addPrice)-(b.qty * b.addPrice)/(1+b.rate)) addTax,
+		SUM( b.qty * b.addPrice ) addtotalAmount,
+		b.addPrice addAmtRate,
+		b.khbh AS stoCode,
+		IFNULL( sd.stoName, cb.stoName ) stoName
+		,MAX(C.PRO_BIG_CLASS_CODE) AS 'bigClassCode'
+		,MAX(C.PRO_BIG_CLASS_NAME) AS 'bigClassName'
+		,MAX(C.PRO_MID_CLASS_CODE) AS 'midClassCode'
+		,MAX(C.PRO_MID_CLASS_NAME) AS 'midClassName'
+		,MAX(C.PRO_CLASS_CODE) AS 'proClassCode'
+		,MAX(C.PRO_CLASS_NAME) AS 'proClassName'
+		,b.USER_NAM as buillingStaffName
+		,b.SO_CREATE_BY as buillingStaffCode
+		FROM
+		(
+		SELECT
+		gmd.CLIENT,
+		gmd.MAT_BATCH,
+		gmd.MAT_POST_DATE,
+		gmd.MAT_TYPE,
+		gmd.MAT_PRO_CODE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_PO_ID,
+		gmd.MAT_SITE_CODE siteCode,
+		IFNULL( sto.STO_SHORT_NAME, dc.DC_NAME ) siteName,
+		IFNULL( tkys.WM_KH_BH, dbz.WM_KH_BH ) khbh,
+		IFNULL(tkys.PRO_SITE,dbz.PRO_SITE) dcCode,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT ) ELSE
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT )*- 1
+		END movAmt,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) ELSE
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) *- 1
+		END rateMov,
+		CASE
+
+		WHEN gmd.MAT_TYPE IN ( 'ED', 'MD', 'TD' ) THEN
+		tkys.WM_DHJ ELSE dbm.WM_CKJ
+		END addPrice,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		gmd.MAT_QTY ELSE gmd.MAT_QTY *- 1
+		END qty,
+		CASE
+
+		WHEN gmd.MAT_TYPE = 'XD'
+		OR gmd.MAT_TYPE = 'ED' THEN
+		tc.TAX_CODE_VALUE/100
+		WHEN gmd.MAT_TYPE = 'PD'
+		OR gmd.MAT_TYPE = 'ND'
+		OR gmd.MAT_TYPE = 'PX' THEN
+		ifnull( srd.GSRD_TAX_RATE, tc.TAX_CODE_VALUE )/ 100
+		WHEN gmd.MAT_TYPE = 'TD'
+		OR gmd.MAT_TYPE = 'MD' THEN
+		mm.WM_SL/100
+		END AS rate
+		,gud.USER_NAM
+		,soh.SO_CREATE_BY
+		FROM
+		GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_SD_REPLENISH_D srd ON srd.CLIENT = gmd.CLIENT
+		AND srd.GSRD_VOUCHER_ID = gmd.MAT_PO_ID
+		AND srd.GSRD_SERIAL = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_WMS_MENDIANTUIKU_M mm ON mm.CLIENT = gmd.CLIENT
+		AND mm.WM_TKDDH = gmd.MAT_PO_ID
+		AND mm.WM_XH = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_SO_ITEM si ON si.CLIENT = gmd.CLIENT
+		AND si.SO_ID = gmd.MAT_PO_ID
+		AND si.SO_LINE_NO = gmd.MAT_PO_LINENO
+		LEFT JOIN  (SELECT CLIENT,PRO_SITE,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ,WM_KH_BH FROM GAIA_WMS_TKYS
+		WHERE CLIENT = #{client} GROUP BY  CLIENT,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ ) tkys
+		ON tkys.CLIENT = gmd.CLIENT
+		AND tkys.WM_TKDH = gmd.MAT_DN_ID
+		AND tkys.WM_TKDDH = gmd.MAT_PO_ID
+		AND tkys.WM_SP_BM = gmd.MAT_PRO_CODE
+		AND tkys.WM_PCH = gmd.MAT_BATCH
+		AND tkys.WM_DDXH =gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_WMS_DIAOBO_Z dbz ON dbz.CLIENT = gmd.CLIENT
+		AND dbz.WM_PSDH = gmd.MAT_DN_ID
+		AND dbz.WM_DDH = gmd.MAT_PO_ID
+		LEFT JOIN GAIA_WMS_DIAOBO_M dbm ON dbm.CLIENT = dbz.CLIENT
+		AND dbm.WM_PSDH = dbz.WM_PSDH
+		AND dbm.WM_SP_BM = gmd.MAT_PRO_CODE
+		AND dbm.WM_PCH = gmd.MAT_BATCH
+		AND dbm.PO_LINE_NO = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_TAX_CODE tc ON si.SO_RATE = tc.TAX_CODE
+		LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = gmd.CLIENT
+		AND dc.DC_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = gmd.CLIENT
+		AND sto.STO_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_SO_HEADER soh on gmd.client = soh.client and gmd.MAT_PO_ID = soh.SO_ID
+		LEFT JOIN GAIA_USER_DATA gud on soh.client = gud.client and soh.SO_CREATE_BY = gud.USER_ID
+		WHERE
+		gmd.CLIENT = #{client}
+		<if test="matType != null and matType != ''">
+			and gmd.MAT_TYPE = #{matType}
+		</if>
+		<if test="buillingStaffIds != null and buillingStaffIds.size > 0">
+			and soh.SO_CREATE_BY in
+			<foreach collection="buillingStaffIds" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="matTypes!=null and matTypes.size()>0">
+			and gmd.MAT_TYPE IN
+			<foreach collection="matTypes" item="matTypes" index="index"
+					 open="(" close=")" separator=",">
+				#{matTypes}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_POST_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_POST_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  gmd.MAT_DN_ID = #{dnId}
+		</if>
+
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_BATCH,
+		gmd.MAT_POST_DATE,
+		gmd.MAT_TYPE,
+		gmd.MAT_PRO_CODE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_PO_ID,
+		gmd.MAT_SITE_CODE,
+		gmd.MAT_LINE_NO
+		,soh.SO_CREATE_BY
+		) b
+		LEFT JOIN ( SELECT CLIENT client,CUS_SITE site,CUS_SELF_CODE stoCode, CUS_NAME stoName FROM GAIA_CUSTOMER_BUSINESS WHERE CLIENT =#{client} ) cb ON cb.client=b.CLIENT and cb.site=b.dcCode AND cb.stoCode = b.khbh
+		LEFT JOIN ( SELECT STO_CODE stoCode, IFNULL( STO_SHORT_NAME, STO_NAME ) stoName FROM GAIA_STORE_DATA sd WHERE CLIENT = #{client} ) sd ON sd.stoCode = b.khbh
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = #{client} AND b.siteCode = pb.PRO_SITE AND b.MAT_PRO_CODE = pb.PRO_SELF_CODE
+		LEFT JOIN GAIA_PRODUCT_CLASS C ON C.PRO_CLASS_CODE = pb.PRO_CLASS
+		WHERE
+		1 = 1
+		<if test="classArrs != null and classArrs.size > 0">
+			and pb.PRO_CLASS in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		AND NOT EXISTS ( SELECT 1 FROM GAIA_SALES_CATALOG WHERE CLIENT = b.CLIENT AND PRO_SELF_CODE = b.MAT_PRO_CODE AND IS_DELETE = 0 AND `STATUS` IN ( 1, 2))
+		<if test="stoArr != null and stoArr.length > 0">
+			and b.khbh in
+			<foreach collection = "stoArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and b.siteCode =#{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and b.siteCode  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		b.CLIENT,
+		b.siteCode
+		,b.MAT_POST_DATE,
+		b.MAT_DN_ID,
+		b.MAT_TYPE,
+		b.MAT_PO_ID,
+		b.rate
+		,b.SO_CREATE_BY
+		ORDER BY
+		b.MAT_DN_ID DESC,b.siteCode
+	</select>
+	<!--
+		1.退货
+		调拨额 TD MD ED 物料凭证数量*wms_TKYS 到货价
+		成本额 TD MD ED门店的取加物料凭证加点后 仓库取移动平均价
+		单价   TD MD ED wms_TKYS 到货价
+		2.进货
+		调拨额 PD ND XD 物料凭证数量*wms_diaobo_m 出库价
+		成本额 PD ND XD 门店的取加物料凭证加点后 仓库取移动平均价
+		单价   PD ND XD wms_diaobo_m 出库价
+	-->
+	<select id="selectWholesaleSaleDetailPage"
+			resultType="com.gys.report.entity.WholesaleSaleOutData">
+		SELECT
+		b.MAT_TYPE matType,
+		b.MAT_POST_DATE postDate,
+		b.siteCode,
+		b.siteName,
+		CASE
+		b.MAT_TYPE
+		WHEN 'XD' THEN
+		'销售单'
+		WHEN 'ED' THEN
+		'销退单'
+		WHEN 'PD' THEN
+		'配送单'
+		WHEN 'TD' THEN
+		'退库单'
+		WHEN 'MD' THEN
+		'调拨退库单'
+		WHEN 'ND' THEN
+		'调拨配送单'
+		WHEN 'PX' THEN
+		'代煎配送'
+		END AS matName,
+		b.MAT_DN_ID dnId,
+		b.rate,
+		pb.PRO_SELF_CODE proCode,
+		bi.BAT_BATCH_NO batBatchNo,
+		bi.BAT_PO_PRICE batPoPrice,
+		b.qty,
+		b.movAmt,
+		b.rateMov,
+		b.movAmt + b.rateMov movTotalAmount,
+		( b.qty * b.addPrice )/(
+		1+b.rate
+		) addAmt,
+		( b.qty * b.addPrice )-(
+		b.qty * b.addPrice
+		)/(
+		1+b.rate
+		) addTax,
+		b.qty * b.addPrice addtotalAmount,
+		b.addPrice addAmtRate,
+		pb.PRO_SELF_CODE proCode,
+		pb.PRO_NAME proName,
+		pb.PRO_COMMONNAME proCommonName,
+        pb.PRO_DEPICT  proDepict,
+		pb.PRO_SPECS specs,
+		pb.PRO_UNIT unit,
+		pb.PRO_FACTORY_NAME factoryName,
+		b.khbh AS stoCode,
+		IFNULL(sd.stoName,cb.stoName) stoName,
+		sup.SUP_SELF_CODE supplierCode,
+		sup.SUP_NAME supplierName,
+		pb.PRO_SLAE_CLASS AS saleClass,
+		pb.PRO_SCLASS AS prosClass,
+		case pb.PRO_NO_PURCHASE
+		when '1' then '是'
+		when '0' then '否'
+		end AS purchase,
+		pb.PRO_ZDY1 AS zdy1,
+		pb.PRO_ZDY2 AS zdy2,
+		pb.PRO_ZDY3 AS zdy3,
+		pb.PRO_ZDY4 AS zdy4,
+		pb.PRO_ZDY5 AS zdy5,
+		pb.PRO_TAX_CLASS as taxClassCode
+		,C.PRO_BIG_CLASS_CODE AS 'bigClassCode'
+		,C.PRO_BIG_CLASS_NAME AS 'bigClassName'
+		,C.PRO_MID_CLASS_CODE AS 'midClassCode'
+		,C.PRO_MID_CLASS_NAME AS 'midClassName'
+		,C.PRO_CLASS_CODE AS 'proClassCode'
+		,C.PRO_CLASS_NAME AS 'proClassName'
+		,b.USER_NAM as buillingStaffName
+		,b.SO_CREATE_BY as buillingStaffCode
+		FROM
+		(
+		SELECT
+		gmd.CLIENT,
+		gmd.MAT_BATCH,
+		gmd.MAT_POST_DATE,
+		gmd.MAT_TYPE,
+		gmd.MAT_PRO_CODE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_PO_ID,
+		gmd.MAT_SITE_CODE siteCode,
+		IFNULL( sto.STO_NAME, dc.DC_NAME ) siteName,
+		IFNULL( tkys.WM_KH_BH, dbz.WM_KH_BH ) khbh,
+		IFNULL(tkys.PRO_SITE,dbz.PRO_SITE) dcCode,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT ) ELSE
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT )*- 1
+		END movAmt,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) ELSE
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) *- 1
+		END rateMov,
+		CASE
+
+		WHEN gmd.MAT_TYPE IN ( 'ED', 'MD', 'TD' ) THEN
+		tkys.WM_DHJ ELSE dbm.WM_CKJ
+		END addPrice,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		gmd.MAT_QTY ELSE gmd.MAT_QTY *- 1
+		END qty,
+		CASE
+
+		WHEN gmd.MAT_TYPE = 'XD'
+		OR gmd.MAT_TYPE = 'ED' THEN
+		tc.TAX_CODE_VALUE/100
+		WHEN gmd.MAT_TYPE = 'PD'
+		OR gmd.MAT_TYPE = 'ND'
+		OR gmd.MAT_TYPE = 'PX' THEN
+		ifnull( srd.GSRD_TAX_RATE, tc.TAX_CODE_VALUE )/ 100
+		WHEN gmd.MAT_TYPE = 'TD'
+		OR gmd.MAT_TYPE = 'MD' THEN
+		mm.WM_SL/100
+		END AS rate
+		,gud.USER_NAM
+		,soh.SO_CREATE_BY
+		FROM
+		GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_SD_REPLENISH_D srd ON srd.CLIENT = gmd.CLIENT
+		AND srd.GSRD_VOUCHER_ID = gmd.MAT_PO_ID
+		AND srd.GSRD_SERIAL = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_WMS_MENDIANTUIKU_M mm ON mm.CLIENT = gmd.CLIENT
+		AND mm.WM_TKDDH = gmd.MAT_PO_ID
+		AND mm.WM_XH = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_SO_ITEM si ON si.CLIENT = gmd.CLIENT
+		AND si.SO_ID = gmd.MAT_PO_ID
+		AND si.SO_LINE_NO = gmd.MAT_PO_LINENO
+		LEFT JOIN  (SELECT CLIENT,PRO_SITE,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ,WM_KH_BH FROM GAIA_WMS_TKYS
+		WHERE CLIENT = #{client} GROUP BY  CLIENT,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ ) tkys
+		ON tkys.CLIENT = gmd.CLIENT
+		AND tkys.WM_TKDH = gmd.MAT_DN_ID
+		AND tkys.WM_TKDDH = gmd.MAT_PO_ID
+		AND tkys.WM_SP_BM = gmd.MAT_PRO_CODE
+		AND tkys.WM_PCH = gmd.MAT_BATCH
+		AND tkys.WM_DDXH =gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_WMS_DIAOBO_Z dbz ON dbz.CLIENT = gmd.CLIENT
+		AND dbz.WM_PSDH = gmd.MAT_DN_ID
+		AND dbz.WM_DDH = gmd.MAT_PO_ID
+		LEFT JOIN GAIA_WMS_DIAOBO_M dbm ON dbm.CLIENT = dbz.CLIENT
+		AND dbm.WM_PSDH = dbz.WM_PSDH
+		AND dbm.WM_SP_BM = gmd.MAT_PRO_CODE
+		AND dbm.WM_PCH = gmd.MAT_BATCH
+		AND dbm.PO_LINE_NO = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_TAX_CODE tc ON si.SO_RATE = tc.TAX_CODE
+		LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = gmd.CLIENT
+		AND dc.DC_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = gmd.CLIENT
+		AND sto.STO_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_SO_HEADER soh on gmd.client = soh.client and gmd.MAT_PO_ID = soh.SO_ID
+		LEFT JOIN GAIA_USER_DATA gud on soh.client = gud.client and soh.SO_CREATE_BY = gud.USER_ID
+		WHERE
+		gmd.CLIENT = #{client}
+		<if test="buillingStaffIds != null and buillingStaffIds.size > 0">
+			and soh.SO_CREATE_BY in
+			<foreach collection="buillingStaffIds" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="matTypes!=null and matTypes.size()>0">
+			and gmd.MAT_TYPE IN
+			<foreach collection="matTypes" item="matTypes" index="index"
+					 open="(" close=")" separator=",">
+				#{matTypes}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_POST_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_POST_DATE  &lt;= #{endDate}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and gmd.MAT_SITE_CODE =#{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and gmd.MAT_SITE_CODE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  gmd.MAT_DN_ID = #{dnId}
+		</if>
+
+		<if test="proArr != null and proArr.length > 0">
+			and gmd.MAT_PRO_CODE IN
+			<foreach collection="proArr" item="item" index="index"
+					 open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_SITE_CODE,
+		gmd.MAT_POST_DATE,
+		gmd.MAT_PRO_CODE,
+		gmd.MAT_TYPE,
+		gmd.MAT_BATCH,
+		gmd.MAT_PO_LINENO,
+		gmd.MAT_DN_ID,
+		gmd.MAT_LINE_NO
+		,soh.SO_CREATE_BY
+		) b
+		LEFT JOIN ( SELECT CLIENT client,CUS_SITE site,CUS_SELF_CODE stoCode, CUS_NAME stoName FROM GAIA_CUSTOMER_BUSINESS WHERE CLIENT =#{client} ) cb ON cb.client=b.CLIENT and cb.site=b.dcCode AND cb.stoCode = b.khbh
+		LEFT JOIN ( SELECT STO_CODE stoCode, STO_NAME stoName FROM GAIA_STORE_DATA sd WHERE CLIENT =#{client} ) sd ON sd.stoCode = b.khbh
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON b.MAT_PRO_CODE = pb.PRO_SELF_CODE
+		AND pb.CLIENT = b.CLIENT
+		AND b.siteCode = pb.PRO_SITE
+		LEFT JOIN GAIA_BATCH_INFO bi ON b.CLIENT = bi.CLIENT
+		AND b.MAT_PRO_CODE = bi.BAT_PRO_CODE
+		AND b.MAT_BATCH = bi.BAT_BATCH
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sup ON ( bi.CLIENT = sup.CLIENT AND bi.BAT_SITE_CODE = sup.SUP_SITE AND bi.BAT_SUPPLIER_CODE = sup.SUP_SELF_CODE )
+		LEFT JOIN GAIA_PRODUCT_CLASS C ON C.PRO_CLASS_CODE = pb.PRO_CLASS
+		WHERE
+		1 = 1
+		<if test="classArrs != null and classArrs.size > 0">
+			and pb.PRO_CLASS in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		AND NOT EXISTS ( SELECT 1 FROM GAIA_SALES_CATALOG WHERE CLIENT = b.CLIENT AND PRO_SELF_CODE = b.MAT_PRO_CODE AND IS_DELETE = 0 AND `STATUS` IN ( 1, 2))
+		<if test="stoArr != null and stoArr.length > 0">
+			and b.khbh in
+			<foreach collection="stoArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="totalAmount != null and totalAmount != ''">
+			and  (b.MAT_MOV_AMT + b.MAT_RATE_MOV) = #{totalAmount}
+		</if>
+		<if test="proFactoryName != null and proFactoryName != ''">
+			AND (pb.PRO_FACTORY_CODE LIKE '%${proFactoryName}%' OR pb.PRO_FACTORY_NAME LIKE '%${proFactoryName}%')
+		</if>
+		<if test="supplierCode != null and supplierCode != ''">
+			AND  sup.SUP_SELF_CODE  = #{supplierCode}
+		</if>
+		<if test="zdy1 != null and zdy1.length > 0">
+			and pb.PRO_ZDY1 in
+			<foreach collection="zdy1" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy2 != null and zdy2.length > 0">
+			and pb.PRO_ZDY2 in
+			<foreach collection="zdy2" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy3 != null and zdy3.length > 0">
+			and pb.PRO_ZDY3 in
+			<foreach collection="zdy3" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy4 != null and zdy4.length > 0">
+			and pb.PRO_ZDY4 in
+			<foreach collection="zdy4" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="zdy5 != null and zdy5.length > 0">
+			and pb.PRO_ZDY5 in
+			<foreach collection="zdy5" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="saleClass != null and saleClass.length > 0">
+			and pb.PRO_SLAE_CLASS in
+			<foreach collection="saleClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proPosition != null and proPosition.length > 0">
+			and pb.PRO_POSITION in
+			<foreach collection="proPosition" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="prosClass != null and prosClass.length > 0">
+			and pb.PRO_SCLASS in
+			<foreach collection="prosClass" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="purchase != null and purchase != ''">
+			and pb.PRO_NO_PURCHASE = #{purchase}
+		</if>
+		ORDER BY  b.MAT_POST_DATE desc,b.siteCode
+	</select>
+
+	<select id="selectBusinessDocumentPage" resultType="com.gys.report.entity.BusinessDocumentOutData">
+		SELECT
+		md.MAT_DOC_DATE postDate,
+		md.MAT_DN_ID dnId,
+		md.MAT_TYPE matType,
+		CASE
+		md.MAT_TYPE
+		WHEN 'BD' THEN
+		'报损单'
+		WHEN 'ZD' THEN
+		'自用单'
+		WHEN 'SY' THEN
+		'损溢单'
+		END AS matName,
+		md.batAmt batAmt,
+		md.rateBat rateBat,
+		tc.TAX_CODE_VALUE proInputTax,
+		round(md.batAmt + md.rateBat,2) totalAmount,
+		md.MAT_SITE_CODE locationCode,
+		sto.stoCode,
+		sto.stoName,
+		IFNULL(b.sqr,sto.stoCode) sqr,
+		IFNULL(b.sqrmc,sto.stoName) sqrmc,
+		md.GSISH_BRANCH gsishBranch,
+		md.GSISH_REMARK  gsishRemark,
+		IFNULL(b.sqrmc,sto.stoName) sqrmc,
+		sto.stoAttribute,
+		sto.stoIfDtp,
+		sto.stoIfMedical,
+		sto.stoTaxClass
+		FROM
+		(
+		SELECT
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX,
+		ish2.GSISH_BRANCH,
+		ish2.GSISH_REMARK,
+		sum(IF(sto2.STO_CODE is null,gmd.MAT_MOV_AMT,gmd.MAT_ADD_AMT) * - 1) batAmt,
+		sum(IF(sto2.STO_CODE is null,gmd.MAT_RATE_MOV,gmd.MAT_ADD_TAX)* - 1) rateBat
+		FROM
+		GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON gmd.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = gmd.CLIENT AND gmd.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = gmd.CLIENT AND sto2.STO_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_H ish2 ON ish2.CLIENT = gmd.CLIENT AND gmd.MAT_DN_ID = ish2.GSISH_VOUCHER_ID
+		WHERE
+		gmd.CLIENT = #{client} AND
+		gmd.MAT_TYPE IN ( 'BD')
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_DOC_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  gmd.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and gmd.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="locationCode != null and locationCode != ''">
+			and  gmd.MAT_LOCATION_CODE = #{locationCode}
+		</if>
+		<if test="matType != null and matType != ''">
+			and  gmd.MAT_TYPE = #{matType}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  gmd.MAT_DN_ID = #{dnId}
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX
+		UNION ALL
+		select
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX,
+		'' GSISH_BRANCH,
+		'' GSISH_REMARK,
+		sum(gmd.MAT_MOV_AMT) * - 1 batAmt,
+		sum(gmd.MAT_RATE_MOV) * - 1 rateBat
+		from GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_DC_DATA dc on gmd.client=dc.client and gmd.MAT_SITE_CODE=dc.DC_CODE
+		LEFT JOIN GAIA_WMS_ZIYONG_M zym
+		on gmd.client=zym.client
+		and gmd.MAT_SITE_CODE=zym.PRO_SITE
+		and gmd.MAT_DN_ID=zym.WM_ZYDH
+		and gmd.MAT_PRO_CODE=zym.WM_SP_BM
+		AND gmd.MAT_BATCH=zym.WM_PCH
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON gmd.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = gmd.CLIENT AND gmd.MAT_SITE_CODE = pb. PRO_SITE
+		where
+		gmd.client=#{client}
+		AND dc.client is not null
+		and zym.client is not null
+		AND gmd.MAT_TYPE in ('ZD')
+		<if test="matType != null and matType != ''">
+			AND gmd.MAT_TYPE = #{matType}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  gmd.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and gmd.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_DOC_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX
+		UNION ALL
+		SELECT
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX,
+		ish.GSISH_BRANCH,
+		ish.GSISH_REMARK,
+		sum( CASE gmd.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,gmd.MAT_MOV_AMT,gmd.MAT_ADD_AMT) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,gmd.MAT_MOV_AMT,gmd.MAT_ADD_AMT) * IF(gmd.MAT_DEBIT_CREDIT = 'H',-1,1 ) END ) batAmt,
+		sum( CASE gmd.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,gmd.MAT_RATE_MOV,gmd.MAT_ADD_TAX) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,gmd.MAT_RATE_MOV,gmd.MAT_ADD_TAX) * IF(gmd.MAT_DEBIT_CREDIT = 'H',-1,1 ) END ) rateBat
+		FROM
+		GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON gmd.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = gmd.CLIENT AND gmd.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_H ish ON ish.CLIENT = gmd.CLIENT AND gmd.MAT_DN_ID = ish.GSISH_VOUCHER_ID
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_D isd ON isd.CLIENT = gmd.CLIENT AND gmd.MAT_DN_ID = isd.GSISD_VOUCHER_ID AND gmd.MAT_DN_LINENO = isd.GSISD_SERIAL
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = gmd.CLIENT AND sto2.STO_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_WMS_SUNYI_Z syz ON syz.CLIENT = gmd.CLIENT
+		AND syz.PRO_SITE = gmd.MAT_SITE_CODE
+		AND syz.WM_SYDH = gmd.MAT_DN_ID
+		WHERE
+		gmd.CLIENT = #{client} AND
+		gmd.MAT_TYPE IN ( 'ZD','SY' )
+		AND ( ish.GSISH_IS_TYPE IN ( '3', '6' ) OR (syz.CLIENT is not null AND IFNULL( syz.WM_PDDH, '' ) = '') )
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_DOC_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  gmd.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and gmd.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="locationCode != null and locationCode != ''">
+			and  gmd.MAT_LOCATION_CODE = #{locationCode}
+		</if>
+		<if test="matType != null and matType != ''">
+			and  gmd.MAT_TYPE = #{matType}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  gmd.MAT_DN_ID = #{dnId}
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX
+		) md
+		LEFT JOIN GAIA_TAX_CODE tc ON tc.TAX_CODE_CLASS = '1' AND tc.TAX_CODE = md.PRO_INPUT_TAX
+		LEFT JOIN GAIA_DC_DATA dd ON dd.CLIENT = md.CLIENT AND dd.DC_CODE = md.MAT_SITE_CODE
+		LEFT JOIN (select bz.WM_SQR sqr,bz.WM_SQRMC sqrmc,bz.WM_BSDH dh from GAIA_WMS_BAOSUN_Z bz WHERE bz.CLIENT =#{client} AND bz.WM_SFGZ='1'
+		UNION ALL
+		select zz.WM_SQR sqr,zz.WM_SQRMC sqrmc,zz.WM_ZYDH dh from GAIA_WMS_ZIYONG_Z zz WHERE zz.CLIENT =#{client} AND zz.WM_SFGZ='1'
+		UNION ALL
+		select sis.GSISH_BR_ID sqr,gsd.STO_NAME sqrmc,sis.GSISH_VOUCHER_ID dh from GAIA_SD_INCOME_STATEMENT_H sis LEFT JOIN  GAIA_STORE_DATA gsd on sis.CLIENT =gsd.CLIENT AND sis.GSISH_BR_ID=gsd.STO_CODE
+		WHERE sis.CLIENT =#{client} AND sis.GSISH_STATUS = '2'
+		)b ON md.MAT_DN_ID = b.dh
+		LEFT JOIN (
+		    SELECT
+		        CLIENT,
+		        DC_CODE stoCode,
+		        DC_NAME stoName,
+				"" stoAttribute,
+				"" stoIfDtp,
+				"" stoIfMedical,
+				"" stoTaxClass
+		    FROM GAIA_DC_DATA WHERE CLIENT =#{client}
+		UNION ALL
+		    SELECT
+		        CLIENT,
+		        STO_CODE stoCode,
+		        IFNULL(STO_SHORT_NAME,STO_NAME)  stoName,
+				STO_ATTRIBUTE stoAttribute,
+				STO_IF_DTP stoIfDtp,
+				STO_IF_MEDICALCARE stoIfMedical,
+				STO_TAX_CLASS stoTaxClass
+		    FROM GAIA_STORE_DATA WHERE CLIENT =#{client}
+		) sto on sto.stoCode = md.MAT_SITE_CODE
+		WHERE
+		1 =1
+		<include refid="STORE_CLASS" />
+		ORDER BY md.MAT_DOC_DATE DESC, md.MAT_DN_ID DESC,md.MAT_SITE_CODE DESC
+	</select>
+
+	<sql id="STORE_CLASS" >
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")" >
+			<if test="stoGssgTypes!=null and stoGssgTypes.size">
+				EXISTS (
+				SELECT 1 FROM GAIA_SD_STORES_GROUP gssg WHERE sto.CLIENT = gssg.CLIENT AND sto.stoCode = gssg.GSSG_BR_ID
+				AND (gssg.GSSG_TYPE,gssg.GSSG_ID) IN
+				<foreach collection="stoGssgTypes" item="stoGssgType" open="(" close=")" separator="," >
+					(#{stoGssgType.gssgType},#{stoGssgType.gssgId})
+				</foreach>
+				)
+			</if>
+			<if test="stoAttributes!=null and stoAttributes.size">
+				OR sto.stoAttribute IN
+				<foreach collection="stoAttributes" item="stoAttribute" open="(" close=")" separator="," >
+					#{stoAttribute}
+				</foreach>
+			</if>
+			<if test="stoAttribute==''" >
+				OR sto.stoAttribute IS NOT NULL AND sto.stoAttribute != ''
+			</if>
+			<if test="stoIfMedicals!=null and stoIfMedicals.size">
+				OR sto.stoIfMedical IN
+				<foreach collection="stoIfMedicals" item="stoIfMedical" open="(" close=")" separator="," >
+					#{stoIfMedical}
+				</foreach>
+			</if>
+			<if test="stoIfMedical==''" >
+				OR sto.stoIfMedical IS NOT NULL AND sto.stoIfMedical != ''
+			</if>
+			<if test="stoTaxClasss!=null and stoTaxClasss.size">
+				OR sto.stoTaxClass IN
+				<foreach collection="stoTaxClasss" item="stoTaxClass" open="(" close=")" separator="," >
+					#{stoTaxClass}
+				</foreach>
+			</if>
+			<if test="stoTaxClass==''" >
+				OR sto.stoTaxClass IS NOT NULL AND sto.stoTaxClass != ''
+			</if>
+			<if test="stoIfDtps!=null and stoIfDtps.size">
+				OR sto.stoIfDtp IN
+				<foreach collection="stoIfDtps" item="stoIfDtp" open="(" close=")" separator="," >
+					#{stoIfDtp}
+				</foreach>
+			</if>
+			<if test="stoIfDtp==''" >
+				OR sto.stoIfDtp IS NOT NULL AND sto.stoIfDtp != ''
+			</if>
+		</trim>
+	</sql>
+
+	<select id="selectBusinessDocumentTotal"
+	        resultType="com.gys.report.entity.BusinessDocumentOutTotal">
+		SELECT
+		SUM(md.batAmt) batAmt,
+		SUM(md.rateBat) rateBat,
+		SUM(md.batAmt + md.rateBat) totalAmount
+		FROM
+		(
+		SELECT
+		gmd.CLIENT,
+		sto2.STO_CODE,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX,
+		sum(IF(sto2.STO_CODE is null,gmd.MAT_MOV_AMT,gmd.MAT_ADD_AMT) * - 1) batAmt,
+		sum(IF(sto2.STO_CODE is null,gmd.MAT_RATE_MOV,gmd.MAT_ADD_TAX)* - 1) rateBat
+		FROM
+		GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON gmd.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = gmd.CLIENT AND gmd.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = gmd.CLIENT AND sto2.STO_CODE = gmd.MAT_SITE_CODE
+		WHERE
+		gmd.CLIENT = #{client} AND
+		gmd.MAT_TYPE IN ( 'BD')
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_DOC_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  gmd.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and gmd.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="locationCode != null and locationCode != ''">
+			and  gmd.MAT_LOCATION_CODE = #{locationCode}
+		</if>
+		<if test="matType != null and matType != ''">
+			and  gmd.MAT_TYPE = #{matType}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  gmd.MAT_DN_ID = #{dnId}
+		</if>
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX
+		UNION ALL
+		SELECT
+		gmd.CLIENT,
+		sto2.STO_CODE,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX,
+		sum( CASE gmd.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,gmd.MAT_MOV_AMT,gmd.MAT_ADD_AMT) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,gmd.MAT_MOV_AMT,gmd.MAT_ADD_AMT) * IF(gmd.MAT_DEBIT_CREDIT = 'H',-1,1 ) END ) batAmt,
+		sum( CASE gmd.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,gmd.MAT_RATE_MOV,gmd.MAT_ADD_TAX) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,gmd.MAT_RATE_MOV,gmd.MAT_ADD_TAX) * IF(gmd.MAT_DEBIT_CREDIT = 'H',-1,1 ) END ) rateBat
+		FROM
+		GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON gmd.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = gmd.CLIENT AND gmd.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_H ish ON ish.CLIENT = gmd.CLIENT AND gmd.MAT_DN_ID = ish.GSISH_VOUCHER_ID
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_D isd ON isd.CLIENT = gmd.CLIENT AND gmd.MAT_DN_ID = isd.GSISD_VOUCHER_ID AND gmd.MAT_DN_LINENO = isd.GSISD_SERIAL
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = gmd.CLIENT AND sto2.STO_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_WMS_SUNYI_Z syz ON syz.CLIENT = gmd.CLIENT
+		AND syz.PRO_SITE = gmd.MAT_SITE_CODE
+		AND syz.WM_SYDH = gmd.MAT_DN_ID
+		WHERE
+		gmd.CLIENT = #{client} AND
+		gmd.MAT_TYPE IN ( 'ZD','SY' )
+		AND ( ish.GSISH_IS_TYPE IN ( '3', '6' ) OR (syz.CLIENT is not null AND IFNULL( syz.WM_PDDH, '' ) = '') )
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_DOC_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and gmd.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and gmd.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="locationCode != null and locationCode != ''">
+			and  gmd.MAT_LOCATION_CODE = #{locationCode}
+		</if>
+		<if test="matType != null and matType != ''">
+			and  gmd.MAT_TYPE = #{matType}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  gmd.MAT_DN_ID = #{dnId}
+		</if>
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_DOC_DATE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_TYPE,
+		gmd.MAT_LOCATION_CODE,
+		gmd.MAT_SITE_CODE,
+		pb.PRO_INPUT_TAX
+		) md
+        left join (
+            select
+                CLIENT,
+		        STO_CODE stoCode,
+				STO_ATTRIBUTE stoAttribute,
+				STO_IF_DTP stoIfDtp,
+				STO_IF_MEDICALCARE stoIfMedical,
+		        STO_TAX_CLASS stoTaxClass
+            from GAIA_STORE_DATA
+        ) sto ON md.CLIENT = sto.CLIENT AND md.STO_CODE = sto.stoCode
+        <where>
+			<include refid="STORE_CLASS" />
+		</where>
+	</select>
+
+	<select id="selectBusinessDocumentDetailPage"
+	        resultType="com.gys.report.entity.BusinessDocumentOutData">
+		SELECT
+		md.MAT_DOC_DATE docDate,
+		md.MAT_QTY * - 1 AS qty,
+		IF(sto2.STO_CODE IS NOT NULL AND gspp.GSPP_PRICE_NORMAL IS NOT NULL,gspp.GSPP_PRICE_NORMAL,pb.PRO_LSJ) AS proLSJ,
+		IF(sto2.STO_CODE IS NOT NULL AND gspp.GSPP_PRICE_NORMAL IS NOT NULL,gspp.GSPP_PRICE_NORMAL,pb.PRO_LSJ) * (md.MAT_QTY * - 1) AS proLSAmt,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+<!-- 		IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) )/md.MAT_QTY price, -->
+		gbi.BAT_PO_PRICE price,
+		pb.PRO_SELF_CODE proId,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_SPECS specs,
+		pb.PRO_UNIT unit,
+		pb.PRO_FACTORY_NAME factoryName,
+		md.MAT_DN_ID dnId,
+		IF(sto2.STO_CODE is null,md.MAT_MOV_AMT,md.MAT_ADD_AMT) * - 1 AS batAmt,
+		IF(sto2.STO_CODE is null,md.MAT_RATE_MOV,md.MAT_ADD_TAX) * - 1 AS rateBat,
+		IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) )  * - 1 AS totalAmount,
+		tc.TAX_CODE_VALUE proInputTax,
+		md.MAT_TYPE matType,
+		CASE
+		md.MAT_TYPE
+		WHEN 'BD' THEN
+		'报损单'
+
+		END AS matName,
+		sto.stoCode,
+		sto.stoName,
+		bz.WM_DSYY remark,
+		ish.GSISH_BRANCH   gsishBranch,
+		ish.GSISH_REMARK    gsishRemark,
+		bz.WM_DSYY remark,
+		sto.stoAttribute,
+		sto.stoIfDtp,
+		sto.stoIfMedical,
+		sto.stoTaxClass
+		FROM
+		GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = md.CLIENT AND md.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_BATCH_INFO gbi ON
+		md.client = gbi.client
+		AND md.MAT_PRO_CODE = gbi.BAT_PRO_CODE
+		AND md.MAT_BATCH = gbi.BAT_BATCH
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = pb.PRO_CLASS
+		LEFT JOIN GAIA_TAX_CODE tc ON tc.TAX_CODE_CLASS = '1' AND tc.TAX_CODE = pb.PRO_INPUT_TAX
+		LEFT JOIN GAIA_WMS_BAOSUN_Z bz ON bz.CLIENT = md.CLIENT AND md.MAT_DN_ID = bz.WM_BSDH
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_H ish ON ish.CLIENT = md.CLIENT AND md.MAT_DN_ID = ish.GSISH_VOUCHER_ID
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE gspp ON gspp.CLIENT = md.CLIENT AND gspp.GSPP_PRO_ID = md.MAT_PRO_CODE AND gspp.GSPP_BR_ID = md.MAT_SITE_CODE
+		LEFT JOIN (
+		    SELECT
+		        DC_CODE stoCode,
+		        DC_NAME stoName,
+				"" stoAttribute,
+				"" stoIfDtp,
+				"" stoIfMedical,
+				"" stoTaxClass
+		    FROM GAIA_DC_DATA WHERE CLIENT =#{client}
+		UNION ALL
+		    SELECT
+		        STO_CODE stoCode,
+		        IFNULL(STO_SHORT_NAME,STO_NAME) stoName,
+				STO_ATTRIBUTE stoAttribute,
+				STO_IF_DTP stoIfDtp,
+				STO_IF_MEDICALCARE stoIfMedical,
+				STO_TAX_CLASS stoTaxClass
+		    FROM GAIA_STORE_DATA WHERE CLIENT =#{client}) sto on sto.stoCode = md.MAT_SITE_CODE
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = md.CLIENT AND sto2.STO_CODE = md.MAT_SITE_CODE
+		WHERE
+		md.CLIENT = #{client}
+		AND md.MAT_TYPE  in ('BD')
+		<if test="matType != null and matType != ''">
+			AND md.MAT_TYPE = #{matType}
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_DOC_DATE   &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and  md.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  md.MAT_DN_ID  = #{dnId}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  md.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and md.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and md.MAT_PRO_CODE IN
+			<foreach collection="proArr" item="item" index="index"
+			         open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<include refid="STORE_CLASS" />
+		union all
+		SELECT
+		md.MAT_DOC_DATE docDate,
+		md.MAT_QTY * - 1 AS qty,
+		IF(sto2.STO_CODE IS NOT NULL AND gspp.GSPP_PRICE_NORMAL IS NOT NULL,gspp.GSPP_PRICE_NORMAL,pb.PRO_LSJ) AS proLSJ,
+		IF(sto2.STO_CODE IS NOT NULL AND gspp.GSPP_PRICE_NORMAL IS NOT NULL,gspp.GSPP_PRICE_NORMAL,pb.PRO_LSJ) * (md.MAT_QTY * - 1) AS proLSAmt,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		gbi.BAT_PO_PRICE price,
+<!-- 		zym.WM_CKJ price, -->
+		pb.PRO_SELF_CODE proId,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_SPECS specs,
+		pb.PRO_UNIT unit,
+		pb.PRO_FACTORY_NAME factoryName,
+		md.MAT_DN_ID dnId,
+		IF(sto2.STO_CODE is null,md.MAT_MOV_AMT,md.MAT_ADD_AMT) * - 1 AS batAmt,
+		IF(sto2.STO_CODE is null,md.MAT_RATE_MOV,md.MAT_ADD_TAX) * - 1 AS rateBat,
+		IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) )  * - 1 AS totalAmount,
+		tc.TAX_CODE_VALUE proInputTax,
+		md.MAT_TYPE matType,
+		CASE
+		md.MAT_TYPE
+		WHEN 'ZD' THEN
+		'自用单'
+		END AS matName,
+		sto.stoCode,
+		sto.stoName,
+		'' remark,
+		'' gsishBranch,
+		'' gsishRemark,
+		'' remark,
+		sto.stoAttribute,
+		sto.stoIfDtp,
+		sto.stoIfMedical,
+		sto.stoTaxClass
+
+		FROM
+		GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_WMS_ZIYONG_M zym ON md.client = zym.client
+		AND md.MAT_SITE_CODE = zym.PRO_SITE
+		AND md.MAT_DN_ID = zym.WM_ZYDH
+		and md.MAT_PRO_CODE=zym.WM_SP_BM
+		AND md.MAT_BATCH=zym.WM_PCH
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = md.CLIENT AND md.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_BATCH_INFO gbi ON
+		md.client = gbi.client
+		AND md.MAT_PRO_CODE = gbi.BAT_PRO_CODE
+		AND md.MAT_BATCH = gbi.BAT_BATCH
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = pb.PRO_CLASS
+		LEFT JOIN GAIA_TAX_CODE tc ON tc.TAX_CODE_CLASS = '1' AND tc.TAX_CODE = pb.PRO_INPUT_TAX
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE gspp ON gspp.CLIENT = md.CLIENT AND gspp.GSPP_PRO_ID = md.MAT_PRO_CODE AND gspp.GSPP_BR_ID = md.MAT_SITE_CODE
+		LEFT JOIN (
+		SELECT
+		DC_CODE stoCode,
+		DC_NAME stoName,
+		"" stoAttribute,
+		"" stoIfDtp,
+		"" stoIfMedical,
+		"" stoTaxClass
+		FROM GAIA_DC_DATA WHERE CLIENT =#{client}
+		UNION ALL
+		SELECT
+		STO_CODE stoCode,
+		IFNULL(STO_SHORT_NAME,STO_NAME) stoName,
+		STO_ATTRIBUTE stoAttribute,
+		STO_IF_DTP stoIfDtp,
+		STO_IF_MEDICALCARE stoIfMedical,
+		STO_TAX_CLASS stoTaxClass
+		FROM GAIA_STORE_DATA WHERE CLIENT =#{client}) sto on sto.stoCode = md.MAT_SITE_CODE
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = md.CLIENT AND sto2.STO_CODE = md.MAT_SITE_CODE
+		WHERE
+		md.CLIENT = #{client}
+		AND zym.client is not null
+		AND md.MAT_TYPE = 'ZD'
+		<if test="matType != null and matType != ''">
+			AND md.MAT_TYPE = #{matType}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  md.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and md.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_DOC_DATE   &gt;= #{startDate}
+		</if>
+
+		<if test="endDate != null and endDate != ''">
+			and  md.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<include refid="STORE_CLASS" />
+		<if test="proArr != null and proArr.length > 0">
+			and md.MAT_PRO_CODE IN
+			<foreach collection="proArr" item="item" index="index"
+					 open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		UNION ALL
+		SELECT
+		md.MAT_DOC_DATE docDate,
+		CASE md.MAT_TYPE WHEN 'ZD' THEN md.MAT_QTY * - 1 WHEN 'SY' THEN md.MAT_QTY * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END AS qty,
+		IF(sto2.STO_CODE IS NOT NULL AND gspp.GSPP_PRICE_NORMAL IS NOT NULL,gspp.GSPP_PRICE_NORMAL,pb.PRO_LSJ) AS proLSJ,
+		IF(sto2.STO_CODE IS NOT NULL AND gspp.GSPP_PRICE_NORMAL IS NOT NULL,gspp.GSPP_PRICE_NORMAL,pb.PRO_LSJ) * (CASE md.MAT_TYPE WHEN 'ZD' THEN md.MAT_QTY * - 1 WHEN 'SY' THEN md.MAT_QTY * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END) AS proLSAmt,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		gbi.BAT_PO_PRICE price,
+		<!--  IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) )/md.MAT_QTY price,  -->
+		pb.PRO_SELF_CODE proId,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_SPECS specs,
+		pb.PRO_UNIT unit,
+		pb.PRO_FACTORY_NAME factoryName,
+		md.MAT_DN_ID dnId,
+		CASE md.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,md.MAT_MOV_AMT,md.MAT_ADD_AMT) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,md.MAT_MOV_AMT,md.MAT_ADD_AMT) * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END AS batAmt,
+		CASE md.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,md.MAT_RATE_MOV,md.MAT_ADD_TAX) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,md.MAT_RATE_MOV,md.MAT_ADD_TAX) * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END AS rateBat,
+		CASE md.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) ) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) ) * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END AS totalAmount,
+		tc.TAX_CODE_VALUE proInputTax,
+		md.MAT_TYPE matType,
+		CASE
+		md.MAT_TYPE
+		WHEN 'SY' THEN
+		'损溢单'
+		WHEN 'ZD' THEN
+		'自用单'
+		END AS matName,
+		sto.stoCode,
+		sto.stoName,
+		isd.GSISD_IS_CAUSE remark,
+		ish.GSISH_BRANCH   gsishBranch,
+		ish.GSISH_REMARK    gsishRemark,
+		isd.GSISD_IS_CAUSE remark,
+		sto.stoAttribute,
+		sto.stoIfDtp,
+		sto.stoIfMedical,
+		sto.stoTaxClass
+		FROM
+		GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = md.CLIENT AND md.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_BATCH_INFO gbi ON
+		md.client = gbi.client
+		AND md.MAT_PRO_CODE = gbi.BAT_PRO_CODE
+		AND md.MAT_BATCH = gbi.BAT_BATCH
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = pb.PRO_CLASS
+		LEFT JOIN GAIA_TAX_CODE tc ON tc.TAX_CODE_CLASS = '1' AND tc.TAX_CODE = pb.PRO_INPUT_TAX
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_H ish ON ish.CLIENT = md.CLIENT AND md.MAT_DN_ID = ish.GSISH_VOUCHER_ID
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_D isd ON isd.CLIENT = md.CLIENT AND md.MAT_DN_ID = isd.GSISD_VOUCHER_ID AND md.MAT_DN_LINENO = isd.GSISD_SERIAL
+		LEFT JOIN GAIA_WMS_SUNYI_Z syz ON syz.CLIENT = md.CLIENT AND syz.PRO_SITE = md.MAT_SITE_CODE AND syz.WM_SYDH = md.MAT_DN_ID
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE gspp ON gspp.CLIENT = md.CLIENT AND gspp.GSPP_PRO_ID = md.MAT_PRO_CODE AND gspp.GSPP_BR_ID = md.MAT_SITE_CODE
+		LEFT JOIN (
+		    SELECT
+		        DC_CODE stoCode,
+		        DC_NAME stoName,
+				"" stoAttribute,
+				"" stoIfDtp,
+				"" stoIfMedical,
+				"" stoTaxClass
+		    FROM GAIA_DC_DATA WHERE CLIENT =#{client}
+		UNION ALL
+		    SELECT
+		        STO_CODE stoCode,
+		        IFNULL(STO_SHORT_NAME,STO_NAME) stoName,
+				STO_ATTRIBUTE stoAttribute,
+				STO_IF_DTP stoIfDtp,
+				STO_IF_MEDICALCARE stoIfMedical,
+				STO_TAX_CLASS stoTaxClass
+		    FROM GAIA_STORE_DATA WHERE CLIENT =#{client}
+		) sto on sto.stoCode = md.MAT_SITE_CODE
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = md.CLIENT AND sto2.STO_CODE = md.MAT_SITE_CODE
+		WHERE
+		md.CLIENT = #{client}
+		AND md.MAT_TYPE  in ('SY','ZD')
+		AND ( ish.GSISH_IS_TYPE IN ( '3', '6' ) OR (syz.CLIENT is not null AND IFNULL( syz.WM_PDDH, '' ) = '') )
+		<if test="matType != null and matType != ''">
+			AND md.MAT_TYPE = #{matType}
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_DOC_DATE   &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and  md.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  md.MAT_DN_ID  = #{dnId}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  md.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and md.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and md.MAT_PRO_CODE IN
+			<foreach collection="proArr" item="item" index="index"
+			         open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<include refid="STORE_CLASS" />
+		ORDER BY
+		docDate DESC,
+		dnId DESC
+	</select>
+
+	<select id="selectBusinessDocumentDetailTotal"
+	        resultType="com.gys.report.entity.BusinessDocumentOutTotal">
+		SELECT
+		SUM(tab.qty) qty,
+		SUM(tab.batAmt) batAmt,
+		SUM(tab.rateBat) rateBat,
+		SUM(tab.totalAmount) totalAmount,
+		SUM(tab.qty * tab.proLSJ) proLSAmt
+		FROM (
+		SELECT
+		md.CLIENT,
+		sto2.STO_CODE,
+		pb.PRO_LSJ AS proLSJ,
+		md.MAT_QTY * - 1 AS qty,
+		IF(sto2.STO_CODE is null,md.MAT_MOV_AMT,md.MAT_ADD_AMT) * - 1 AS batAmt,
+		IF(sto2.STO_CODE is null,md.MAT_RATE_MOV,md.MAT_ADD_TAX) * - 1 AS rateBat,
+		IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) )  * - 1 AS totalAmount
+		FROM
+		GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = md.CLIENT AND md.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = md.CLIENT AND sto2.STO_CODE = md.MAT_SITE_CODE
+		WHERE
+		md.CLIENT = #{client}
+		AND md.MAT_TYPE  in ('BD')
+		<if test="matType != null and matType != ''">
+			AND md.MAT_TYPE = #{matType}
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_DOC_DATE   &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and  md.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  md.MAT_DN_ID  = #{dnId}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  md.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and md.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and md.MAT_PRO_CODE IN
+			<foreach collection="proArr" item="item" index="index"
+			         open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		UNION ALL
+		SELECT
+		md.CLIENT,
+		sto2.STO_CODE,
+		pb.PRO_LSJ AS proLSJ,
+		CASE md.MAT_TYPE WHEN 'ZD' THEN md.MAT_QTY * - 1 WHEN 'SY' THEN md.MAT_QTY * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 )  END AS qty,
+		CASE md.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,md.MAT_MOV_AMT,md.MAT_ADD_AMT) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,md.MAT_MOV_AMT,md.MAT_ADD_AMT) * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END AS batAmt,
+		CASE md.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,md.MAT_RATE_MOV,md.MAT_ADD_TAX) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,md.MAT_RATE_MOV,md.MAT_ADD_TAX) * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END AS rateBat,
+		CASE md.MAT_TYPE
+			WHEN 'ZD' THEN IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) ) * - 1
+			WHEN 'SY' THEN IF(sto2.STO_CODE is null,( md.MAT_MOV_AMT + md.MAT_RATE_MOV),( md.MAT_ADD_AMT + md.MAT_ADD_TAX) ) * IF(md.MAT_DEBIT_CREDIT = 'H',-1,1 ) END AS totalAmount
+		FROM
+		GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.MAT_PRO_CODE = pb.PRO_SELF_CODE AND pb.CLIENT = md.CLIENT AND md.MAT_SITE_CODE = pb. PRO_SITE
+		LEFT JOIN GAIA_SD_INCOME_STATEMENT_H ish ON ish.CLIENT = md.CLIENT AND md.MAT_DN_ID = ish.GSISH_VOUCHER_ID
+		LEFT JOIN GAIA_WMS_SUNYI_Z syz ON syz.CLIENT = md.CLIENT AND syz.PRO_SITE = md.MAT_SITE_CODE AND syz.WM_SYDH = md.MAT_DN_ID
+		LEFT JOIN GAIA_STORE_DATA sto2 ON sto2.CLIENT = md.CLIENT AND sto2.STO_CODE = md.MAT_SITE_CODE
+		WHERE
+		md.CLIENT = #{client}
+		AND md.MAT_TYPE  in ('SY','ZD')
+		AND ( ish.GSISH_IS_TYPE IN ( '3', '6' ) OR (syz.CLIENT is not null AND IFNULL( syz.WM_PDDH, '' ) = '') )
+		<if test="matType != null and matType != ''">
+			AND md.MAT_TYPE = #{matType}
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_DOC_DATE   &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and  md.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  md.MAT_DN_ID  = #{dnId}
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and  md.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and md.MAT_SITE_CODE in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and md.MAT_PRO_CODE IN
+			<foreach collection="proArr" item="item" index="index"
+			         open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClassCode !=null and proClassCode.size > 0">
+			AND pb.PRO_CLASS IN
+			<foreach collection="proClassCode" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		) tab
+		left join (
+		select
+		CLIENT,
+		STO_CODE stoCode,
+		STO_ATTRIBUTE stoAttribute,
+		STO_IF_DTP stoIfDtp,
+		STO_IF_MEDICALCARE stoIfMedical,
+		STO_TAX_CLASS stoTaxClass
+		from GAIA_STORE_DATA
+		) sto ON tab.CLIENT = sto.CLIENT AND tab.STO_CODE = sto.stoCode
+		<where>
+			<include refid="STORE_CLASS" />
+		</where>
+	</select>
+
+    <select id="selectInventoryChangeSummaryTotal"
+            resultType="com.gys.report.entity.InventoryChangeSummaryOutTotal">
+        SELECT
+        SUM( pro.purchaseAmount ) purchaseAmount,
+        SUM( pro.returnAmount ) returnAmount,
+        SUM( pro.profitLossAmount ) profitLossAmount,
+        SUM( pro.purchaseQty ) purchaseQty,
+        SUM( pro.returnQty ) returnQty,
+        SUM( pro.profitLossQty ) profitLossQty,
+        SUM(ssd.movAmount) saleAmount,
+        SUM(ssd.amt-ssd.movAmount) grossProfitMargin,
+        concat(ROUND((SUM(ssd.amt) - SUM(ssd.movAmount) )/ SUM(ssd.amt)*100,2),'%') grossProfitRate,
+        SUM(ssd.amt) amt,
+        SUM(ssd.saleQty) saleQty
+        FROM (
+        SELECT
+        gmd.CLIENT client,
+        gmd.MAT_SITE_CODE siteCode,
+        gmd.MAT_PRO_CODE proCode,
+        SUM( gmd.purchaseAmount ) purchaseAmount,
+        SUM( gmd.returnAmount ) returnAmount,
+
+        SUM( gmd.profitLossAmount ) profitLossAmount,
+        SUM( gmd.purchaseQty ) purchaseQty,
+        SUM( gmd.returnQty ) returnQty,
+        SUM( gmd.profitLossQty ) profitLossQty
+        FROM
+        (
+        SELECT
+        GAIA_MATERIAL_DOC.CLIENT,
+        GAIA_MATERIAL_DOC.MAT_SITE_CODE,
+        GAIA_MATERIAL_DOC.MAT_PRO_CODE,
+        GAIA_MATERIAL_DOC.MAT_TYPE,
+        SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ('CD','CX') THEN GAIA_MATERIAL_DOC.addAmount *-1 END ) AS purchaseAmount,
+        SUM( CASE GAIA_MATERIAL_DOC.MAT_TYPE WHEN 'GD' THEN GAIA_MATERIAL_DOC.addAmount END ) AS returnAmount,
+        SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ( 'ZD', 'SY', 'BD' ) THEN GAIA_MATERIAL_DOC.addAmount   END ) AS profitLossAmount,
+        SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ('CD','CX') THEN GAIA_MATERIAL_DOC.MAT_QTY *-1 END ) AS purchaseQty,
+        SUM( CASE GAIA_MATERIAL_DOC.MAT_TYPE WHEN 'GD' THEN GAIA_MATERIAL_DOC.MAT_QTY END ) AS returnQty,
+        SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ( 'ZD', 'SY', 'BD' ) THEN GAIA_MATERIAL_DOC.MAT_QTY END ) AS profitLossQty
+        FROM
+        (
+        SELECT
+        doc.CLIENT,
+        doc.MAT_SITE_CODE,
+        doc.MAT_PRO_CODE,
+        doc.MAT_TYPE,
+        CASE
+        doc.MAT_DEBIT_CREDIT
+        WHEN 'S' THEN
+        ( doc.MAT_BAT_AMT + doc.MAT_RATE_BAT ) * - 1
+        WHEN 'H' THEN
+        ( doc.MAT_BAT_AMT + doc.MAT_RATE_BAT )
+        END AS amount,
+
+        CASE
+        MAT_DEBIT_CREDIT
+        WHEN 'S' THEN
+        IF(doc.MAT_TYPE in('TD','PD','MD','ND'),
+        IF(dc.DC_CODE is null ,doc.MAT_ADD_AMT + doc.MAT_ADD_TAX,doc.MAT_MOV_AMT + doc.MAT_RATE_MOV),
+        IF(doc.MAT_TYPE in ('CD','GD','BD'),doc.MAT_MOV_AMT + doc.MAT_RATE_MOV,
+        IF(doc.MAT_TYPE='LS',
+        IF(saleD.GSSD_PRO_STATUS='退货',saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX*-1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX),(doc.MAT_ADD_AMT + doc.MAT_ADD_TAX)))
+        )*-1
+        WHEN 'H' THEN
+        IF(doc.MAT_TYPE in('TD','PD','MD','ND'),
+        IF(dc.DC_CODE is null ,doc.MAT_ADD_AMT + doc.MAT_ADD_TAX,doc.MAT_MOV_AMT + doc.MAT_RATE_MOV),
+        IF(doc.MAT_TYPE in ('CD','GD','BD'),doc.MAT_MOV_AMT + doc.MAT_RATE_MOV,
+        IF(doc.MAT_TYPE='LS',
+        IF(saleD.GSSD_PRO_STATUS='退货',saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX*-1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX),(doc.MAT_ADD_AMT + doc.MAT_ADD_TAX)))
+        )
+        END AS addAmount,
+        CASE
+        doc.MAT_DEBIT_CREDIT
+        WHEN 'S' THEN
+        ( doc.MAT_QTY ) * - 1
+        WHEN 'H' THEN
+        ( doc.MAT_QTY )
+        END AS MAT_QTY
+        FROM
+        GAIA_MATERIAL_DOC doc
+        LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = doc.CLIENT AND dc.DC_CODE = doc.MAT_SITE_CODE
+        LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = doc.CLIENT
+        AND saleD.GSSD_BR_ID = doc.MAT_SITE_CODE
+        AND saleD.GSSD_DATE = doc.MAT_POST_DATE
+        AND saleD.GSSD_BILL_NO = doc.MAT_DN_ID
+        AND saleD.GSSD_SERIAL = doc.MAT_DN_LINENO
+
+        WHERE
+        doc.MAT_TYPE IN ( 'CD', 'GD', 'SY', 'BD', 'ZD','LS','CX' ,'LX')
+        AND doc.CLIENT = #{client}
+	    <if test="siteArr != null and siteArr.length > 0">
+		    and doc.MAT_SITE_CODE  in
+		    <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+			    #{item}
+		    </foreach>
+	    </if>
+        <if test="startDate != null and startDate != ''">
+            and doc.MAT_POST_DATE   &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and doc.MAT_POST_DATE  &lt;= #{endDate}
+        </if>
+	    <if test="proArr != null and proArr.length > 0">
+		    and doc.MAT_PRO_CODE IN
+		    <foreach collection="proArr" open="(" separator="," item="item" close=")">
+			    #{item}
+		    </foreach>
+	    </if>
+        ) GAIA_MATERIAL_DOC
+        GROUP BY
+        GAIA_MATERIAL_DOC.CLIENT,
+        GAIA_MATERIAL_DOC.MAT_SITE_CODE,
+        GAIA_MATERIAL_DOC.MAT_PRO_CODE
+        ) gmd
+
+        LEFT JOIN GAIA_PRODUCT_BUSINESS gpb ON gpb.CLIENT = gmd.CLIENT
+        AND gpb.PRO_SITE = gmd.MAT_SITE_CODE
+        AND gpb.PRO_SELF_CODE = gmd.MAT_PRO_CODE
+        LEFT JOIN (
+        SELECT
+        CLIENT,
+        MAT_PRO_CODE,
+        MAT_ASSESS_SITE,
+        SUM( MAT_TOTAL_QTY ) endStock,
+        SUM( MAT_TOTAL_AMT + MAT_RATE_AMT ) endAmt
+        FROM
+        GAIA_MATERIAL_ASSESS
+        WHERE
+        CLIENT = #{client}
+
+        GROUP BY
+        MAT_PRO_CODE,
+        MAT_ASSESS_SITE
+        ) gma ON gma.CLIENT = gmd.CLIENT
+        AND gma.MAT_ASSESS_SITE = gmd.MAT_SITE_CODE
+        AND gma.MAT_PRO_CODE = gmd.MAT_PRO_CODE
+        LEFT JOIN (
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        PRO_BIG_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        NULL AS PRO_MID_CLASS_CODE,
+        NULL AS PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_MID_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        NULL AS PRO_CLASS_CODE,
+        NULL AS PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS UNION ALL
+        SELECT
+        PRO_CLASS_CODE AS classId,
+        PRO_BIG_CLASS_CODE,
+        PRO_BIG_CLASS_NAME,
+        PRO_MID_CLASS_CODE,
+        PRO_MID_CLASS_NAME,
+        PRO_CLASS_CODE,
+        PRO_CLASS_NAME
+        FROM
+        GAIA_PRODUCT_CLASS
+        ) proClass
+        GROUP BY
+        classId
+        ) pc ON pc.classId = gpb.PRO_CLASS
+        WHERE
+        1 = 1
+        <if test="proClass != null and proClass != ''">
+            AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+        </if>
+        <if test="medProdctStatus != null and medProdctStatus != ''">
+            <if test="medProdctStatus == '1'.toString() ">
+                AND ( gpb.PRO_IF_MED = #{medProdctStatus} OR ifnull(gpb.PRO_MED_PRODCTCODE,'') != '')
+            </if>
+            <if test="medProdctStatus == '0'.toString() ">
+                AND (gpb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(gpb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(gpb.PRO_IF_MED ,'') = ''))
+            </if>
+        </if>
+	    <if test="classArrs != null and classArrs.size > 0">
+		    AND gpb.PRO_CLASS  in
+		    <foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+			    #{item}
+		    </foreach>
+	    </if>
+        GROUP BY
+        gmd.MAT_PRO_CODE) pro
+        LEFT JOIN (
+        SELECT
+        sh.CLIENT,
+        sh.GSSH_BR_ID,
+        sd.GSSD_PRO_ID,
+        sum(
+        CASE
+        WHEN sh.GSSH_BILL_NO_RETURN IS NULL THEN
+        sd.GSSD_ADD_AMT +sd.GSSD_ADD_TAX
+        ELSE ( sd.GSSD_ADD_AMT +sd.GSSD_ADD_TAX)* - 1
+        END
+        ) movAmount ,
+        sum(sd.GSSD_AMT) amt,
+        sum(sd.GSSD_QTY) saleQty
+        FROM
+        GAIA_SD_SALE_H sh
+        LEFT JOIN GAIA_SD_SALE_D sd ON sh.CLIENT = sd.CLIENT
+        AND sh.GSSH_BR_ID = sd.GSSD_BR_ID
+        AND sh.GSSH_BILL_NO = sd.GSSD_BILL_NO
+
+        WHERE
+        sh.CLIENT = #{client}
+        AND sh.GSSH_HIDE_FLAG = '0'
+	    <if test="siteArr != null and siteArr.length > 0">
+		    and sh.GSSH_BR_ID  in
+		    <foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+			    #{item}
+		    </foreach>
+	    </if>
+        <if test="startDate != null and startDate != ''">
+            and sh.GSSH_DATE  &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and sh.GSSH_DATE &lt;= #{endDate}
+
+        </if>
+        GROUP BY
+        sd.GSSD_PRO_ID
+
+        )ssd on pro.proCode = ssd.GSSD_PRO_ID
+    </select>
+
+	<select id="selectDistributionAndAdjustSummaryData"
+			resultType="com.gys.report.entity.InventoryChangeSummaryOutData">
+		select
+		a.proCode,
+		a.proName,
+		a.proCommonName,
+		a.specs,
+		a.unit,
+		a.factoryName,
+		a.medProdctCode,
+		a.bigClass,
+		a.midClass,
+		a.proClass,
+		a.ifMed,
+		a.distributionAmt,
+		a.distributionQty,
+		a.adjustAmt,
+		a.adjustQty,
+		a.qcAmt,
+		a.qcQty,
+		IFNULL(a.saleAmount,0)+IFNULL(sale.GSSD_ADD_AMT,0) saleAmount,
+		IFNULL(a.saleQty,0) + IFNULL(sale.GSSD_QTY,0) saleQty,
+		a.profitLossAmount,
+		a.profitLossQty,
+		a.purchaseAmt purchaseAmount,
+		a.purchaseQty purchaseQty,
+		a.returnAmt returnAmount,
+		a.returnQty returnQty
+		from
+		(
+		select
+		gmd.client client,
+		gmd.proCode proCode,
+		IFNULL( gpb.PRO_NAME, gpb.PRO_COMMONNAME ) proName,
+		gpb.PRO_COMMONNAME proCommonName,
+		gpb.PRO_SPECS specs,
+		gpb.PRO_UNIT unit,
+		gpb.PRO_FACTORY_NAME factoryName,
+		gpb.PRO_MED_ID medProdctCode,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		CASE
+		WHEN gpb.PRO_IF_MED  = '1' OR ifnull(gpb.PRO_MED_PRODCTCODE,'') != '' THEN
+		'是'
+		ELSE '否'
+		END ifMed,
+		IFNULL(sum(gmd.distributionAmt),0) distributionAmt,
+		IFNULL(sum(gmd.distributionQty),0) distributionQty,
+		IFNULL(sum(gmd.adjustAmt),0) adjustAmt,
+		IFNULL(sum(gmd.adjustQty),0) adjustQty,
+		-IFNULL(SUM(gmd.saleAmt),0) saleAmount,
+		-IFNULL(SUM(gmd.saleQty),0) saleQty,
+		IFNULL(sum(gmd.qcAmt),0) qcAmt,
+		IFNULL(sum(gmd.qcQty),0) qcQty,
+		IFNULL(sum(gmd.profitLossAmount),0) profitLossAmount,
+		IFNULL(sum(gmd.profitLossQty),0) profitLossQty,
+		IFNULL(sum(gmd.purchaseAmt),0) purchaseAmt,
+		IFNULL(sum(gmd.purchaseQty),0) purchaseQty,
+		IFNULL(sum(gmd.returnAmt),0) returnAmt,
+		IFNULL(sum(gmd.returnQty),0) returnQty
+		from
+		(
+		SELECT
+		md.CLIENT client,
+		md.MAT_SITE_CODE siteCode,
+		md.MAT_PRO_CODE proCode,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_ADD_AMT + MAT_ADD_TAX END,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_MOV_AMT + MAT_RATE_MOV END)	purchaseAmt,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_QTY END,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_QTY END) AS purchaseQty,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'GD' THEN -(MAT_ADD_AMT + MAT_ADD_TAX) END,
+		CASE MAT_TYPE WHEN 'GD' THEN -(MAT_MOV_AMT + MAT_RATE_MOV) END) returnAmt,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'GD' THEN -MAT_QTY END,
+		CASE MAT_TYPE WHEN 'GD' THEN -MAT_QTY END) AS returnQty,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'PD' then MAT_ADD_AMT+MAT_ADD_TAX when 'TD' then -(MAT_ADD_AMT+MAT_ADD_TAX) end,
+		case MAT_TYPE when 'PD' then -(MAT_MOV_AMT+MAT_RATE_MOV) when 'TD' then MAT_MOV_AMT+MAT_RATE_MOV end) as distributionAmt,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'PD' then MAT_QTY when 'TD' then -MAT_QTY end,
+		case MAT_TYPE when 'PD' then -MAT_QTY when 'TD' then MAT_QTY end) as distributionQty,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'ND' then MAT_ADD_AMT+MAT_ADD_TAX when 'MD' then -(MAT_ADD_AMT+MAT_ADD_TAX) end,0) adjustAmt,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'ND' then MAT_QTY when 'MD' then -MAT_QTY end,0) adjustQty,
+
+		CASE md.MAT_TYPE WHEN 'XD' THEN MAT_MOV_AMT + MAT_RATE_MOV WHEN 'ED' THEN (MAT_MOV_AMT + MAT_RATE_MOV)*-1 END
+		saleAmt,
+		case md.MAT_TYPE when 'XD' THEN MAT_QTY WHEN 'ED' THEN MAT_QTY * -1 END saleQty,
+		IF(dc.DC_CODE IS NULL,
+		CASE md.MAT_TYPE WHEN 'QC' THEN MAT_ADD_AMT + MAT_ADD_TAX END,
+		CASE md.MAT_TYPE WHEN 'QC' THEN MAT_MOV_AMT + MAT_RATE_MOV END) qcAmt,
+		case md.MAT_TYPE when 'QC' THEN MAT_QTY END qcQty,
+		IF(dc.DC_CODE is null,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_ADD_AMT + MAT_ADD_TAX,-(MAT_ADD_AMT + MAT_ADD_TAX)) end ,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_MOV_AMT + MAT_RATE_MOV,-(MAT_MOV_AMT + MAT_RATE_MOV)) end
+		) profitLossAmount,
+		IF(dc.DC_CODE is null,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_QTY,-MAT_QTY) end ,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_QTY,-MAT_QTY) end
+		) profitLossQty
+		from GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_DC_DATA dc on md.client=dc.client and md.MAT_SITE_CODE = dc.DC_CODE
+		where md.CLIENT = #{client}
+		<if test="siteArr!=null and siteArr.length>0">
+			and MAT_SITE_CODE in
+			<foreach collection="siteArr" open="(" close=")" item="item" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode!=null and siteCode!=''">
+			and MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="proArr!=null and proArr.length>0">
+			and MAT_PRO_CODE in
+			<foreach collection="proArr" separator="," open="(" close=")" item="item">
+				#{item}
+			</foreach>
+		</if>
+
+		and MAT_DOC_DATE &gt;= #{startDate}
+		and MAT_DOC_DATE &lt;= #{endDate}
+		) gmd
+		LEFT JOIN GAIA_PRODUCT_BUSINESS gpb on gpb.CLIENT = gmd.CLIENT and gpb.PRO_SELF_CODE = gmd.proCode and gpb.PRO_SITE = gmd.siteCode
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = gpb.PRO_CLASS
+		where
+		1=1
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( gpb.PRO_IF_MED = #{medProdctStatus} OR ifnull(gpb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (gpb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(gpb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(gpb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND (gpb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%') )
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND gpb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		group by gmd.proCode
+		) a
+		LEFT JOIN (
+		SELECT h.CLIENT CLIENT,h.GSSH_BR_ID GSSH_BR_ID,
+		d.GSSD_PRO_ID proCode,
+		-sum(IF(h.GSSH_BILL_NO_RETURN is null,d.GSSD_ADD_AMT+d.GSSD_ADD_TAX,-(d.GSSD_ADD_AMT+d.GSSD_ADD_TAX))) GSSD_ADD_AMT,
+		-sum(d.GSSD_QTY) GSSD_QTY
+		from GAIA_SD_SALE_H h
+		left join GAIA_SD_SALE_D d on h.CLIENT = d.CLIENT and h.GSSH_BR_ID = d.GSSD_BR_ID and h.GSSH_DATE = d.GSSD_DATE and h.GSSH_BILL_NO = d.GSSD_BILL_NO
+		where h.GSSH_HIDE_FLAG = '0'
+		and h.CLIENT = #{client}
+
+		<if test="siteArr!=null and siteArr.length>0">
+			and h.GSSH_BR_ID in
+			<foreach collection="siteArr" open="(" close=")" item="item" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode!=null and siteCode!=''">
+			and h.GSSH_BR_ID =#{siteCode}
+		</if>
+
+		AND h.GSSH_DATE &gt;= #{startDate}
+		and h.GSSH_DATE &lt;= #{endDate}
+		group by d.GSSD_PRO_ID
+		) sale
+		on a.CLIENT = sale.CLIENT
+		and a.proCode = sale.proCode
+	</select>
+	<select id="selectInventoryChangeSummary"
+			resultType="com.gys.report.entity.InventoryChangeSummaryOutData">
+		SELECT pro.*,
+		ssd.movAmount saleAmount,
+		ssd.amt-ssd.movAmount grossProfitMargin,
+		(ssd.amt - ssd.movAmount )/ ssd.amt*100 grossProfitRate,
+		ssd.amt,
+		ssd.saleQty
+		FROM (
+		SELECT
+		gmd.CLIENT client,
+		gmd.MAT_SITE_CODE siteCode,
+		gmd.MAT_PRO_CODE proCode,
+		IFNULL( gpb.PRO_NAME, gpb.PRO_COMMONNAME ) proName,
+		gpb.PRO_COMMONNAME proCommonName,
+		gpb.PRO_SPECS specs,
+		gpb.PRO_UNIT unit,
+		gpb.PRO_FACTORY_NAME factoryName,
+		gpb.PRO_MED_ID medProdctCode,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		CASE
+		WHEN gpb.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN gpb.PRO_MED_ID IS NOT NULL THEN
+		'是' ELSE '否'
+		END ifMed,
+		SUM( gmd.purchaseAmount ) purchaseAmount,
+		SUM( gmd.returnAmount ) * -1 returnAmount,
+
+
+		SUM( gmd.purchaseQty ) purchaseQty,
+		SUM( gmd.returnQty ) * -1 returnQty
+
+		FROM
+		(
+		SELECT
+		GAIA_MATERIAL_DOC.CLIENT,
+		GAIA_MATERIAL_DOC.MAT_SITE_CODE,
+		GAIA_MATERIAL_DOC.MAT_PRO_CODE,
+		GAIA_MATERIAL_DOC.MAT_TYPE,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ('CD','CX') THEN GAIA_MATERIAL_DOC.addAmount *-1 END ) AS purchaseAmount,
+		SUM( CASE GAIA_MATERIAL_DOC.MAT_TYPE WHEN 'GD' THEN GAIA_MATERIAL_DOC.addAmount END ) AS returnAmount,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ( 'ZD', 'SY', 'BD' ) THEN GAIA_MATERIAL_DOC.addAmount   END ) AS profitLossAmount,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ('CD','CX') THEN GAIA_MATERIAL_DOC.MAT_QTY *-1 END ) AS purchaseQty,
+		SUM( CASE GAIA_MATERIAL_DOC.MAT_TYPE WHEN 'GD' THEN GAIA_MATERIAL_DOC.MAT_QTY END ) AS returnQty,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ( 'ZD', 'SY', 'BD' ) THEN GAIA_MATERIAL_DOC.MAT_QTY END ) AS profitLossQty
+		FROM
+		(
+		SELECT
+		doc.CLIENT,
+		doc.MAT_SITE_CODE,
+		doc.MAT_PRO_CODE,
+		doc.MAT_TYPE,
+		CASE
+		doc.MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		( doc.MAT_BAT_AMT + doc.MAT_RATE_BAT ) * - 1
+		WHEN 'H' THEN
+		( doc.MAT_BAT_AMT + doc.MAT_RATE_BAT )
+		END AS amount,
+		CASE
+		MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		IF(doc.MAT_TYPE in('TD','PD','MD','ND'),
+		IF(dc.DC_CODE is null ,doc.MAT_ADD_AMT + doc.MAT_ADD_TAX,doc.MAT_MOV_AMT + doc.MAT_RATE_MOV),
+		IF(doc.MAT_TYPE in ('CD','GD'),doc.MAT_MOV_AMT + doc.MAT_RATE_MOV,
+		IF(doc.MAT_TYPE='LS',
+		IF(saleD.GSSD_PRO_STATUS='退货',saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX*-1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX),(doc.MAT_ADD_AMT + doc.MAT_ADD_TAX)))
+		)*-1
+		WHEN 'H' THEN
+		IF(doc.MAT_TYPE in('TD','PD','MD','ND'),
+		IF(dc.DC_CODE is null ,doc.MAT_ADD_AMT + doc.MAT_ADD_TAX,doc.MAT_MOV_AMT + doc.MAT_RATE_MOV),
+		IF(doc.MAT_TYPE in ('CD','GD'),doc.MAT_MOV_AMT + doc.MAT_RATE_MOV,
+		IF(doc.MAT_TYPE='LS',
+		IF(saleD.GSSD_PRO_STATUS='退货',saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX*-1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX),(doc.MAT_ADD_AMT + doc.MAT_ADD_TAX)))
+		)
+		END AS addAmount,
+		CASE
+		doc.MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		( doc.MAT_QTY ) * - 1
+		WHEN 'H' THEN
+		( doc.MAT_QTY )
+		END AS MAT_QTY
+		FROM
+		GAIA_MATERIAL_DOC doc
+		LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = doc.CLIENT AND dc.DC_CODE = doc.MAT_SITE_CODE
+		LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = doc.CLIENT
+		AND saleD.GSSD_BR_ID = doc.MAT_SITE_CODE
+		AND saleD.GSSD_DATE = doc.MAT_POST_DATE
+		AND saleD.GSSD_BILL_NO = doc.MAT_DN_ID
+		AND saleD.GSSD_SERIAL = doc.MAT_DN_LINENO
+
+		WHERE
+		doc.MAT_TYPE IN ( 'CD', 'GD', 'SY', 'BD', 'ZD','LS','CX','LX' )
+		AND doc.CLIENT = #{client}
+		<if test="siteArr != null and siteArr.length > 0">
+			and doc.MAT_SITE_CODE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and doc.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and doc.MAT_POST_DATE   &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and doc.MAT_POST_DATE  &lt;= #{endDate}
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and doc.MAT_PRO_CODE IN
+			<foreach collection="proArr" open="(" separator="," item="item" close=")">
+				#{item}
+			</foreach>
+		</if>
+		) GAIA_MATERIAL_DOC
+		GROUP BY
+		GAIA_MATERIAL_DOC.CLIENT,
+		GAIA_MATERIAL_DOC.MAT_SITE_CODE,
+		GAIA_MATERIAL_DOC.MAT_PRO_CODE
+		) gmd
+
+		LEFT JOIN GAIA_PRODUCT_BUSINESS gpb ON gpb.CLIENT = gmd.CLIENT
+		AND gpb.PRO_SITE = gmd.MAT_SITE_CODE
+		AND gpb.PRO_SELF_CODE = gmd.MAT_PRO_CODE
+		LEFT JOIN (
+		SELECT
+		CLIENT,
+		MAT_PRO_CODE,
+		MAT_ASSESS_SITE,
+		SUM( MAT_TOTAL_QTY ) endStock,
+		SUM( MAT_TOTAL_AMT + MAT_RATE_AMT ) endAmt
+		FROM
+		GAIA_MATERIAL_ASSESS
+		WHERE
+		CLIENT = #{client}
+
+		GROUP BY
+		MAT_PRO_CODE,
+		MAT_ASSESS_SITE
+		) gma ON gma.CLIENT = gmd.CLIENT
+		AND gma.MAT_ASSESS_SITE = gmd.MAT_SITE_CODE
+		AND gma.MAT_PRO_CODE = gmd.MAT_PRO_CODE
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = gpb.PRO_CLASS
+		WHERE
+		1 = 1
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( gpb.PRO_IF_MED = #{medProdctStatus} OR ifnull(gpb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (gpb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(gpb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(gpb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND (gpb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%'))
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND gpb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		gmd.MAT_PRO_CODE) pro
+		LEFT JOIN (
+		SELECT
+		sh.CLIENT,
+		sh.GSSH_BR_ID,
+		sd.GSSD_PRO_ID,
+		sum(
+		CASE
+		WHEN sh.GSSH_BILL_NO_RETURN IS NULL THEN
+		sd.GSSD_ADD_AMT +sd.GSSD_ADD_TAX
+		ELSE ( sd.GSSD_ADD_AMT +sd.GSSD_ADD_TAX)* - 1
+		END
+		) movAmount ,
+		sum(sd.GSSD_AMT) amt,
+		sum(sd.GSSD_QTY) saleQty
+		FROM
+		GAIA_SD_SALE_H sh
+		LEFT JOIN GAIA_SD_SALE_D sd ON sh.CLIENT = sd.CLIENT
+		AND sh.GSSH_BR_ID = sd.GSSD_BR_ID
+		AND sh.GSSH_BILL_NO = sd.GSSD_BILL_NO
+
+		WHERE
+		sh.CLIENT = #{client}
+		AND sh.GSSH_HIDE_FLAG = '0'
+		<if test="siteArr != null and siteArr.length > 0">
+			and sh.GSSH_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and sh.GSSH_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and sh.GSSH_DATE &lt;= #{endDate}
+
+		</if>
+		GROUP BY
+		sd.GSSD_PRO_ID
+
+		)ssd on pro.proCode = ssd.GSSD_PRO_ID
+		ORDER BY
+		pro.proCode
+	</select>
+
+	<select id="selectInventoryChangeSummaryWithStore"
+			resultType="com.gys.report.entity.InventoryChangeSummaryWithStoreOutData">
+		SELECT
+		T.*,
+		T.siteCode stoCode,
+		IFNULL(GSD.STO_SHORT_NAME,GSD.STO_NAME) stoName
+		from
+		(
+		SELECT pro.*,
+		ssd.movAmount saleAmount,
+		ssd.amt-ssd.movAmount grossProfitMargin,
+		(ssd.amt - ssd.movAmount )/ ssd.amt*100 grossProfitRate,
+		ssd.amt,
+		ssd.saleQty
+		FROM (
+		SELECT
+		gpb.PRO_LSJ unitPrice,
+		gmd.CLIENT client,
+		gmd.MAT_SITE_CODE siteCode,
+		gmd.MAT_PRO_CODE proCode,
+		IFNULL( gpb.PRO_NAME, gpb.PRO_COMMONNAME ) proName,
+		gpb.PRO_COMMONNAME proCommonName,
+		gpb.PRO_SPECS specs,
+		gpb.PRO_UNIT unit,
+		gpb.PRO_FACTORY_NAME factoryName,
+		gpb.PRO_MED_ID medProdctCode,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		CASE
+		WHEN gpb.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN gpb.PRO_MED_ID IS NOT NULL THEN
+		'是' ELSE '否'
+		END ifMed,
+		SUM( gmd.purchaseAmount ) purchaseAmount,
+		SUM( gmd.returnAmount ) * -1 returnAmount,
+
+
+		SUM( gmd.purchaseQty ) purchaseQty,
+		SUM( gmd.returnQty ) * -1 returnQty
+
+		FROM
+		(
+		SELECT
+		GAIA_MATERIAL_DOC.CLIENT,
+		GAIA_MATERIAL_DOC.MAT_SITE_CODE,
+		GAIA_MATERIAL_DOC.MAT_PRO_CODE,
+		GAIA_MATERIAL_DOC.MAT_TYPE,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ('CD','CX') THEN GAIA_MATERIAL_DOC.addAmount *-1 END ) AS purchaseAmount,
+		SUM( CASE GAIA_MATERIAL_DOC.MAT_TYPE WHEN 'GD' THEN GAIA_MATERIAL_DOC.addAmount END ) AS returnAmount,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ( 'ZD', 'SY', 'BD' ) THEN GAIA_MATERIAL_DOC.addAmount   END ) AS profitLossAmount,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ('CD','CX') THEN GAIA_MATERIAL_DOC.MAT_QTY *-1 END ) AS purchaseQty,
+		SUM( CASE GAIA_MATERIAL_DOC.MAT_TYPE WHEN 'GD' THEN GAIA_MATERIAL_DOC.MAT_QTY END ) AS returnQty,
+		SUM( CASE WHEN GAIA_MATERIAL_DOC.MAT_TYPE IN ( 'ZD', 'SY', 'BD' ) THEN GAIA_MATERIAL_DOC.MAT_QTY END ) AS profitLossQty
+		FROM
+		(
+		SELECT
+		doc.CLIENT,
+		doc.MAT_SITE_CODE,
+		doc.MAT_PRO_CODE,
+		doc.MAT_TYPE,
+		CASE
+		doc.MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		( doc.MAT_BAT_AMT + doc.MAT_RATE_BAT ) * - 1
+		WHEN 'H' THEN
+		( doc.MAT_BAT_AMT + doc.MAT_RATE_BAT )
+		END AS amount,
+		CASE
+		MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		IF(doc.MAT_TYPE in('TD','PD','MD','ND'),
+		IF(dc.DC_CODE is null ,doc.MAT_ADD_AMT + doc.MAT_ADD_TAX,doc.MAT_MOV_AMT + doc.MAT_RATE_MOV),
+		IF(doc.MAT_TYPE in ('CD','GD'),doc.MAT_MOV_AMT + doc.MAT_RATE_MOV,
+		IF(doc.MAT_TYPE='LS',
+		IF(saleD.GSSD_PRO_STATUS='退货',saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX*-1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX),(doc.MAT_ADD_AMT + doc.MAT_ADD_TAX)))
+		)*-1
+		WHEN 'H' THEN
+		IF(doc.MAT_TYPE in('TD','PD','MD','ND'),
+		IF(dc.DC_CODE is null ,doc.MAT_ADD_AMT + doc.MAT_ADD_TAX,doc.MAT_MOV_AMT + doc.MAT_RATE_MOV),
+		IF(doc.MAT_TYPE in ('CD','GD'),doc.MAT_MOV_AMT + doc.MAT_RATE_MOV,
+		IF(doc.MAT_TYPE='LS',
+		IF(saleD.GSSD_PRO_STATUS='退货',saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX*-1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX),(doc.MAT_ADD_AMT + doc.MAT_ADD_TAX)))
+		)
+		END AS addAmount,
+		CASE
+		doc.MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		( doc.MAT_QTY ) * - 1
+		WHEN 'H' THEN
+		( doc.MAT_QTY )
+		END AS MAT_QTY
+		FROM
+		GAIA_MATERIAL_DOC doc
+		LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = doc.CLIENT AND dc.DC_CODE = doc.MAT_SITE_CODE
+		LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = doc.CLIENT
+		AND saleD.GSSD_BR_ID = doc.MAT_SITE_CODE
+		AND saleD.GSSD_DATE = doc.MAT_POST_DATE
+		AND saleD.GSSD_BILL_NO = doc.MAT_DN_ID
+		AND saleD.GSSD_SERIAL = doc.MAT_DN_LINENO
+
+		WHERE
+		doc.MAT_TYPE IN ( 'CD', 'GD', 'SY', 'BD', 'ZD','LS','CX','LX' )
+		AND doc.CLIENT = #{client}
+		<if test="siteArr != null and siteArr.length > 0">
+			and doc.MAT_SITE_CODE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and doc.MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and doc.MAT_POST_DATE   &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and doc.MAT_POST_DATE  &lt;= #{endDate}
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and doc.MAT_PRO_CODE IN
+			<foreach collection="proArr" open="(" separator="," item="item" close=")">
+				#{item}
+			</foreach>
+		</if>
+		) GAIA_MATERIAL_DOC
+		GROUP BY
+		GAIA_MATERIAL_DOC.CLIENT,
+		GAIA_MATERIAL_DOC.MAT_SITE_CODE,
+		GAIA_MATERIAL_DOC.MAT_PRO_CODE
+		) gmd
+
+		LEFT JOIN GAIA_PRODUCT_BUSINESS gpb ON gpb.CLIENT = gmd.CLIENT
+		AND gpb.PRO_SITE = gmd.MAT_SITE_CODE
+		AND gpb.PRO_SELF_CODE = gmd.MAT_PRO_CODE
+		LEFT JOIN (
+		SELECT
+		CLIENT,
+		MAT_PRO_CODE,
+		MAT_ASSESS_SITE,
+		SUM( MAT_TOTAL_QTY ) endStock,
+		SUM( MAT_TOTAL_AMT + MAT_RATE_AMT ) endAmt
+		FROM
+		GAIA_MATERIAL_ASSESS
+		WHERE
+		CLIENT = #{client}
+
+		GROUP BY
+		MAT_PRO_CODE,
+		MAT_ASSESS_SITE
+		) gma ON gma.CLIENT = gmd.CLIENT
+		AND gma.MAT_ASSESS_SITE = gmd.MAT_SITE_CODE
+		AND gma.MAT_PRO_CODE = gmd.MAT_PRO_CODE
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = gpb.PRO_CLASS
+		WHERE
+		1 = 1
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( gpb.PRO_IF_MED = #{medProdctStatus} OR ifnull(gpb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (gpb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(gpb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(gpb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND (gpb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%'))
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND gpb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		gmd.MAT_PRO_CODE,
+		gmd.MAT_SITE_CODE
+		) pro
+		LEFT JOIN (
+		SELECT
+		sh.CLIENT,
+		sh.GSSH_BR_ID,
+		sd.GSSD_PRO_ID,
+		sum(
+		CASE
+		WHEN sh.GSSH_BILL_NO_RETURN IS NULL THEN
+		sd.GSSD_ADD_AMT +sd.GSSD_ADD_TAX
+		ELSE ( sd.GSSD_ADD_AMT +sd.GSSD_ADD_TAX)* - 1
+		END
+		) movAmount ,
+		sum(sd.GSSD_AMT) amt,
+		sum(sd.GSSD_QTY) saleQty
+		FROM
+		GAIA_SD_SALE_H sh
+		LEFT JOIN GAIA_SD_SALE_D sd ON sh.CLIENT = sd.CLIENT
+		AND sh.GSSH_BR_ID = sd.GSSD_BR_ID
+		AND sh.GSSH_BILL_NO = sd.GSSD_BILL_NO
+
+		WHERE
+		sh.CLIENT = #{client}
+		AND sh.GSSH_HIDE_FLAG = '0'
+		<if test="siteArr != null and siteArr.length > 0">
+			and sh.GSSH_BR_ID  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and sh.GSSH_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and sh.GSSH_DATE &lt;= #{endDate}
+
+		</if>
+		GROUP BY
+		sd.GSSD_PRO_ID
+
+		)ssd on pro.proCode = ssd.GSSD_PRO_ID
+		ORDER BY
+		pro.proCode,
+		pro.siteCode
+		)T left join GAIA_STORE_DATA GSD ON T.siteCode = GSD.STO_CODE AND GSD.CLIENT = #{client}
+		ORDER BY stoCode,proCode
+	</select>
+
+	<select id="getStartDataBySto"
+			resultType="com.gys.report.entity.InventoryChangeSummaryOutData">
+		SELECT
+		tab.proCode,
+		tab.recordDate,
+		pb.PRO_NAME proName,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_BARCODE proBarcode,
+		ROUND( sum( tab.qty ), 2 ) startQty,
+		pb.PRO_FACTORY_NAME factoryName,
+		pb.PRO_PLACE origin,
+		pb.PRO_FORM dosageForm,
+		pb.PRO_UNIT unit,
+		pb.PRO_SPECS specs,
+		pb.PRO_REGISTER_NO approvalNum,
+		IF
+		( pb.PRO_IF_WHOLESALE = '1', '是', '否' ) noWholesale,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		ROUND( sum( cost ), 2 ) cost,
+		ROUND( sum( taxes ), 2 ) taxes,
+		ROUND( sum( includeTax ), 2 ) includeTax,
+		ROUND( sum( includeTax ), 2 ) startAmt
+		FROM
+		(
+		SELECT
+		sb.CLIENT client,
+		sb.GSS_BR_ID siteCode,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName,
+		sb.GSS_PRO_ID proCode,
+		concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate,
+		sb.GSS_QTY qty,
+		ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS cost,
+		ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS taxes,
+		( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS includeTax,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_H sb
+		LEFT JOIN GAIA_STORE_DATA sto ON sb.CLIENT = sto.CLIENT
+		AND sb.GSS_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON sb.CLIENT = ass.CLIENT
+		AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE
+		AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE
+		AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR
+		AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		WHERE
+		sb.CLIENT = #{client}
+		AND concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) = DATE_FORMAT( DATE_SUB(#{startDate},INTERVAL 1 month),'%Y%m')
+		<if test="siteCode!=null and siteCode!=''">
+			AND sb.GSS_BR_ID = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND sb.GSS_BR_ID in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE siteCode,
+		dc.DC_NAME siteName,
+		kc.WM_SP_BM proCode,
+		kc.WM_TBSJ recordDate,
+		kc.WM_KCSL qty,
+		ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost,
+		ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes,
+		( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc ON kc.CLIENT = dc.CLIENT
+		AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON kc.CLIENT = ass.CLIENT
+		AND kc.PRO_SITE = ass.MAT_ASSESS_SITE
+		AND kc.WM_SP_BM = ass.MAT_PRO_CODE
+		AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat( ass.MAT_ASSESS_YEAR, ass.MAT_ASSESS_MONTH )
+		WHERE
+		kc.CLIENT = #{client}
+		AND kc.WM_TBSJ = #{startDate}
+		<if test="siteCode!=null and siteCode!=''">
+			AND kc.PRO_SITE = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND kc.PRO_SITE in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		) tab
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.client = pb.CLIENT
+		AND tab.siteCode = pb.PRO_SITE
+		AND tab.proCode = pb.PRO_SELF_CODE
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = pb.PRO_CLASS
+		where
+		1=1
+		<if test="proArr!=null and proArr.length>0">
+			and tab.proCode in
+			<foreach collection="proArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( pb.PRO_IF_MED = #{medProdctStatus} OR ifnull(pb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (pb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(pb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(pb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND (pb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%'))
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND pb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		tab.proCode
+		HAVING
+		startQty != 0
+		ORDER BY
+		tab.recordDate,
+		tab.siteCode,
+		tab.proCode
+	</select>
+
+	<select id="getStartDataByStoWithStore"
+			resultType="com.gys.report.entity.InventoryChangeSummaryWithStoreOutData">
+		SELECT
+		T.*,
+		IFNULL(GSD.STO_SHORT_NAME,GSD.STO_NAME) stoName
+		FROM
+		(
+		SELECT
+		pb.PRO_LSJ unitPrice,
+		tab.siteCode stoCode,
+		tab.proCode,
+		tab.recordDate,
+		pb.PRO_NAME proName,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_BARCODE proBarcode,
+		ROUND( sum( tab.qty ), 2 ) startQty,
+		pb.PRO_FACTORY_NAME factoryName,
+		pb.PRO_PLACE origin,
+		pb.PRO_FORM dosageForm,
+		pb.PRO_UNIT unit,
+		pb.PRO_SPECS specs,
+		pb.PRO_REGISTER_NO approvalNum,
+		IF
+		( pb.PRO_IF_WHOLESALE = '1', '是', '否' ) noWholesale,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		ROUND( sum( cost ), 2 ) cost,
+		ROUND( sum( taxes ), 2 ) taxes,
+		ROUND( sum( includeTax ), 2 ) includeTax,
+		ROUND( sum( includeTax ), 2 ) startAmt
+		FROM
+		(
+		SELECT
+		sb.CLIENT client,
+		sb.GSS_BR_ID siteCode,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName,
+		sb.GSS_PRO_ID proCode,
+		concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate,
+		sb.GSS_QTY qty,
+		ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS cost,
+		ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS taxes,
+		( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS includeTax,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_H sb
+		LEFT JOIN GAIA_STORE_DATA sto ON sb.CLIENT = sto.CLIENT
+		AND sb.GSS_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON sb.CLIENT = ass.CLIENT
+		AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE
+		AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE
+		AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR
+		AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		WHERE
+		sb.CLIENT = #{client}
+		AND concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) = DATE_FORMAT( DATE_SUB(#{startDate},INTERVAL 1
+		month),'%Y%m')
+		<if test="siteCode!=null and siteCode!=''">
+			AND sb.GSS_BR_ID = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND sb.GSS_BR_ID in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE siteCode,
+		dc.DC_NAME siteName,
+		kc.WM_SP_BM proCode,
+		kc.WM_TBSJ recordDate,
+		kc.WM_KCSL qty,
+		ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost,
+		ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes,
+		( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc ON kc.CLIENT = dc.CLIENT
+		AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON kc.CLIENT = ass.CLIENT
+		AND kc.PRO_SITE = ass.MAT_ASSESS_SITE
+		AND kc.WM_SP_BM = ass.MAT_PRO_CODE
+		AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat( ass.MAT_ASSESS_YEAR,
+		ass.MAT_ASSESS_MONTH )
+		WHERE
+		kc.CLIENT = #{client}
+		AND kc.WM_TBSJ = #{startDate}
+		<if test="siteCode!=null and siteCode!=''">
+			AND kc.PRO_SITE = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND kc.PRO_SITE in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		) tab
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.client = pb.CLIENT
+		AND tab.siteCode = pb.PRO_SITE
+		AND tab.proCode = pb.PRO_SELF_CODE
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = pb.PRO_CLASS
+		where
+		1=1
+		<if test="proArr!=null and proArr.length>0">
+			and tab.proCode in
+			<foreach collection="proArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE =
+			#{proClass})
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( pb.PRO_IF_MED = #{medProdctStatus} OR ifnull(pb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (pb.PRO_IF_MED = #{medProdctStatus} OR (ifnull(pb.PRO_MED_PRODCTCODE,'') = '' AND
+				ifnull(pb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND (pb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%'))
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND pb.PRO_CLASS in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		tab.proCode,
+		tab.siteCode
+		HAVING
+		startQty != 0
+		ORDER BY
+		tab.recordDate,
+		tab.siteCode,
+		tab.proCode
+		)T LEFT JOIN GAIA_STORE_DATA GSD
+		ON T.stoCode = GSD.STO_CODE AND GSD.CLIENT = #{client}
+		ORDER BY stoCode,proCode
+	</select>
+
+	<select id="getStartDataByDc"
+			resultType="com.gys.report.entity.InventoryChangeSummaryOutData">
+		SELECT
+		tab.proCode,
+		tab.recordDate,
+		pb.PRO_NAME proName,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_BARCODE proBarcode,
+		ROUND( sum( tab.qty ), 2 ) startQty,
+		pb.PRO_FACTORY_NAME factoryName,
+		pb.PRO_PLACE origin,
+		pb.PRO_FORM dosageForm,
+		pb.PRO_UNIT unit,
+		pb.PRO_SPECS specs,
+		pb.PRO_REGISTER_NO approvalNum,
+		IF
+		( pb.PRO_IF_WHOLESALE = '1', '是', '否' ) noWholesale,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		ROUND( sum( cost ), 2 ) cost,
+		ROUND( sum( taxes ), 2 ) taxes,
+		ROUND( sum( includeTax ), 2 ) includeTax,
+		ROUND( sum( includeTax ), 2 ) startAmt
+		FROM
+		(
+		SELECT
+		sb.CLIENT client,
+		sb.GSS_BR_ID siteCode,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName,
+		sb.GSS_PRO_ID proCode,
+		concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate,
+		sb.GSS_QTY qty,
+		ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS cost,
+		ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS taxes,
+		( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS includeTax,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_H sb
+		LEFT JOIN GAIA_STORE_DATA sto ON sb.CLIENT = sto.CLIENT
+		AND sb.GSS_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON sb.CLIENT = ass.CLIENT
+		AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE
+		AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE
+		AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR
+		AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		WHERE
+		sb.CLIENT = #{client}
+		AND concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) = DATE_FORMAT( DATE_SUB( #{startDate}, INTERVAL 1 MONTH ), '%Y%m' )
+		<if test="siteCode!=null and siteCode!=''">
+			AND sb.GSS_BR_ID = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND sb.GSS_BR_ID in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE siteCode,
+		dc.DC_NAME siteName,
+		kc.WM_SP_BM proCode,
+		kc.WM_TBSJ recordDate,
+		kc.WM_KCSL qty,
+		ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost,
+		ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes,
+		( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc ON kc.CLIENT = dc.CLIENT
+		AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON kc.CLIENT = ass.CLIENT
+		AND kc.PRO_SITE = ass.MAT_ASSESS_SITE
+		AND kc.WM_SP_BM = ass.MAT_PRO_CODE
+		AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat( ass.MAT_ASSESS_YEAR, ass.MAT_ASSESS_MONTH )
+		WHERE
+		kc.CLIENT = #{client}
+		AND kc.WM_TBSJ = #{startDate}
+		<if test="siteCode!=null and siteCode!=''">
+			AND kc.PRO_SITE = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND kc.PRO_SITE in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		) tab
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.client = pb.CLIENT
+		AND tab.siteCode = pb.PRO_SITE
+		AND tab.proCode = pb.PRO_SELF_CODE
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = pb.PRO_CLASS
+		where
+		1=1
+		<if test="proArr!=null and proArr.length>0">
+			and tab.proCode in
+			<foreach collection="proArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND (pb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%'))
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( pb.PRO_IF_MED = #{medProdctStatus} OR ifnull(pb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (pb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(pb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(pb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND pb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		tab.proCode
+		HAVING
+		startQty != 0
+		ORDER BY
+		tab.recordDate,
+		tab.siteCode,
+		tab.proCode
+	</select>
+
+	<select id="selectWholesaleDetailSalemanList"
+			resultType="com.gys.report.entity.WholesaleSaleOutData">
+
+		select
+		md.MAT_PRO_CODE proCode,
+		md.MAT_TYPE matType,
+		md.MAT_DN_ID dnId,
+		md.MAT_POST_DATE postDate,
+		ws.GWS_CODE gwoOwnerSaleManUserId,
+		ud.USER_NAM gwoOwnerSaleMan,
+		IF(ws.GWS_CODE is not null,sh.SO_HEAD_REMARK,'') soHeaderRemark
+		from GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_SO_HEADER sh
+		on sh.client=md.client
+		and sh.SO_ID=md.MAT_PO_ID
+		LEFT JOIN GAIA_WHOLESALE_SALESMAN ws
+		on ws.CLIENT=md.client
+		and ws.GWS_CODE = sh.GWS_CODE
+		LEFT JOIN GAIA_USER_DATA ud
+		on ud.CLIENT=md.CLIENT
+		and ud.USER_ID=ws.GWS_CODE
+		where
+		md.CLIENT = #{client}
+		and ws.GWS_CODE is not null
+		<if test="matTypes!=null and matTypes.size()>0">
+			and md.MAT_TYPE IN
+			<foreach collection="matTypes" item="matTypes" index="index"
+					 open="(" close=")" separator=",">
+				#{matTypes}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_POST_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and md.MAT_POST_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  md.MAT_DN_ID = #{dnId}
+		</if>
+		group by md.MAT_DN_ID,md.MAT_PRO_CODE
+
+	</select>
+
+	<select id="selectWholesaleSalemanList"
+			resultType="com.gys.report.entity.WholesaleSaleOutData">
+		select
+		md.MAT_DN_ID dnId,
+		md.MAT_TYPE matType,
+		ws.GWS_CODE gwoOwnerSaleManUserId,
+		ud.USER_NAM gwoOwnerSaleMan,
+		sh.SO_HEAD_REMARK soHeaderRemark
+		from GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_SO_HEADER sh
+		on sh.client=md.client
+		and sh.SO_ID=md.MAT_PO_ID
+		LEFT JOIN GAIA_WHOLESALE_SALESMAN ws
+		on ws.CLIENT=md.client
+		and ws.GWS_CODE = sh.GWS_CODE
+		LEFT JOIN GAIA_USER_DATA ud
+		on ud.CLIENT=md.CLIENT
+		and ud.USER_ID=ws.GWS_CODE
+		where
+		md.CLIENT = #{client}
+
+		<if test="matTypes!=null and matTypes.size()>0">
+			and md.MAT_TYPE IN
+			<foreach collection="matTypes" item="matTypes" index="index"
+					 open="(" close=")" separator=",">
+				#{matTypes}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_POST_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and md.MAT_POST_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  md.MAT_DN_ID = #{dnId}
+		</if>
+		group by md.MAT_DN_ID
+	</select>
+
+	<select id="getStartDataAll"
+			resultType="com.gys.report.entity.InventoryChangeSummaryOutData">
+		SELECT
+		tab.siteCode,
+		tab.siteName,
+		tab.proCode,
+		tab.recordDate,
+		pb.PRO_NAME proName,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_BARCODE proBarcode,
+		ROUND( sum( tab.qty ), 2 ) startQty,
+		pb.PRO_FACTORY_NAME factoryName,
+		pb.PRO_PLACE origin,
+		pb.PRO_FORM dosageForm,
+		pb.PRO_UNIT unit,
+		pb.PRO_SPECS specs,
+		pb.PRO_REGISTER_NO approvalNum,
+		IF
+		( pb.PRO_IF_WHOLESALE = '1', '是', '否' ) noWholesale,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		ROUND( sum( cost ), 2 ) cost,
+		ROUND( sum( taxes ), 2 ) taxes,
+		ROUND( sum( includeTax ), 2 ) includeTax,
+		ROUND( sum( includeTax ), 2 ) startAmt
+		FROM
+		(
+		SELECT
+		sb.CLIENT client,
+		sb.GSS_BR_ID siteCode,
+		IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName,
+		sb.GSS_PRO_ID proCode,
+		concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate,
+		sb.GSS_QTY qty,
+		ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS cost,
+		ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS taxes,
+		( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS includeTax,
+		'store' site
+		FROM
+		GAIA_SD_STOCK_H sb
+		LEFT JOIN GAIA_STORE_DATA sto ON sb.CLIENT = sto.CLIENT
+		AND sb.GSS_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON sb.CLIENT = ass.CLIENT
+		AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE
+		AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE
+		AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR
+		AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		WHERE
+		sb.CLIENT = #{client}
+		AND concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) = DATE_FORMAT( DATE_SUB(#{startDate},INTERVAL 1 day),'%Y%m')
+		AND sb.GSS_BR_ID
+		<if test="siteCode!=null and siteCode!=''">
+			AND sb.GSS_BR_ID = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND sb.GSS_BR_ID in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		UNION ALL
+		SELECT
+		kc.CLIENT clientId,
+		kc.PRO_SITE siteCode,
+		dc.DC_NAME siteName,
+		kc.WM_SP_BM proCode,
+		kc.WM_TBSJ recordDate,
+		kc.WM_KCSL qty,
+		ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost,
+		ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes,
+		( ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT ) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax,
+		'dc' site
+		FROM
+		GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc ON kc.CLIENT = dc.CLIENT
+		AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass ON kc.CLIENT = ass.CLIENT
+		AND kc.PRO_SITE = ass.MAT_ASSESS_SITE
+		AND kc.WM_SP_BM = ass.MAT_PRO_CODE
+		AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat( ass.MAT_ASSESS_YEAR, ass.MAT_ASSESS_MONTH )
+		WHERE
+		kc.CLIENT = #{client}
+		AND kc.WM_TBSJ = #{startDate}
+		<if test="siteCode!=null and siteCode!=''">
+			AND kc.PRO_SITE = #{siteCode}
+		</if>
+		<if test="siteArr!=null and siteArr.length>0">
+			AND kc.PRO_SITE in
+			<foreach collection="siteArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		) tab
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON tab.client = pb.CLIENT
+		AND tab.siteCode = pb.PRO_SITE
+		AND tab.proCode = pb.PRO_SELF_CODE
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = pb.PRO_CLASS
+		where
+		1=1
+		<if test="proArr!=null and proArr.length>0">
+			and tab.proCode in
+			<foreach collection="proArr" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( pb.PRO_IF_MED = #{medProdctStatus} OR ifnull(pb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (pb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(pb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(pb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND  (pb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%'))
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND pb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		tab.proCode
+		HAVING
+		startQty != 0
+		ORDER BY
+		tab.recordDate,
+		tab.siteCode,
+		tab.proCode
+	</select>
+
+	<select id="selectSupplierName" resultType="java.util.Map">
+		select
+		ID as id,
+		CLIENT as client,
+		SUP_SITE as supSite,
+		SUP_SELF_CODE as supSelfCode,
+		GSS_CODE as gssCode,
+		GSS_NAME as gssName,
+		GSS_ID_CARD as gssIdCard,
+		GSS_PHONE as gssPhone,
+		GSS_BUSINESS_SCOPE as gssBusinessScope,
+		GSS_FLOW_NO as gssFlowNo
+		from GAIA_SUPPLIER_SALESMAN
+		<where>
+			<if test="inData.client!=null and inData.client!=''">
+				and CLIENT = #{inData.client}
+			</if>
+			<if test="inData.poSupplierSalesman!=null and inData.poSupplierSalesman!=''">
+				and GSS_NAME = #{inData.poSupplierSalesman}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectSupplierSummaryDealPage" resultType="com.gys.report.entity.SupplierDealOutData">
+		SELECT
+		tab.*,
+		sb.SUP_NAME supName,
+		site.stoName siteName,
+		IFNULL(IFNULL(sto.STO_SHORT_NAME,sto.STO_NAME),site.stoName) stoName,
+		ud.USER_NAM userName
+		FROM
+		(
+		<!-- 中药代煎 采购 -->
+		<if test="matType == null or matType == '' or matType == 'CD' or matType == 'CX'">
+			SELECT
+			md.CLIENT,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_PO_ID poId,
+			md.MAT_TYPE matType,
+			sum(md.batFpje) batFpje,
+			CASE
+			md.MAT_TYPE
+			WHEN 'CD' THEN
+			'采购单'
+			WHEN 'CX' THEN
+			'代煎采购'
+			END AS matName,
+			ifnull(sum(md.batAmt),0) batAmt,
+			ifnull(sum(md.rateBat),0) rateBat,
+			ifnull(sum(md.batAmt) + sum(md.rateBat),0) totalAmount,
+			oc.supCode,
+			md.MAT_SITE_CODE siteCode,
+			IFNULL(IF(oc.stoCode='',null,oc.stoCode),md.MAT_SITE_CODE) stoCode,
+			oc.userCode,
+			sum(md.billingAmount)billingAmount,
+			oc.PO_HEAD_REMARK poHeadRemark,
+			oc.PO_SUPPLIER_SALESMAN as poSupplierSalesman
+			<if test="isOpenRate == 1">
+				,gtc.TAX_CODE_VALUE taxRate
+			</if>
+			FROM
+			(
+			SELECT
+			gmd.CLIENT,
+			gmd.MAT_DOC_DATE,
+			gmd.MAT_DN_ID,
+			gmd.MAT_PO_ID,
+			gmd.MAT_TYPE,
+			gmd.MAT_SITE_CODE,
+			gmd.MAT_PRO_CODE,
+			gmd.MAT_BATCH,
+			IF(bi.BAT_FPH IS NULL OR bi.BAT_FPH = '', 0 , bi.BAT_FPH) * gmd.MAT_QTY AS batFpje,
+			sum( gmd.MAT_BAT_AMT  ) AS batAmt,
+			sum( gmd.MAT_RATE_BAT  ) AS rateBat,
+			sum( gmd.MAT_BAT_AMT + MAT_RATE_BAT ) billingAmount
+			FROM
+			GAIA_MATERIAL_DOC gmd
+			LEFT JOIN GAIA_BATCH_INFO bi ON gmd.CLIENT = bi.CLIENT AND gmd.MAT_PRO_CODE = bi.BAT_PRO_CODE AND gmd.MAT_BATCH = bi.BAT_BATCH
+			<where>
+				<if test="client != null and client != ''">
+					and gmd.CLIENT = #{client}
+				</if>
+				AND gmd.MAT_TYPE IN ( 'CD', 'CX' )
+				<if test="matType != null and matType != ''">
+					and  gmd.MAT_TYPE =#{matType}
+				</if>
+				<if test="siteCode != null and siteCode != ''">
+					and gmd.MAT_SITE_CODE = #{siteCode}
+				</if>
+<!--				<if test="stoCode != null and stoCode != ''">-->
+<!--					AND gmd.MAT_SITE_CODE =#{stoCode}-->
+<!--				</if>-->
+				<if test="startDate != null and startDate != ''">
+					AND gmd.MAT_DOC_DATE &gt;= #{startDate}
+				</if>
+				<if test="endDate != null and endDate != ''">
+					AND gmd.MAT_DOC_DATE &lt;= #{endDate}
+				</if>
+			</where>
+			GROUP BY
+			gmd.CLIENT,
+			gmd.MAT_DN_ID,
+			gmd.MAT_PRO_CODE,
+			gmd.MAT_SITE_CODE
+			) md
+			<if test="isOpenRate == 1">
+				LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.MAT_PRO_CODE = pb.PRO_SELF_CODE
+				AND md.CLIENT = pb.CLIENT
+				AND md.MAT_SITE_CODE = pb.PRO_SITE
+				LEFT JOIN GAIA_TAX_CODE gtc ON pb.PRO_INPUT_TAX = gtc.TAX_CODE
+			</if>
+			LEFT JOIN (
+			SELECT
+			rkys.CLIENT,
+			rkys.WM_GYS_BH supCode,
+			rkys.WM_RKDH danhao,
+			IFNULL( po.PO_DELIVERY_TYPE_STORE, po.PO_COMPANY_CODE ) stoCode,
+			rkys.CONSIGNEE userCode,
+			po.PO_HEAD_REMARK,
+			po.PO_SUPPLIER_SALESMAN
+			FROM
+			GAIA_WMS_RKYS rkys
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = rkys.CLIENT AND po.PO_ID = rkys.WM_CGDDH
+			<where>
+				<if test="client != null and client != ''">
+					and rkys.CLIENT = #{client}
+				</if>
+			</where>
+			GROUP BY
+			rkys.CLIENT,
+			rkys.WM_RKDH
+			UNION ALL
+			SELECT
+			po2.CLIENT,
+			po2.PO_SUPPLIER_ID supCode,
+			acc.GSAH_VOUCHER_ID danhao,
+			IFNULL( po2.PO_DELIVERY_TYPE_STORE, po2.PO_COMPANY_CODE ) stoCode,
+			acc.GSAH_EMP userCode,
+			po2.PO_HEAD_REMARK,
+			po2.PO_SUPPLIER_SALESMAN
+			FROM
+			GAIA_SD_ACCEPT_H acc
+			LEFT JOIN GAIA_PO_HEADER po2 ON po2.CLIENT = acc.CLIENT AND po2.PO_ID = acc.GSAH_POID
+			<where>
+				<if test="client != null and client != ''">
+					and po2.CLIENT = #{client}
+				</if>
+			</where>
+			)oc ON oc.CLIENT = md.CLIENT
+			AND oc.danhao = md.MAT_DN_ID
+			where not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = md.CLIENT and PRO_SELF_CODE=md.MAT_PRO_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+			GROUP BY
+			CLIENT,
+			MAT_SITE_CODE,
+			oc.supCode
+			<if test='isDefault == "1"'>
+				,oc.PO_SUPPLIER_SALESMAN
+			</if>
+			<if test="isOpenRate == 1">
+				,gtc.TAX_CODE_VALUE
+			</if>
+		</if>
+		<if test="matType == null or matType == ''">
+			UNION ALL
+		</if>
+		<!-- 退供应商 -->
+		<if test="matType == null or matType == '' or matType == 'GD'">
+			SELECT
+			md.CLIENT,
+			md.MAT_DOC_DATE postDate,
+			md.MAT_DN_ID dnId,
+			md.MAT_PO_ID poId,
+			md.MAT_TYPE matType,
+			sum( IF(bi.BAT_FPH IS NULL OR bi.BAT_FPH = '', 0 , bi.BAT_FPH) * md.MAT_QTY) * -1 batFpje,
+			'退厂单' AS matName,
+			ifnull(IF(sto.CLIENT IS NULL,sum( md.MAT_MOV_AMT ),sum( md.MAT_ADD_AMT ))* -1,0) batAmt,
+			ifnull(IF(sto.CLIENT IS NULL,sum( md.MAT_RATE_MOV ),sum( md.MAT_ADD_TAX ))* -1,0) rateBat,
+			ifnull(IF(sto.CLIENT IS NULL,sum( md.MAT_RATE_MOV + md.MAT_MOV_AMT ),sum( md.MAT_ADD_TAX + MAT_ADD_AMT ))* -1,0) totalAmount,
+			tgz.WM_GYS_BH supCode,
+			md.MAT_SITE_CODE siteCode,
+			IFNULL( IF ( po.PO_DELIVERY_TYPE_STORE = '', NULL, po.PO_DELIVERY_TYPE_STORE ), po.PO_COMPANY_CODE ) stoCode,
+			tgz.WM_CJR userCode,
+			sum(md.MAT_QTY * tgm.WM_CKJ)* -1 billingAmount,
+			po.PO_HEAD_REMARK poHeadRemark,
+			po.PO_SUPPLIER_SALESMAN
+			<if test="isOpenRate == 1">
+				,gtc.TAX_CODE_VALUE taxRate
+			</if>
+			FROM
+			GAIA_MATERIAL_DOC md
+			<if test="isOpenRate == 1">
+				LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.MAT_PRO_CODE = pb.PRO_SELF_CODE
+				AND md.CLIENT = pb.CLIENT
+				AND md.MAT_SITE_CODE = pb.PRO_SITE
+				LEFT JOIN GAIA_TAX_CODE gtc ON pb.PRO_INPUT_TAX = gtc.TAX_CODE
+			</if>
+			LEFT JOIN GAIA_WMS_TUIGONG_Z tgz ON md.CLIENT = tgz.CLIENT
+			AND tgz.WM_TGYSDH = md.MAT_DN_ID
+			AND tgz.WM_TGYSDDH = md.MAT_PO_ID
+			LEFT JOIN GAIA_WMS_TUIGONG_M tgm ON tgz.CLIENT = tgm.CLIENT
+			AND tgm.WM_TGYSDH = tgz.WM_TGYSDH
+			AND tgm.WM_SP_BM = md.MAT_PRO_CODE
+			AND tgm.WM_PCH = md.MAT_BATCH
+			AND tgm.PO_LINE_NO = md.MAT_PO_LINENO
+			LEFT JOIN GAIA_PO_HEADER po ON po.CLIENT = md.CLIENT
+			AND po.PO_ID = md.MAT_PO_ID
+			LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = md.CLIENT
+			AND sto.STO_CODE = md.MAT_SITE_CODE
+			LEFT JOIN GAIA_BATCH_INFO bi ON md.CLIENT = bi.CLIENT AND md.MAT_PRO_CODE = bi.BAT_PRO_CODE AND md.MAT_BATCH = bi.BAT_BATCH
+			<where>
+				<if test="client != null and client != ''">
+					and md.CLIENT = #{client}
+				</if>
+			</where>
+			AND md.MAT_TYPE = 'GD'
+			AND not EXISTS (select 1 from GAIA_SALES_CATALOG where CLIENT = md.CLIENT and PRO_SELF_CODE=md.MAT_PRO_CODE and IS_DELETE = 0 and `STATUS` in (1,2))
+			<if test = "siteCode != null and siteCode != ''" >
+				AND md.MAT_SITE_CODE = #{siteCode}
+			</if >
+<!--			<if test = "stoCode != null and stoCode != ''" >-->
+<!--				AND md.MAT_SITE_CODE = #{stoCode}-->
+<!--			</if >-->
+			<if test="startDate != null and startDate != ''">
+				AND md.MAT_DOC_DATE &gt;= #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND md.MAT_DOC_DATE &lt;= #{endDate}
+			</if>
+			GROUP BY
+			md.CLIENT,
+			md.MAT_SITE_CODE,
+			tgz.WM_GYS_BH
+			<if test='isDefault == "1"'>
+				,po.PO_SUPPLIER_SALESMAN
+			</if>
+			<if test="isOpenRate == 1">
+				,gtc.TAX_CODE_VALUE
+			</if>
+		</if>
+		) tab
+		LEFT JOIN (
+		SELECT
+		CLIENT,
+		DC_CODE stoCode,
+		DC_NAME stoName
+		FROM
+		GAIA_DC_DATA
+		<where>
+			<if test="client != null and client != ''">
+				and CLIENT = #{client}
+			</if>
+		</where>
+		UNION ALL
+		SELECT
+		CLIENT,
+		STO_CODE stoCode,
+		IFNULL( STO_SHORT_NAME, STO_NAME ) stoName
+		FROM
+		GAIA_STORE_DATA
+		<where>
+			<if test="client != null and client != ''">
+				and CLIENT = #{client}
+			</if>
+		</where>
+		) site ON site.stoCode = tab.siteCode
+		and site.CLIENT = tab.CLIENT
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sb ON
+		tab.CLIENT = sb.CLIENT
+		AND site.stoCode = sb.SUP_SITE
+		AND tab.supCode = sb.SUP_SELF_CODE
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = tab.CLIENT AND sto.STO_CODE = tab.stoCode
+		LEFT JOIN GAIA_USER_DATA ud ON ud.CLIENT = tab.CLIENT AND ud.USER_ID = tab.userCode
+		WHERE
+		1 = 1
+		<if test="supCode != null and supCode != ''">
+			and  tab.supCode = #{supCode}
+		</if>
+		ORDER BY
+		tab.postDate DESC,
+		tab.dnId DESC
+	</select>
+
+<!--	<select id="selectdeviveryDatas"-->
+<!--			resultType="com.gys.report.entity.WholesaleSaleOutData">-->
+<!--		SELECT-->
+<!--		b.CLIENT client,-->
+<!--		b.MAT_PO_ID poId,-->
+<!--		hz.matName,-->
+<!--		hz.rate,-->
+<!--		SUM(hz.movAmt) as movAmt,-->
+<!--		SUM(hz.rateMov) as rateMov,-->
+<!--		SUM(hz.movTotalAmount) as movTotalAmount,-->
+<!--		SUM(hz.addAmt) as addAmt,-->
+<!--		SUM(hz.addTax) as addTax,-->
+<!--		SUM(hz.addtotalAmount) as addtotalAmount,-->
+<!--		hz.stoCode,-->
+<!--		hz.stoName,-->
+<!--		hz.siteCode,-->
+<!--		hz.siteName,-->
+<!--		hz.buillingStaffCode,-->
+<!--		hz.buillingStaffName,-->
+<!--		hz.GWS_CODE as gwoOwnerSaleManUserId,-->
+<!--		hz.GSS_NAME as gwoOwnerSaleMan-->
+<!--		from (-->
+<!--		SELECT-->
+<!--		b.CLIENT,-->
+<!--		b.MAT_TYPE matType,-->
+<!--		b.MAT_POST_DATE postDate,-->
+<!--		b.siteCode,-->
+<!--		b.siteName,-->
+<!--		b.mcb,-->
+<!--		CASE-->
+<!--		b.MAT_TYPE-->
+<!--		WHEN 'XD' THEN-->
+<!--		'销售单'-->
+<!--		WHEN 'ED' THEN-->
+<!--		'销退单'-->
+<!--		WHEN 'PD' THEN-->
+<!--		'配送单'-->
+<!--		WHEN 'TD' THEN-->
+<!--		'退库单'-->
+<!--		WHEN 'MD' THEN-->
+<!--		'调拨退库单'-->
+<!--		WHEN 'ND' THEN-->
+<!--		'调拨配送单'-->
+<!--		WHEN 'PX' THEN-->
+<!--		'代煎配送'-->
+<!--		END AS matName,-->
+<!--		b.MAT_DN_ID dnId,-->
+<!--		b.rate,-->
+<!--		SUM( b.qty ) qty,-->
+<!--		SUM( b.movAmt ) movAmt,-->
+<!--		SUM( b.rateMov ) rateMov,-->
+<!--		SUM( b.movAmt + b.rateMov ) movTotalAmount,-->
+<!--		SUM((b.qty * b.addPrice )/(1+b.rate)) addAmt,-->
+<!--		SUM(( b.qty * b.addPrice)-(b.qty * b.addPrice)/(1+b.rate)) addTax,-->
+<!--		SUM( b.qty * b.addPrice ) addtotalAmount,-->
+<!--		b.khbh  stoCode,-->
+<!--		b.GWS_CODE,-->
+<!--		b.GSS_NAME,-->
+<!--		IFNULL( sd.stoName, cb.stoName ) stoName-->
+<!--		,MAX(C.PRO_BIG_CLASS_CODE) AS 'bigClassCode'-->
+<!--		,MAX(C.PRO_BIG_CLASS_NAME) AS 'bigClassName'-->
+<!--		,MAX(C.PRO_MID_CLASS_CODE) AS 'midClassCode'-->
+<!--		,MAX(C.PRO_MID_CLASS_NAME) AS 'midClassName'-->
+<!--		,MAX(C.PRO_CLASS_CODE) AS 'proClassCode'-->
+<!--		,MAX(C.PRO_CLASS_NAME) AS 'proClassName'-->
+<!--		,b.USER_NAM as buillingStaffName-->
+<!--		,b.SO_CREATE_BY as buillingStaffCode-->
+<!--		FROM-->
+<!--		(-->
+<!--		SELECT-->
+<!--		gmd.CLIENT,-->
+<!--		gmd.MAT_BATCH,-->
+<!--		gmd.MAT_POST_DATE,-->
+<!--		gmd.MAT_TYPE,-->
+<!--		gmd.MAT_PRO_CODE,-->
+<!--		gmd.MAT_DN_ID,-->
+<!--		gmd.MAT_PO_ID,-->
+<!--		gmd.MAT_CREATE_BY mcb,-->
+<!--		gmd.MAT_SITE_CODE siteCode,-->
+<!--		IFNULL( sto.STO_SHORT_NAME, dc.DC_NAME ) siteName,-->
+<!--		IFNULL( tkys.WM_KH_BH, dbz.WM_KH_BH ) khbh,-->
+<!--		IFNULL(tkys.PRO_SITE,dbz.PRO_SITE) dcCode,-->
+<!--		CASE-->
+
+<!--		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN-->
+<!--		IF-->
+<!--		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT ) ELSE-->
+<!--		IF-->
+<!--		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT )*- 1-->
+<!--		END movAmt,-->
+<!--		CASE-->
+
+<!--		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN-->
+<!--		IF-->
+<!--		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) ELSE-->
+<!--		IF-->
+<!--		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) *- 1-->
+<!--		END rateMov,-->
+<!--		CASE-->
+
+<!--		WHEN gmd.MAT_TYPE IN ( 'ED', 'MD', 'TD' ) THEN-->
+<!--		tkys.WM_DHJ ELSE dbm.WM_CKJ-->
+<!--		END addPrice,-->
+<!--		CASE-->
+
+<!--		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN-->
+<!--		gmd.MAT_QTY ELSE gmd.MAT_QTY *- 1-->
+<!--		END qty,-->
+<!--		CASE-->
+
+<!--		WHEN gmd.MAT_TYPE = 'XD'-->
+<!--		OR gmd.MAT_TYPE = 'ED' THEN-->
+<!--		tc.TAX_CODE_VALUE/100-->
+<!--		WHEN gmd.MAT_TYPE = 'PD'-->
+<!--		OR gmd.MAT_TYPE = 'ND'-->
+<!--		OR gmd.MAT_TYPE = 'PX' THEN-->
+<!--		ifnull( srd.GSRD_TAX_RATE, tc.TAX_CODE_VALUE )/ 100-->
+<!--		WHEN gmd.MAT_TYPE = 'TD'-->
+<!--		OR gmd.MAT_TYPE = 'MD' THEN-->
+<!--		mm.WM_SL/100-->
+<!--		END AS rate-->
+<!--		,gud.USER_NAM-->
+<!--		,soh.SO_CREATE_BY,-->
+<!--		gmd.MAT_CREATE_BY,-->
+<!--		soh.GWS_CODE,-->
+<!--		gws.GSS_NAME-->
+<!--		FROM-->
+<!--		GAIA_MATERIAL_DOC gmd-->
+<!--		LEFT JOIN GAIA_SD_REPLENISH_D srd ON srd.CLIENT = gmd.CLIENT-->
+<!--		AND srd.GSRD_VOUCHER_ID = gmd.MAT_PO_ID-->
+<!--		AND srd.GSRD_SERIAL = gmd.MAT_PO_LINENO-->
+<!--		LEFT JOIN GAIA_WMS_MENDIANTUIKU_M mm ON mm.CLIENT = gmd.CLIENT-->
+<!--		AND mm.WM_TKDDH = gmd.MAT_PO_ID-->
+<!--		AND mm.WM_XH = gmd.MAT_PO_LINENO-->
+<!--		LEFT JOIN GAIA_SO_ITEM si ON si.CLIENT = gmd.CLIENT-->
+<!--		AND si.SO_ID = gmd.MAT_PO_ID-->
+<!--		AND si.SO_LINE_NO = gmd.MAT_PO_LINENO-->
+<!--		LEFT JOIN  (SELECT CLIENT,PRO_SITE,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ,WM_KH_BH FROM GAIA_WMS_TKYS-->
+<!--		WHERE CLIENT = #{client} GROUP BY  CLIENT,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ ) tkys-->
+<!--		ON tkys.CLIENT = gmd.CLIENT-->
+<!--		AND tkys.WM_TKDH = gmd.MAT_DN_ID-->
+<!--		AND tkys.WM_TKDDH = gmd.MAT_PO_ID-->
+<!--		AND tkys.WM_SP_BM = gmd.MAT_PRO_CODE-->
+<!--		AND tkys.WM_PCH = gmd.MAT_BATCH-->
+<!--		AND tkys.WM_DDXH =gmd.MAT_PO_LINENO-->
+<!--		LEFT JOIN GAIA_WMS_DIAOBO_Z dbz ON dbz.CLIENT = gmd.CLIENT-->
+<!--		AND dbz.WM_PSDH = gmd.MAT_DN_ID-->
+<!--		AND dbz.WM_DDH = gmd.MAT_PO_ID-->
+<!--		LEFT JOIN GAIA_WMS_DIAOBO_M dbm ON dbm.CLIENT = dbz.CLIENT-->
+<!--		AND dbm.WM_PSDH = dbz.WM_PSDH-->
+<!--		AND dbm.WM_SP_BM = gmd.MAT_PRO_CODE-->
+<!--		AND dbm.WM_PCH = gmd.MAT_BATCH-->
+<!--		AND dbm.PO_LINE_NO = gmd.MAT_PO_LINENO-->
+<!--		LEFT JOIN GAIA_TAX_CODE tc ON si.SO_RATE = tc.TAX_CODE-->
+<!--		LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = gmd.CLIENT-->
+<!--		AND dc.DC_CODE = gmd.MAT_SITE_CODE-->
+<!--		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = gmd.CLIENT-->
+<!--		AND sto.STO_CODE = gmd.MAT_SITE_CODE-->
+<!--		LEFT JOIN GAIA_SO_HEADER soh on gmd.client = soh.client and gmd.MAT_PO_ID = soh.SO_ID-->
+<!--		left join GAIA_WHOLESALE_SALESMAN gws on soh.GWS_CODE = gws.GWS_CODE-->
+<!--		LEFT JOIN GAIA_USER_DATA gud on soh.client = gud.client and soh.SO_CREATE_BY = gud.USER_ID-->
+<!--		WHERE-->
+<!--		gmd.CLIENT = #{client}-->
+<!--		<if test="matType != null and matType != ''">-->
+<!--			and gmd.MAT_TYPE = #{matType}-->
+<!--		</if>-->
+<!--		<if test="matType != null and matType != ''">-->
+<!--			and gmd.MAT_TYPE = #{matType}-->
+<!--		</if>-->
+<!--		<if test="buillingStaffIds != null and buillingStaffIds.size > 0">-->
+<!--			and soh.SO_CREATE_BY in-->
+<!--			<foreach collection="buillingStaffIds" item="item" index="index" open="(" separator="," close=")">-->
+<!--				#{item}-->
+<!--			</foreach>-->
+<!--		</if>-->
+<!--		<if test="matTypes!=null and matTypes.size()>0">-->
+<!--			AND gmd.MAT_TYPE IN-->
+<!--			<foreach collection="matTypes" item="matTypes" index="index"-->
+<!--					 open="(" close=")" separator=",">-->
+<!--				#{matTypes}-->
+<!--			</foreach>-->
+<!--		</if>-->
+<!--		<if test="startDate != null and startDate != ''">-->
+<!--			and gmd.MAT_POST_DATE  &gt;= #{startDate}-->
+<!--			</if>-->
+<!--		<if test="endDate != null and endDate != ''">-->
+<!--			and gmd.MAT_POST_DATE  &lt;= #{endDate}-->
+<!--		</if>-->
+<!--		<if test="dnId != null and dnId != ''">-->
+<!--			and  gmd.MAT_DN_ID = #{dnId}-->
+<!--		</if>-->
+<!--		<if test="gwoOwnerSaleMans != null and gwoOwnerSaleMans.size > 0" >-->
+<!--			and soh.GWS_CODE in-->
+<!--			<foreach collection="gwoOwnerSaleMans" item="item" index="index" open="(" separator="," close=")">-->
+<!--				#{item}-->
+<!--			</foreach>-->
+<!--		</if>-->
+
+<!--		GROUP BY-->
+<!--		gmd.CLIENT,-->
+<!--		gmd.MAT_BATCH,-->
+<!--		gmd.MAT_POST_DATE,-->
+<!--		gmd.MAT_TYPE,-->
+<!--		gmd.MAT_PRO_CODE,-->
+<!--		gmd.MAT_DN_ID,-->
+<!--		gmd.MAT_PO_ID,-->
+<!--		gmd.MAT_SITE_CODE,-->
+<!--		gmd.MAT_LINE_NO-->
+<!--		,soh.SO_CREATE_BY-->
+<!--		) b-->
+<!--		LEFT JOIN ( SELECT CLIENT client,CUS_SITE site,CUS_SELF_CODE stoCode, CUS_NAME stoName FROM GAIA_CUSTOMER_BUSINESS WHERE CLIENT =#{client} ) cb ON cb.client=b.CLIENT and cb.site=b.dcCode AND cb.stoCode = b.khbh-->
+<!--		LEFT JOIN ( SELECT STO_CODE stoCode, IFNULL( STO_SHORT_NAME, STO_NAME ) stoName FROM GAIA_STORE_DATA sd WHERE CLIENT = #{client} ) sd ON sd.stoCode = b.khbh-->
+<!--		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = #{client} AND b.siteCode = pb.PRO_SITE AND b.MAT_PRO_CODE = pb.PRO_SELF_CODE-->
+<!--		LEFT JOIN GAIA_PRODUCT_CLASS C ON C.PRO_CLASS_CODE = pb.PRO_CLASS-->
+<!--		WHERE 1 = 1-->
+<!--		<if test="classArrs != null and classArrs.size > 0">-->
+<!--			and pb.PRO_CLASS in-->
+<!--			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">-->
+<!--				#{item}-->
+<!--			</foreach>-->
+<!--		</if>-->
+<!--		AND NOT EXISTS ( SELECT 1 FROM GAIA_SALES_CATALOG WHERE CLIENT = b.CLIENT AND PRO_SELF_CODE = b.MAT_PRO_CODE AND IS_DELETE = 0 AND `STATUS` IN ( 1, 2))-->
+<!--		<if test="stoArr != null and stoArr.length > 0">-->
+<!--			and b.khbh in-->
+<!--			<foreach collection = "stoArr" item="item" index="index" open="(" separator="," close=")">-->
+<!--				#{item}-->
+<!--			</foreach>-->
+<!--		</if>-->
+<!--		<if test="siteCode != null and siteCode != ''">-->
+<!--			and b.siteCode =#{siteCode}-->
+<!--		</if>-->
+<!--		<if test="siteArr != null and siteArr.length > 0">-->
+<!--			and b.siteCode  in-->
+<!--			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">-->
+<!--				#{item}-->
+<!--			</foreach>-->
+<!--		</if>-->
+<!--		GROUP BY-->
+<!--		b.CLIENT-->
+<!--		ORDER BY-->
+<!--		b.MAT_DN_ID DESC,b.siteCode-->
+<!--		) mingxi-->
+<!--		left join GAIA_WHOLESALE_SALESMAN gw-->
+<!--		on mingxi.client = gw.CLIENT and mingxi.siteCode = gw.SUP_SITE and mingxi.mcb = gw.GSS_CODE-->
+<!--		&lt;!&ndash;关联开单人员 &ndash;&gt;-->
+<!--		left join GAIA_SO_HEADER soh on mingxi.client = soh.client and mingxi.poId = soh.SO_ID-->
+<!--		left join GAIA_USER_DATA gud on soh.client = gud.client and soh.SO_CREATE_BY = gud.USER_ID-->
+
+<!--		<where>-->
+<!--			&lt;!&ndash;销售人员集合&ndash;&gt;-->
+<!--			<if test="gwoOwnerSaleMans != null and gwoOwnerSaleMans.size > 0">-->
+<!--				and gw.GSS_CODE in-->
+<!--				<foreach collection="gwoOwnerSaleMans" item="item" index="index" open="(" separator="," close=")">-->
+<!--					#{item}-->
+<!--				</foreach>-->
+<!--			</if>-->
+<!--			&lt;!&ndash;开单人员人员集合&ndash;&gt;-->
+<!--			<if test="buillingStaffIds != null and buillingStaffIds.size > 0">-->
+<!--				and soh.SO_CREATE_BY in-->
+<!--				<foreach collection="buillingStaffIds" item="item" index="index" open="(" separator="," close=")">-->
+<!--					#{item}-->
+<!--				</foreach>-->
+<!--			</if>-->
+<!--		</where>-->
+<!--		group by-->
+
+<!--		b.CLIENT,-->
+<!--		b.siteCode-->
+<!--		,b.MAT_POST_DATE,-->
+<!--		b.MAT_DN_ID,-->
+<!--		b.MAT_TYPE,-->
+<!--		b.MAT_PO_ID,-->
+<!--		b.rate-->
+<!--		,b.SO_CREATE_BY-->
+<!--		ORDER BY-->
+<!--		b.MAT_DN_ID DESC,b.siteCode-->
+<!--		) hz-->
+<!--		<if test='condition == "0"'>-->
+<!--			GROUP BY stoCode-->
+<!--		</if>-->
+<!--		<if test='condition == "1"'>-->
+<!--			GROUP BY gwoOwnerSaleManUserId-->
+<!--		</if>-->
+<!--		<if test='condition == "2"'>-->
+<!--			GROUP BY buillingStaffCode-->
+<!--		</if>-->
+<!--	</select>-->
+
+
+	<select id="selectInventoryStockCheckAmtDcStartList"
+			resultType="com.gys.report.entity.InventoryChangeCheckOutData">
+		SELECT tab.siteCode,
+		tab.siteName,
+		ROUND( sum( tab.qty ), 2 ) startQty,
+		ROUND(sum( cost ),2) cost,
+		ROUND(sum( taxes ),2) taxes,
+		ROUND(sum( includeTax),2) includeTax,
+		<choose>
+			<when test="isTax!=null and isTax!='' and isTax==1">
+				ROUND(sum( includeTax),2) startAmt
+			</when>
+			<otherwise>
+				ROUND(sum( cost ),2) startAmt
+			</otherwise>
+		</choose>
+		FROM (
+		SELECT sb.CLIENT client, sb.GSS_BR_ID siteCode, IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName, sb.GSS_PRO_ID proCode, concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate, sb.GSS_QTY qty, ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS cost, ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS taxes, ( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS includeTax, 'store' site
+		FROM GAIA_SD_STOCK_H sb
+		LEFT JOIN GAIA_STORE_DATA sto
+		ON sb.CLIENT = sto.CLIENT AND sb.GSS_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass
+		ON sb.CLIENT = ass.CLIENT AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		WHERE sb.CLIENT = #{client} and concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) = DATE_FORMAT(DATE_SUB(#{startDate},INTERVAL 1 month),'%Y%m')
+		and sb.GSS_BR_ID in
+		<foreach collection="siteCodeList" separator="," item="item" open="(" close=")">
+			#{item}
+		</foreach>
+		UNION ALL
+		SELECT kc.CLIENT clientId, kc.PRO_SITE siteCode, dc.DC_NAME siteName, kc.WM_SP_BM proCode, kc.WM_TBSJ recordDate, kc.WM_KCSL qty, ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost, ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes, (ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax, 'dc' site
+		FROM GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc
+		ON kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass
+		ON kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat(ass.MAT_ASSESS_YEAR,ass.MAT_ASSESS_MONTH)
+		WHERE kc.CLIENT =#{client} and kc.WM_TBSJ = #{startDate} and kc.PRO_SITE in
+		<foreach collection="siteCodeList" separator="," item="item" open="(" close=")">
+			#{item}
+		</foreach> ) tab
+		GROUP BY tab.siteCode
+		HAVING startQty != 0
+		ORDER BY tab.siteCode;
+	</select>
+
+	<select id="selectInventoryStockCheckDcBetweenAmt"
+			resultType="com.gys.report.entity.InventoryChangeCheckOutData">
+		select
+		md.MAT_SITE_CODE siteCode,
+		sto.siteName siteName,
+		IFNULL(sum(case md.MAT_TYPE WHEN 'CD' THEN IFNULL(md.MAT_MOV_AMT ,0) END),0) betweenProductIn,
+		IFNULL(sum(case md.MAT_TYPE WHEN 'GD' THEN IFNULL(md.MAT_MOV_AMT * -1 ,0) END),0) betweenProductRefound,
+		IFNULL(sum(case md.MAT_TYPE
+		WHEN 'TD' THEN md.MAT_MOV_AMT
+		WHEN 'MD' THEN md.MAT_MOV_AMT
+		END),0) betweenStockRefound,
+		IFNULL(sum(case md.MAT_TYPE
+		WHEN 'PD' THEN md.MAT_MOV_AMT  * -1
+		when 'ND' THEN md.MAT_MOV_AMT  * -1
+		end),0) betweenDistribution,
+		-IFNULL(
+		sum(case md.MAT_TYPE
+		WHEN 'XD' THEN IFNULL(md.MAT_MOV_AMT ,0)
+		WHEN 'ED' THEN IFNULL(md.MAT_MOV_AMT * -1,0)
+		end),0) betweenSale,
+		SUM(
+		if(MAT_DEBIT_CREDIT = 'S',
+		CASE WHEN md.MAT_TYPE IN ( 'BD', 'ZD', 'DD', 'SY' ) THEN MAT_MOV_AMT END,
+		CASE WHEN md.MAT_TYPE IN ( 'BD', 'ZD', 'DD', 'SY' ) THEN MAT_MOV_AMT*-1 END)) betweenLoss,
+		IFNULL(sum(case md.MAT_TYPE
+		when 'QC' THEN md.MAT_MOV_AMT
+		end),0) betweenQc
+		from (
+		select
+		CLIENT,
+		MAT_SITE_CODE,
+		MAT_TYPE,
+		MAT_DN_ID,
+		MAT_QTY,
+		MAT_DEBIT_CREDIT,
+		<choose>
+			<when test="isTax!=null and isTax!='' and isTax==1">
+				(MAT_MOV_AMT+MAT_RATE_MOV) MAT_MOV_AMT,
+				(MAT_ADD_AMT+MAT_ADD_TAX) MAT_ADD_AMT
+			</when>
+			<otherwise>
+				MAT_MOV_AMT MAT_MOV_AMT,
+				MAT_ADD_AMT MAT_ADD_AMT
+			</otherwise>
+		</choose>
+		from GAIA_MATERIAL_DOC
+		where client=#{client}
+		AND MAT_SITE_CODE in
+		<foreach collection="siteCodeList" open="(" close=")" item="item" separator=",">
+			#{item}
+		</foreach>
+		AND MAT_DOC_DATE &gt;= #{startDate}
+		and MAT_DOC_DATE &lt;= #{endDate}
+		) md
+		LEFT JOIN (
+		SELECT
+		DC_CODE siteCode,
+		DC_NAME siteName
+		FROM
+		GAIA_DC_DATA
+		WHERE
+		CLIENT = #{client}
+		UNION ALL
+		SELECT
+		STO_CODE siteCode,
+		IFNULL( STO_SHORT_NAME, STO_NAME ) siteName
+		FROM
+		GAIA_STORE_DATA
+		WHERE
+		CLIENT = #{client}
+		) sto on sto.siteCode = md.MAT_SITE_CODE
+		group by md.MAT_SITE_CODE
+	</select>
+
+	<select id="findDcNameByDcCode" resultType="java.lang.String">
+		select DC_SHORT_NAME
+		FROM GAIA_DC_DATA
+		WHERE CLIENT=#{client} and DC_CODE=#{dcCode}
+	</select>
+
+	<select id="selectInventoryChangeSummaryDetail"
+			resultType="com.gys.report.entity.InventoryChangeSummaryDetailOutData">
+		SELECT a.*,
+		case a.type
+		WHEN 'CD' THEN sb.SUP_NAME
+		WHEN 'GD' THEN sb.SUP_NAME
+		WHEN 'PD' THEN sto.siteName
+		when 'TD' THEN sto.siteName
+		when 'XD' THEN cu.CUS_NAME
+		WHEN 'ED' THEN cu.CUS_NAME
+		WHEN 'ND' THEN sto.siteName
+		WHEN 'MD' THEN sto.siteName
+		ELSE ''
+		END supCusName,
+		CASE WHEN a.type ='LS' THEN IF(saleD.GSSD_PRO_STATUS='退货',saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX*-1,saleD.GSSD_ADD_AMT+saleD.GSSD_ADD_TAX)
+		ELSE a.addAmounts END
+		AS addAmount,
+		CASE
+		a.MAT_TYPE
+		WHEN 'LS' THEN
+		saleD.GSSD_BATCH_NO ELSE a.BAT_BATCH_NO
+		END AS batchNo,
+		CASE
+		a.MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		a.qty1
+		WHEN 'H' THEN
+		a.qty1 * -1
+		END AS qty
+		FROM (
+		SELECT
+		md.CLIENT client,
+		case md.MAT_TYPE
+		when 'CD' THEN bi.BAT_SUPPLIER_CODE
+		when 'GD' THEN bi.BAT_SUPPLIER_CODE
+		when 'PD' THEN IF(dc.DC_CODE IS NULL,diaobo.PRO_SITE,diaobo.WM_KH_BH)
+		when 'TD' THEN IF(dc.DC_CODE IS NULL,gwt.PRO_SITE,gwt.WM_KH_BH)
+		when 'XD' THEN IF(dc.DC_CODE IS NULL,diaobo.PRO_SITE,diaobo.WM_KH_BH)
+		when 'ED' THEN IF(dc.DC_CODE IS NULL,gwt.PRO_SITE,gwt.WM_KH_BH)
+		when 'ND' THEN IF(dc.DC_CODE IS NULL,diaobo.PRO_SITE,diaobo.WM_KH_BH)
+		when 'MD' THEN IF(dc.DC_CODE IS NULL,gwt.PRO_SITE,gwt.WM_KH_BH)
+		else ''
+		END AS supCusCode,
+		md.MAT_DN_ID dnId,
+		md.MAT_DN_LINENO dnLineno,
+		md.MAT_POST_DATE docDate,
+		md.MAT_SITE_CODE siteCode,
+		sto.siteName,
+		md.MAT_PRO_CODE proCode,
+		IFNULL( pb.PRO_NAME, pb.PRO_COMMONNAME ) proName,
+		pb.PRO_COMMONNAME proCommonName,
+		pb.PRO_SPECS specs,
+		pb.PRO_UNIT unit,
+		pb.PRO_FACTORY_NAME factoryName,
+		CASE
+		WHEN pb.PRO_IF_MED  = '1' THEN
+		'是'
+		WHEN pb.PRO_MED_ID IS NOT NULL THEN
+		'是' ELSE '否'
+		END ifMed,
+		concat(pc.PRO_BIG_CLASS_CODE,'-',pc.PRO_BIG_CLASS_NAME) bigClass,
+		concat(pc.PRO_MID_CLASS_CODE,'-',pc.PRO_MID_CLASS_NAME) midClass,
+		concat(pc.PRO_CLASS_CODE,'-',pc.PRO_CLASS_NAME) proClass,
+		md.MAT_TYPE type,
+		pb.PRO_MED_ID medProdctCode,
+		CASE
+		md.MAT_TYPE
+		WHEN 'CD' THEN
+		'采购'
+		WHEN 'GD' THEN
+		'退厂'
+		WHEN 'XD' THEN
+		'销售'
+		WHEN 'LS' THEN
+		'零售'
+		WHEN 'ED' THEN
+		'销退'
+		WHEN 'ZD' THEN
+		'自用'
+		WHEN 'SY' THEN
+		'损益'
+		WHEN 'BD' THEN
+		'报损'
+		WHEN 'PD' THEN
+		'配送'
+		WHEN 'TD' THEN
+		'退库'
+		WHEN 'MD' THEN
+		'调拨退库'
+		WHEN 'ND' THEN
+		'调拨配送'
+		WHEN 'LX' THEN
+		'中药代煎'
+		WHEN 'QC' THEN
+		'期初导入'
+		END AS typeName,
+		CASE
+		MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		SUM(IF(md.MAT_TYPE in('TD','PD','MD','ND'),
+		IF(dc.DC_CODE is null ,MAT_ADD_AMT + MAT_ADD_TAX,MAT_MOV_AMT + MAT_RATE_MOV),
+		IF(md.MAT_TYPE in ('CD','GD','LX','BD'),MAT_MOV_AMT + MAT_RATE_MOV,MAT_ADD_AMT + MAT_ADD_TAX)
+		))
+		WHEN 'H' THEN
+		SUM(IF(md.MAT_TYPE in('TD','PD','MD','ND'),
+		IF(dc.DC_CODE is null ,MAT_ADD_AMT + MAT_ADD_TAX,MAT_MOV_AMT + MAT_RATE_MOV),
+		IF(md.MAT_TYPE in ('CD','GD','LX','BD'),MAT_MOV_AMT + MAT_RATE_MOV,MAT_ADD_AMT + MAT_ADD_TAX)
+		))*-1
+		END AS addAmounts,
+		CASE
+		MAT_DEBIT_CREDIT
+		WHEN 'S' THEN
+		SUM(MAT_QTY * IFNULL(pp.GSPP_PRICE_NORMAL,pp2.GSPP_PRICE_NORMAL))
+		WHEN 'H' THEN
+		SUM(MAT_QTY * IFNULL(pp.GSPP_PRICE_NORMAL,pp2.GSPP_PRICE_NORMAL)) *- 1
+		END AS retailPrice,
+		md.MAT_DEBIT_CREDIT ,
+		SUM( MAT_QTY )  qty1,
+		bi.BAT_BATCH_NO,
+		md.MAT_TYPE
+		FROM
+		GAIA_MATERIAL_DOC md
+		LEFT JOIN ( SELECT DC_CODE siteCode,DC_NAME siteName FROM GAIA_DC_DATA WHERE CLIENT =#{client}
+		UNION ALL
+		SELECT STO_CODE siteCode,IFNULL(STO_SHORT_NAME,STO_NAME) siteName FROM GAIA_STORE_DATA WHERE CLIENT =#{client}) sto on sto.siteCode = md.MAT_SITE_CODE
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON md.CLIENT = pb.CLIENT
+		AND md.MAT_SITE_CODE = pb.PRO_SITE
+		AND md.MAT_PRO_CODE = pb.PRO_SELF_CODE
+		LEFT JOIN ( SELECT * FROM(
+		SELECT 	PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		UNION ALL
+		SELECT  PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM GAIA_PRODUCT_CLASS
+		) proClass  GROUP BY classId
+		) pc ON pc.classId = pb.PRO_CLASS
+
+		LEFT JOIN GAIA_BATCH_INFO bi
+		ON md.CLIENT = bi.CLIENT
+		AND md.MAT_PRO_CODE = bi.BAT_PRO_CODE
+		AND md.MAT_BATCH = bi.BAT_BATCH
+		LEFT JOIN
+		(
+		SELECT
+		CLIENT,
+		WM_TKDH,
+		WM_TKDDH,
+		WM_DDXH,
+		WM_SP_BM,
+		WM_PCH,
+		WM_DHJ,
+		WM_KH_BH,
+		PRO_SITE
+		FROM
+		GAIA_WMS_TKYS
+		WHERE
+		CLIENT = #{client}
+		GROUP BY
+		CLIENT,
+		WM_TKDH,
+		WM_TKDDH,
+		WM_DDXH,
+		WM_SP_BM,
+		WM_PCH,
+		WM_DHJ
+		) gwt
+		ON gwt.CLIENT = md.CLIENT
+		AND gwt.WM_TKDH = md.MAT_DN_ID
+		AND gwt.WM_TKDDH = md.MAT_PO_ID
+		AND gwt.WM_SP_BM = md.MAT_PRO_CODE
+		AND gwt.WM_PCH = md.MAT_BATCH
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp ON md.CLIENT = pp.CLIENT AND md.MAT_PRO_CODE = pp.GSPP_PRO_ID  AND md.MAT_SITE_CODE = pp.GSPP_BR_ID
+		LEFT JOIN GAIA_WMS_DIAOBO_Z diaobo ON diaobo.CLIENT = md.CLIENT 	AND md.MAT_DN_ID = diaobo.WM_PSDH AND diaobo.WM_DDH = md.MAT_PO_ID
+		LEFT JOIN GAIA_SD_PRODUCT_PRICE pp2 ON md.CLIENT = pp2.CLIENT
+		AND md.MAT_PRO_CODE = pp2.GSPP_PRO_ID
+		AND diaobo.WM_KH_BH = pp2.GSPP_BR_ID
+		LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = md.CLIENT AND dc.DC_CODE = md.MAT_SITE_CODE
+		WHERE
+		md.CLIENT = #{client}
+		AND md.MAT_TYPE IN ( 'CD', 'GD', 'LS', 'XD', 'ED', 'SY', 'BD', 'ZD','PD','TD','MD','ND','LX','QC')
+		<if test="type != null and type != ''">
+			and md.MAT_TYPE  = #{type}
+		</if>
+		<if test="batchNo != null and batchNo != ''">
+			and bi.BAT_BATCH_NO  = #{batchNo}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and md.MAT_SITE_CODE  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="proArr != null and proArr.length > 0">
+			and md.MAT_PRO_CODE IN
+			<foreach collection="proArr" open="(" separator="," item="item" close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and md.MAT_DOC_DATE   &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and md.MAT_DOC_DATE  &lt;= #{endDate}
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( pb.PRO_IF_MED = #{medProdctStatus} OR ifnull(pb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (pb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(pb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(pb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND pb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		md.CLIENT,
+		md.MAT_SITE_CODE,
+		md.MAT_POST_DATE,
+		md.MAT_DN_ID,
+		md.MAT_DN_LINENO,
+		bi.BAT_BATCH_NO
+		) a
+		LEFT JOIN
+		(
+		select CLIENT client,STO_CODE siteCode,STO_SHORT_NAME siteName from GAIA_STORE_DATA
+		UNION ALL
+		SELECT CLIENT client,DC_CODE siteCode,ifnull(DC_SHORT_NAME,DC_NAME) siteName from GAIA_DC_DATA
+		) sto on a.client=sto.client and a.supCusCode=sto.siteCode
+		LEFT JOIN GAIA_SUPPLIER_BUSINESS sb
+		on sb.client = a.client
+		and a.supCusCode=sb.SUP_SELF_CODE
+		AND a.siteCode=sb.SUP_SITE
+		LEFT JOIN GAIA_CUSTOMER_BUSINESS cu
+		on a.client=cu.client
+		and cu.CUS_SITE=a.siteCode
+		and cu.CUS_SELF_CODE=a.supCusCode
+		LEFT JOIN GAIA_SD_SALE_D saleD ON saleD.CLIENT = a.client
+		AND saleD.GSSD_BR_ID = a.siteCode
+		AND saleD.GSSD_BILL_NO = a.dnId
+		AND saleD.GSSD_SERIAL = a.dnLineno
+		AND saleD.GSSD_PRO_ID = a.proCode
+		ORDER BY a.proCode
+	</select>
+
+	<select id="selectInventoryStockCheckAmtStoStartList"
+			resultType="com.gys.report.entity.InventoryChangeCheckOutData">
+		SELECT tab.siteCode,
+		tab.siteName,
+
+		ROUND(sum( tab.qty ),2) startQty,
+		ROUND(sum( cost ),2) cost,
+		ROUND(sum( taxes ),2) taxes,
+		ROUND(sum( includeTax),2) includeTax,
+		<choose>
+			<when test="isTax!=null and isTax!='' and isTax==1">
+				ROUND(sum( includeTax),2) startAmt
+			</when>
+			<otherwise>
+				ROUND(sum( cost ),2) startAmt
+			</otherwise>
+		</choose>
+		FROM (
+		SELECT sb.CLIENT client, sb.GSS_BR_ID siteCode, IFNULL( sto.STO_SHORT_NAME, sto.STO_NAME ) siteName, sb.GSS_PRO_ID proCode, concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) recordDate, sb.GSS_QTY qty, ass.MAT_ADD_AMT / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS cost, ass.MAT_ADD_TAX / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS taxes, ( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / ass.MAT_TOTAL_QTY * sb.GSS_QTY AS includeTax, 'store' site
+		FROM GAIA_SD_STOCK_H sb
+		LEFT JOIN GAIA_STORE_DATA sto
+		ON sb.CLIENT = sto.CLIENT AND sb.GSS_BR_ID = sto.STO_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass
+		ON sb.CLIENT = ass.CLIENT AND sb.GSS_BR_ID = ass.MAT_ASSESS_SITE AND sb.GSS_PRO_ID = ass.MAT_PRO_CODE AND sb.MAT_ASSESS_YEAR = ass.MAT_ASSESS_YEAR AND sb.MAT_ASSESS_MONTH = ass.MAT_ASSESS_MONTH
+		WHERE sb.CLIENT = #{client} and concat( sb.MAT_ASSESS_YEAR, sb.MAT_ASSESS_MONTH ) = DATE_FORMAT(DATE_SUB(#{startDate},INTERVAL 1 month),'%Y%m')
+		and sb.GSS_BR_ID in
+		<foreach collection="siteCodeList" separator="," item="item" open="(" close=")">
+			#{item}
+		</foreach>
+		UNION ALL
+		SELECT kc.CLIENT clientId, kc.PRO_SITE siteCode, dc.DC_NAME siteName, kc.WM_SP_BM proCode, kc.WM_TBSJ recordDate, kc.WM_KCSL qty, ass.MAT_TOTAL_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS cost, ass.MAT_RATE_AMT / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS taxes, (ass.MAT_TOTAL_AMT + ass.MAT_RATE_AMT) / ass.MAT_TOTAL_QTY * kc.WM_KCSL AS includeTax, 'dc' site
+		FROM GAIA_WMS_KUCEN_HISTORY kc
+		LEFT JOIN GAIA_DC_DATA dc
+		ON kc.CLIENT = dc.CLIENT AND kc.PRO_SITE = dc.DC_CODE
+		LEFT JOIN GAIA_MATERIAL_ASSESS_H ass
+		ON kc.CLIENT = ass.CLIENT AND kc.PRO_SITE = ass.MAT_ASSESS_SITE AND kc.WM_SP_BM = ass.MAT_PRO_CODE AND LEFT ( date_format( date_sub( kc.WM_TBSJ, INTERVAL 1 MONTH ), '%Y%m%d' ), 6 ) = concat(ass.MAT_ASSESS_YEAR,ass.MAT_ASSESS_MONTH)
+		WHERE kc.CLIENT =#{client} and kc.WM_TBSJ = #{startDate} and kc.PRO_SITE in
+		<foreach collection="siteCodeList" separator="," item="item" open="(" close=")">
+			#{item}
+		</foreach> ) tab
+		GROUP BY tab.siteCode
+		HAVING startQty != 0
+		ORDER BY tab.siteCode;
+	</select>
+
+	<select id="selectInventoryStockCheckStoBetweenAmt"
+			resultType="com.gys.report.entity.InventoryChangeCheckOutData">
+		select
+		md.MAT_SITE_CODE siteCode,
+		sto.siteName siteName,
+		IFNULL(round(sum(case md.MAT_TYPE WHEN 'CD' THEN IFNULL(md.MAT_MOV_AMT ,0) END),2),0) betweenProductIn,
+		IFNULL(round(sum(case md.MAT_TYPE WHEN 'GD' THEN IFNULL(md.MAT_MOV_AMT * -1 ,0) END),2),0) betweenProductRefound,
+		IFNULL(round(sum(case md.MAT_TYPE
+		WHEN 'TD' THEN md.MAT_ADD_AMT  * -1
+		WHEN 'MD' THEN md.MAT_ADD_AMT  * -1
+		END),2),0) betweenStockRefound,
+		IFNULL(round(sum(case md.MAT_TYPE
+		WHEN 'PD' THEN md.MAT_ADD_AMT
+		when 'ND' THEN md.MAT_ADD_AMT
+		end),2),0) betweenDistribution,
+		-IFNULL(round(sale.GSSD_ADD_AMT,2),0) betweenSale,
+		SUM(
+		if(md.MAT_DEBIT_CREDIT = 'S',
+		CASE WHEN md.MAT_TYPE IN ( 'BD', 'ZD', 'DD', 'SY' ) THEN MAT_ADD_AMT END,
+		CASE WHEN md.MAT_TYPE IN ( 'BD', 'ZD', 'DD', 'SY' ) THEN MAT_ADD_AMT*-1 END)) betweenLoss,
+		IFNULL(round(sum(case md.MAT_TYPE WHEN 'QC' THEN IFNULL(md.MAT_ADD_AMT,0) END),2),0) betweenQC
+		from (
+		select
+		CLIENT,
+		MAT_SITE_CODE,
+		MAT_TYPE,
+		MAT_DN_ID,
+		MAT_QTY,
+		MAT_DEBIT_CREDIT,
+		<choose>
+			<when test="isTax!=null and isTax!='' and isTax==1">
+				(MAT_MOV_AMT+MAT_RATE_MOV) MAT_MOV_AMT,
+				(MAT_ADD_AMT+MAT_ADD_TAX) MAT_ADD_AMT
+			</when>
+			<otherwise>
+				MAT_MOV_AMT MAT_MOV_AMT,
+				MAT_ADD_AMT MAT_ADD_AMT
+			</otherwise>
+		</choose>
+		from GAIA_MATERIAL_DOC
+		where client=#{client}
+		AND MAT_SITE_CODE in
+		<foreach collection="siteCodeList" separator="," item="item" open="(" close=")">
+			#{item}
+		</foreach>
+		AND MAT_DOC_DATE &gt;= #{startDate}
+		and MAT_DOC_DATE &lt;= #{endDate}
+		) md
+		LEFT JOIN (
+		SELECT h.CLIENT CLIENT,h.GSSH_BR_ID GSSH_BR_ID,
+
+		<choose>
+			<when test="isTax!=null and isTax!='' and isTax==1">
+				SUM(IF(h.GSSH_BILL_NO_RETURN is null,d.GSSD_ADD_AMT+d.GSSD_ADD_TAX,-(d.GSSD_ADD_AMT+d.GSSD_ADD_TAX))) GSSD_ADD_AMT
+			</when>
+			<otherwise>
+				SUM(IF(h.GSSH_BILL_NO_RETURN is null,d.GSSD_ADD_AMT,-d.GSSD_ADD_AMT)) GSSD_ADD_AMT
+			</otherwise>
+		</choose>
+
+		from GAIA_SD_SALE_H h
+		left join GAIA_SD_SALE_D d on h.CLIENT = d.CLIENT and h.GSSH_BR_ID = d.GSSD_BR_ID and h.GSSH_DATE = d.GSSD_DATE and h.GSSH_BILL_NO = d.GSSD_BILL_NO
+		where h.GSSH_HIDE_FLAG = '0'
+		and h.CLIENT = #{client}
+		and h.GSSH_BR_ID in
+		<foreach collection="siteCodeList" open="(" close=")" item="item" separator=",">
+			#{item}
+		</foreach>
+		AND h.GSSH_DATE &gt;= #{qcDate}
+		and h.GSSH_DATE &lt;= #{endDate}
+		GROUP BY h.GSSH_BR_ID
+		) sale on md.CLIENT = sale.CLIENT and md.MAT_SITE_CODE = sale.GSSH_BR_ID
+		LEFT JOIN (
+		SELECT
+		DC_CODE siteCode,
+		DC_NAME siteName
+		FROM
+		GAIA_DC_DATA
+		WHERE
+		CLIENT = #{client}
+		UNION ALL
+		SELECT
+		STO_CODE siteCode,
+		IFNULL( STO_SHORT_NAME, STO_NAME ) siteName
+		FROM
+		GAIA_STORE_DATA
+		WHERE
+		CLIENT = #{client}
+		) sto on sto.siteCode = md.MAT_SITE_CODE
+		group by md.MAT_SITE_CODE
+
+	</select>
+	<select id="getStoCode" resultType="java.lang.String">
+		SELECT
+		DISTINCT
+		STO_CODE
+		FROM
+		GAIA_STORE_DATA
+		WHERE CLIENT = #{client}
+	</select>
+
+	<select id="selectDistributionAndAdjustSummaryDataWithStore"
+			resultType="com.gys.report.entity.InventoryChangeSummaryWithStoreOutData">
+		SELECT
+		T.*,
+		IFNULL(GSD.STO_SHORT_NAME,GSD.STO_NAME) stoName
+		FROM
+		(
+		select
+		a.unitPrice,
+		a.stoCode,
+		a.proCode,
+		a.proName,
+		a.proCommonName,
+		a.specs,
+		a.unit,
+		a.factoryName,
+		a.medProdctCode,
+		a.bigClass,
+		a.midClass,
+		a.proClass,
+		a.ifMed,
+		a.distributionAmt,
+		a.distributionQty,
+		a.adjustAmt,
+		a.adjustQty,
+		a.qcAmt,
+		a.qcQty,
+		IFNULL(a.saleAmount,0)+IFNULL(sale.GSSD_ADD_AMT,0) saleAmount,
+		IFNULL(a.saleQty,0) + IFNULL(sale.GSSD_QTY,0) saleQty,
+		a.profitLossAmount,
+		a.profitLossQty,
+		a.purchaseAmt purchaseAmount,
+		a.purchaseQty purchaseQty,
+		a.returnAmt returnAmount,
+		a.returnQty returnQty
+		from
+		(
+		select
+		gmd.siteCode stoCode,
+		gpb.PRO_LSJ unitPrice,
+		gmd.client client,
+		gmd.proCode proCode,
+		IFNULL( gpb.PRO_NAME, gpb.PRO_COMMONNAME ) proName,
+		gpb.PRO_COMMONNAME proCommonName,
+		gpb.PRO_SPECS specs,
+		gpb.PRO_UNIT unit,
+		gpb.PRO_FACTORY_NAME factoryName,
+		gpb.PRO_MED_ID medProdctCode,
+		concat( pc.PRO_BIG_CLASS_CODE, '-', pc.PRO_BIG_CLASS_NAME ) bigClass,
+		concat( pc.PRO_MID_CLASS_CODE, '-', pc.PRO_MID_CLASS_NAME ) midClass,
+		concat( pc.PRO_CLASS_CODE, '-', pc.PRO_CLASS_NAME ) proClass,
+		CASE
+		WHEN gpb.PRO_IF_MED  = '1' OR ifnull(gpb.PRO_MED_PRODCTCODE,'') != '' THEN
+		'是'
+		ELSE '否'
+		END ifMed,
+		IFNULL(sum(gmd.distributionAmt),0) distributionAmt,
+		IFNULL(sum(gmd.distributionQty),0) distributionQty,
+		IFNULL(sum(gmd.adjustAmt),0) adjustAmt,
+		IFNULL(sum(gmd.adjustQty),0) adjustQty,
+		-IFNULL(SUM(gmd.saleAmt),0) saleAmount,
+		-IFNULL(SUM(gmd.saleQty),0) saleQty,
+		IFNULL(sum(gmd.qcAmt),0) qcAmt,
+		IFNULL(sum(gmd.qcQty),0) qcQty,
+		IFNULL(sum(gmd.profitLossAmount),0) profitLossAmount,
+		IFNULL(sum(gmd.profitLossQty),0) profitLossQty,
+		IFNULL(sum(gmd.purchaseAmt),0) purchaseAmt,
+		IFNULL(sum(gmd.purchaseQty),0) purchaseQty,
+		IFNULL(sum(gmd.returnAmt),0) returnAmt,
+		IFNULL(sum(gmd.returnQty),0) returnQty
+		from
+		(
+		SELECT
+		md.CLIENT client,
+		md.MAT_SITE_CODE siteCode,
+		md.MAT_PRO_CODE proCode,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_ADD_AMT + MAT_ADD_TAX END,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_MOV_AMT + MAT_RATE_MOV END)	purchaseAmt,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_QTY END,
+		CASE MAT_TYPE WHEN 'CD' THEN MAT_QTY END) AS purchaseQty,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'GD' THEN -(MAT_ADD_AMT + MAT_ADD_TAX) END,
+		CASE MAT_TYPE WHEN 'GD' THEN -(MAT_MOV_AMT + MAT_RATE_MOV) END) returnAmt,
+		IF(dc.DC_CODE IS NULL,
+		CASE MAT_TYPE WHEN 'GD' THEN -MAT_QTY END,
+		CASE MAT_TYPE WHEN 'GD' THEN -MAT_QTY END) AS returnQty,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'PD' then MAT_ADD_AMT+MAT_ADD_TAX when 'TD' then -(MAT_ADD_AMT+MAT_ADD_TAX) end,
+		case MAT_TYPE when 'PD' then -(MAT_MOV_AMT+MAT_RATE_MOV) when 'TD' then MAT_MOV_AMT+MAT_RATE_MOV end) as distributionAmt,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'PD' then MAT_QTY when 'TD' then -MAT_QTY end,
+		case MAT_TYPE when 'PD' then -MAT_QTY when 'TD' then MAT_QTY end) as distributionQty,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'ND' then MAT_ADD_AMT+MAT_ADD_TAX when 'MD' then -(MAT_ADD_AMT+MAT_ADD_TAX) end,0) adjustAmt,
+		IF(dc.DC_CODE is null,
+		case MAT_TYPE when 'ND' then MAT_QTY when 'MD' then -MAT_QTY end,0) adjustQty,
+
+		CASE md.MAT_TYPE WHEN 'XD' THEN MAT_MOV_AMT + MAT_RATE_MOV WHEN 'ED' THEN (MAT_MOV_AMT + MAT_RATE_MOV)*-1 END
+		saleAmt,
+		case md.MAT_TYPE when 'XD' THEN MAT_QTY WHEN 'ED' THEN MAT_QTY * -1 END saleQty,
+		IF(dc.DC_CODE IS NULL,
+		CASE md.MAT_TYPE WHEN 'QC' THEN MAT_ADD_AMT + MAT_ADD_TAX END,
+		CASE md.MAT_TYPE WHEN 'QC' THEN MAT_MOV_AMT + MAT_RATE_MOV END) qcAmt,
+		case md.MAT_TYPE when 'QC' THEN MAT_QTY END qcQty,
+		IF(dc.DC_CODE is null,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_ADD_AMT + MAT_ADD_TAX,-(MAT_ADD_AMT + MAT_ADD_TAX)) end ,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_MOV_AMT + MAT_RATE_MOV,-(MAT_MOV_AMT + MAT_RATE_MOV)) end
+		) profitLossAmount,
+		IF(dc.DC_CODE is null,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_QTY,-MAT_QTY) end ,
+		case when md.MAT_TYPE in ('BD','ZD','SY','DD') THEN IF(md.MAT_DEBIT_CREDIT='S',MAT_QTY,-MAT_QTY) end
+		) profitLossQty
+		from GAIA_MATERIAL_DOC md
+		LEFT JOIN GAIA_DC_DATA dc on md.client=dc.client and md.MAT_SITE_CODE = dc.DC_CODE
+		where md.CLIENT = #{client}
+		<if test="siteArr!=null and siteArr.length>0">
+			and MAT_SITE_CODE in
+			<foreach collection="siteArr" open="(" close=")" item="item" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode!=null and siteCode!=''">
+			and MAT_SITE_CODE = #{siteCode}
+		</if>
+		<if test="proArr!=null and proArr.length>0">
+			and MAT_PRO_CODE in
+			<foreach collection="proArr" separator="," open="(" close=")" item="item">
+				#{item}
+			</foreach>
+		</if>
+
+		and MAT_DOC_DATE &gt;= #{startDate}
+		and MAT_DOC_DATE &lt;= #{endDate}
+		) gmd
+		LEFT JOIN GAIA_PRODUCT_BUSINESS gpb on gpb.CLIENT = gmd.CLIENT and gpb.PRO_SELF_CODE = gmd.proCode and gpb.PRO_SITE = gmd.siteCode
+		LEFT JOIN (
+		SELECT
+		*
+		FROM
+		(
+		SELECT
+		PRO_BIG_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		NULL AS PRO_MID_CLASS_CODE,
+		NULL AS PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_MID_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		NULL AS PRO_CLASS_CODE,
+		NULL AS PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS UNION ALL
+		SELECT
+		PRO_CLASS_CODE AS classId,
+		PRO_BIG_CLASS_CODE,
+		PRO_BIG_CLASS_NAME,
+		PRO_MID_CLASS_CODE,
+		PRO_MID_CLASS_NAME,
+		PRO_CLASS_CODE,
+		PRO_CLASS_NAME
+		FROM
+		GAIA_PRODUCT_CLASS
+		) proClass
+		GROUP BY
+		classId
+		) pc ON pc.classId = gpb.PRO_CLASS
+		where
+		1=1
+		<if test="proClass != null and proClass != ''">
+			AND (pc.PRO_BIG_CLASS_CODE = #{proClass} OR pc.PRO_MID_CLASS_CODE = #{proClass} OR pc.PRO_CLASS_CODE = #{proClass})
+		</if>
+		<if test="medProdctStatus != null and medProdctStatus != ''">
+			<if test="medProdctStatus == '1'.toString() ">
+				AND ( gpb.PRO_IF_MED = #{medProdctStatus} OR ifnull(gpb.PRO_MED_PRODCTCODE,'') != '')
+			</if>
+			<if test="medProdctStatus == '0'.toString() ">
+				AND (gpb.PRO_IF_MED  = #{medProdctStatus} OR (ifnull(gpb.PRO_MED_PRODCTCODE,'') = '' AND ifnull(gpb.PRO_IF_MED ,'') = ''))
+			</if>
+		</if>
+		<if test="factoryName != null and factoryName != ''">
+			AND (gpb.PRO_FACTORY_NAME LIKE concat('%',#{factoryName},'%') )
+		</if>
+		<if test="classArrs != null and classArrs.size > 0">
+			AND gpb.PRO_CLASS  in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		group by
+		gmd.proCode,
+		gmd.siteCode
+		) a
+		LEFT JOIN (
+		SELECT h.CLIENT CLIENT,h.GSSH_BR_ID GSSH_BR_ID,
+		d.GSSD_PRO_ID proCode,
+		-sum(IF(h.GSSH_BILL_NO_RETURN is null,d.GSSD_ADD_AMT+d.GSSD_ADD_TAX,-(d.GSSD_ADD_AMT+d.GSSD_ADD_TAX))) GSSD_ADD_AMT,
+		-sum(d.GSSD_QTY) GSSD_QTY
+		from GAIA_SD_SALE_H h
+		left join GAIA_SD_SALE_D d on h.CLIENT = d.CLIENT and h.GSSH_BR_ID = d.GSSD_BR_ID and h.GSSH_DATE = d.GSSD_DATE and h.GSSH_BILL_NO = d.GSSD_BILL_NO
+		where h.GSSH_HIDE_FLAG = '0'
+		and h.CLIENT = #{client}
+
+		<if test="siteArr!=null and siteArr.length>0">
+			and h.GSSH_BR_ID in
+			<foreach collection="siteArr" open="(" close=")" item="item" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode!=null and siteCode!=''">
+			and h.GSSH_BR_ID =#{siteCode}
+		</if>
+
+		AND h.GSSH_DATE &gt;= #{startDate}
+		and h.GSSH_DATE &lt;= #{endDate}
+		group by d.GSSD_PRO_ID
+		) sale
+		on a.CLIENT = sale.CLIENT
+		and a.proCode = sale.proCode
+		)
+		T left join GAIA_STORE_DATA GSD ON T.stoCode = GSD.STO_CODE AND GSD.CLIENT = #{client}
+		ORDER BY stoCode,proCode
+	</select>
+	<select id="getQcDate" resultType="java.lang.String">
+		select MAT_DOC_DATE
+		from GAIA_MATERIAL_DOC
+		WHERE CLIENT=#{client}
+		and MAT_TYPE ='QC'
+		order by MAT_DOC_DATE asc
+		limit 1
+	</select>
+
+
+	<select id="selectdeviveryDatas"
+			resultType="com.gys.report.entity.WholesaleSaleOutData">
+		SELECT
+		hz.matName,
+		hz.rate,
+		SUM(hz.movAmt) as movAmt,
+		SUM(hz.rateMov) as rateMov,
+		SUM(hz.movTotalAmount) as movTotalAmount,
+		SUM(hz.addAmt) as addAmt,
+		SUM(hz.addTax) as addTax,
+		SUM(hz.addtotalAmount) as addtotalAmount,
+		hz.stoCode,
+		hz.stoName,
+		hz.siteCode,
+		hz.siteName,
+		hz.buillingStaffCode,
+		hz.buillingStaffName,
+		hz.GWS_CODE as gwoOwnerSaleManUserId,
+		hz.GSS_NAME as gwoOwnerSaleMan
+		from (
+		SELECT
+		b.CLIENT,
+		b.MAT_TYPE matType,
+		b.MAT_POST_DATE postDate,
+		b.siteCode,
+		b.siteName,
+		CASE
+		b.MAT_TYPE
+		WHEN 'XD' THEN
+		'销售单'
+		WHEN 'ED' THEN
+		'销退单'
+		WHEN 'PD' THEN
+		'配送单'
+		WHEN 'TD' THEN
+		'退库单'
+		WHEN 'MD' THEN
+		'调拨退库单'
+		WHEN 'ND' THEN
+		'调拨配送单'
+		WHEN 'PX' THEN
+		'代煎配送'
+		END AS matName,
+		b.MAT_DN_ID dnId,
+		b.MAT_PO_ID poId,
+		b.rate,
+		SUM( b.qty ) qty,
+		SUM( b.movAmt ) movAmt,
+		SUM( b.rateMov ) rateMov,
+		SUM( b.movAmt + b.rateMov ) movTotalAmount,
+		SUM((b.qty * b.addPrice )/(1+b.rate)) addAmt,
+		SUM(( b.qty * b.addPrice)-(b.qty * b.addPrice)/(1+b.rate)) addTax,
+		SUM( b.qty * b.addPrice ) addtotalAmount,
+		b.khbh  stoCode,
+		b.GWS_CODE,
+		b.GSS_NAME,
+		IFNULL( sd.stoName, cb.stoName ) stoName
+		,MAX(C.PRO_BIG_CLASS_CODE) AS 'bigClassCode'
+		,MAX(C.PRO_BIG_CLASS_NAME) AS 'bigClassName'
+		,MAX(C.PRO_MID_CLASS_CODE) AS 'midClassCode'
+		,MAX(C.PRO_MID_CLASS_NAME) AS 'midClassName'
+		,MAX(C.PRO_CLASS_CODE) AS 'proClassCode'
+		,MAX(C.PRO_CLASS_NAME) AS 'proClassName'
+		,b.USER_NAM as buillingStaffName
+		,b.SO_CREATE_BY as buillingStaffCode
+		FROM
+		(
+		SELECT
+		gmd.CLIENT,
+		gmd.MAT_BATCH,
+		gmd.MAT_POST_DATE,
+		gmd.MAT_TYPE,
+		gmd.MAT_PRO_CODE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_PO_ID,
+		gmd.MAT_SITE_CODE siteCode,
+		IFNULL( sto.STO_SHORT_NAME, dc.DC_NAME ) siteName,
+		IFNULL( tkys.WM_KH_BH, dbz.WM_KH_BH ) khbh,
+		IFNULL(tkys.PRO_SITE,dbz.PRO_SITE) dcCode,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT ) ELSE
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_AMT, gmd.MAT_MOV_AMT )*- 1
+		END movAmt,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) ELSE
+		IF
+		( dc.DC_CODE IS NULL, gmd.MAT_ADD_TAX, gmd.MAT_RATE_MOV ) *- 1
+		END rateMov,
+		CASE
+
+		WHEN gmd.MAT_TYPE IN ( 'ED', 'MD', 'TD' ) THEN
+		tkys.WM_DHJ ELSE dbm.WM_CKJ
+		END addPrice,
+		CASE
+
+		WHEN gmd.MAT_DEBIT_CREDIT = 'S' THEN
+		gmd.MAT_QTY ELSE gmd.MAT_QTY *- 1
+		END qty,
+		CASE
+
+		WHEN gmd.MAT_TYPE = 'XD'
+		OR gmd.MAT_TYPE = 'ED' THEN
+		tc.TAX_CODE_VALUE/100
+		WHEN gmd.MAT_TYPE = 'PD'
+		OR gmd.MAT_TYPE = 'ND'
+		OR gmd.MAT_TYPE = 'PX' THEN
+		ifnull( srd.GSRD_TAX_RATE, tc.TAX_CODE_VALUE )/ 100
+		WHEN gmd.MAT_TYPE = 'TD'
+		OR gmd.MAT_TYPE = 'MD' THEN
+		mm.WM_SL/100
+		END AS rate
+		,gud.USER_NAM
+		,soh.SO_CREATE_BY,
+		gmd.MAT_CREATE_BY,
+		soh.GWS_CODE,
+		gws.GSS_NAME
+		FROM
+		GAIA_MATERIAL_DOC gmd
+		LEFT JOIN GAIA_SD_REPLENISH_D srd ON srd.CLIENT = gmd.CLIENT
+		AND srd.GSRD_VOUCHER_ID = gmd.MAT_PO_ID
+		AND srd.GSRD_SERIAL = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_WMS_MENDIANTUIKU_M mm ON mm.CLIENT = gmd.CLIENT
+		AND mm.WM_TKDDH = gmd.MAT_PO_ID
+		AND mm.WM_XH = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_SO_ITEM si ON si.CLIENT = gmd.CLIENT
+		AND si.SO_ID = gmd.MAT_PO_ID
+		AND si.SO_LINE_NO = gmd.MAT_PO_LINENO
+		LEFT JOIN  (SELECT CLIENT,PRO_SITE,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ,WM_KH_BH FROM GAIA_WMS_TKYS
+		WHERE CLIENT = #{client} GROUP BY  CLIENT,WM_TKDH,WM_TKDDH,WM_DDXH,WM_SP_BM,WM_PCH,WM_DHJ ) tkys
+		ON tkys.CLIENT = gmd.CLIENT
+		AND tkys.WM_TKDH = gmd.MAT_DN_ID
+		AND tkys.WM_TKDDH = gmd.MAT_PO_ID
+		AND tkys.WM_SP_BM = gmd.MAT_PRO_CODE
+		AND tkys.WM_PCH = gmd.MAT_BATCH
+		AND tkys.WM_DDXH =gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_WMS_DIAOBO_Z dbz ON dbz.CLIENT = gmd.CLIENT
+		AND dbz.WM_PSDH = gmd.MAT_DN_ID
+		AND dbz.WM_DDH = gmd.MAT_PO_ID
+		LEFT JOIN GAIA_WMS_DIAOBO_M dbm ON dbm.CLIENT = dbz.CLIENT
+		AND dbm.WM_PSDH = dbz.WM_PSDH
+		AND dbm.WM_SP_BM = gmd.MAT_PRO_CODE
+		AND dbm.WM_PCH = gmd.MAT_BATCH
+		AND dbm.PO_LINE_NO = gmd.MAT_PO_LINENO
+		LEFT JOIN GAIA_TAX_CODE tc ON si.SO_RATE = tc.TAX_CODE
+		LEFT JOIN GAIA_DC_DATA dc ON dc.CLIENT = gmd.CLIENT
+		AND dc.DC_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_STORE_DATA sto ON sto.CLIENT = gmd.CLIENT
+		AND sto.STO_CODE = gmd.MAT_SITE_CODE
+		LEFT JOIN GAIA_SO_HEADER soh on gmd.client = soh.client and gmd.MAT_PO_ID = soh.SO_ID
+		left join GAIA_WHOLESALE_SALESMAN gws on soh.GWS_CODE = gws.GWS_CODE
+		LEFT JOIN GAIA_USER_DATA gud on soh.client = gud.client and soh.SO_CREATE_BY = gud.USER_ID
+		WHERE
+		gmd.CLIENT = #{client}
+
+		<if test="matType != null and matType != ''">
+			and gmd.MAT_TYPE = #{matType}
+		</if>
+		<if test="buillingStaffIds != null and buillingStaffIds.size > 0">
+			and soh.SO_CREATE_BY in
+			<foreach collection="buillingStaffIds" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="matTypes!=null and matTypes.size()>0">
+			AND gmd.MAT_TYPE IN
+			<foreach collection="matTypes" item="matTypes" index="index"
+					 open="(" close=")" separator=",">
+				#{matTypes}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			and gmd.MAT_POST_DATE  &gt;= #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			and gmd.MAT_POST_DATE  &lt;= #{endDate}
+		</if>
+		<if test="dnId != null and dnId != ''">
+			and  gmd.MAT_DN_ID = #{dnId}
+		</if>
+		<if test="gwoOwnerSaleMans != null and gwoOwnerSaleMans.size > 0" >
+			and soh.GWS_CODE in
+			<foreach collection="gwoOwnerSaleMans" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		gmd.CLIENT,
+		gmd.MAT_BATCH,
+		gmd.MAT_POST_DATE,
+		gmd.MAT_TYPE,
+		gmd.MAT_PRO_CODE,
+		gmd.MAT_DN_ID,
+		gmd.MAT_PO_ID,
+		gmd.MAT_SITE_CODE,
+		gmd.MAT_LINE_NO
+		,soh.SO_CREATE_BY
+		) b
+		LEFT JOIN ( SELECT CLIENT client,CUS_SITE site,CUS_SELF_CODE stoCode, CUS_NAME stoName FROM GAIA_CUSTOMER_BUSINESS WHERE CLIENT =#{client} ) cb ON cb.client=b.CLIENT and cb.site=b.dcCode AND cb.stoCode = b.khbh
+		LEFT JOIN ( SELECT STO_CODE stoCode, IFNULL( STO_SHORT_NAME, STO_NAME ) stoName FROM GAIA_STORE_DATA sd WHERE CLIENT = #{client} ) sd ON sd.stoCode = b.khbh
+		LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON pb.CLIENT = #{client} AND b.siteCode = pb.PRO_SITE AND b.MAT_PRO_CODE = pb.PRO_SELF_CODE
+		LEFT JOIN GAIA_PRODUCT_CLASS C ON C.PRO_CLASS_CODE = pb.PRO_CLASS
+		WHERE 1 = 1
+		<if test="classArrs != null and classArrs.size > 0">
+			and pb.PRO_CLASS in
+			<foreach collection="classArrs" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		AND NOT EXISTS ( SELECT 1 FROM GAIA_SALES_CATALOG WHERE CLIENT = b.CLIENT AND PRO_SELF_CODE = b.MAT_PRO_CODE AND IS_DELETE = 0 AND `STATUS` IN ( 1, 2))
+		<if test="stoArr != null and stoArr.length > 0">
+			and b.khbh in
+			<foreach collection = "stoArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="siteCode != null and siteCode != ''">
+			and b.siteCode =#{siteCode}
+		</if>
+		<if test="siteArr != null and siteArr.length > 0">
+			and b.siteCode  in
+			<foreach collection="siteArr" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		GROUP BY
+		b.CLIENT,
+		b.siteCode
+		,b.MAT_POST_DATE,
+		b.MAT_DN_ID,
+		b.MAT_TYPE,
+		b.MAT_PO_ID,
+		b.rate
+		,b.SO_CREATE_BY
+		ORDER BY
+		b.MAT_DN_ID DESC,b.siteCode
+		) hz
+
+		<if test='condition == "0"'>
+			GROUP BY stoCode
+		</if>
+		<if test='condition == "1"'>
+			GROUP BY gwoOwnerSaleManUserId
+		</if>
+		<if test='condition == "2"'>
+			GROUP BY buillingStaffCode
+		</if>
+	</select>
+
+
+
+
+</mapper>

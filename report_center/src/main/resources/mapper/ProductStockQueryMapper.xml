@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.ProductStockQueryMapper">
+    <select id="searchProBasicInfo" parameterType="com.gys.common.data.ProductStockQueryInData" resultType="com.gys.common.data.ProductStockQueryOutData">
+        with
+        -- 有仓库取仓库商品数据，没有的话取门店号最小的一家
+        store as (
+            select a.DC_CODE as brId from GAIA_DC_DATA a where a.CLIENT=#{inData.clientId}
+            union all
+            (select a.STO_CODE as brId from GAIA_STORE_DATA a where a.CLIENT=#{inData.clientId}
+             and not exists (select 1 from GAIA_DC_DATA b where b.CLIENT=a.CLIENT)
+             order by a.STO_CODE limit 1)
+        )
+        SELECT DISTINCT
+            a.PRO_SELF_CODE AS proSelfCode,
+            a.PRO_DEPICT AS proName,
+            a.PRO_SPECS AS proSpecs,
+            a.PRO_UNIT AS proUnit,
+            a.PRO_FACTORY_NAME AS proFactoryName
+            from GAIA_PRODUCT_BUSINESS a join store on a.PRO_SITE=store.brId
+            where a.CLIENT=#{inData.clientId}
+            and (a.PRO_SELF_CODE like concat('%', #{inData.proSearchInfo}, '%')
+              or a.PRO_DEPICT like concat('%', #{inData.proSearchInfo}, '%')
+              or a.PRO_FACTORY_NAME like concat('%', #{inData.proSearchInfo}, '%'))
+            order by a.PRO_SELF_CODE
+    </select>
+
+    <select id="queryProBasicInfo" parameterType="com.gys.common.data.ProductStockQueryInData" resultType="com.gys.common.data.ProductStockQueryOutData">
+        -- 商品详情查询
+        with
+        pro as (
+            select
+                a.CLIENT AS client,
+                a.PRO_SELF_CODE AS proSelfCode,
+                a.PRO_DEPICT AS proName,
+                a.PRO_SPECS AS proSpecs,
+                a.PRO_UNIT AS proUnit,
+                a.PRO_FACTORY_NAME AS proFactoryName,
+                ROUND(a.PRO_LSJ,2) as proLSJ
+            from GAIA_PRODUCT_BUSINESS a
+            where a.CLIENT=#{inData.clientId} and a.PRO_SELF_CODE=#{inData.proSelfCode} limit 1),
+        storeOne as (
+            select a.CLIENT as client,a.DC_CODE as brId from GAIA_DC_DATA a where a.CLIENT=#{inData.clientId}
+            union all
+            (select a.CLIENT as client,a.STO_CODE as brId from GAIA_STORE_DATA a where a.CLIENT=#{inData.clientId}
+             and not exists (select 1 from GAIA_DC_DATA b where b.CLIENT=a.CLIENT)
+             order by a.STO_CODE limit 1)
+        ),
+        supplier as (
+            select a.CLIENT as client,a.BAT_SITE_CODE,a.BAT_PRO_CODE,a.BAT_PO_PRICE,a.BAT_SUPPLIER_CODE,b.SUP_NAME,CONCAT(a.BAT_CREATE_DATE,a.BAT_CREATE_TIME)
+                from GAIA_BATCH_INFO a
+                join storeOne on a.BAT_SITE_CODE=storeOne.brId
+                left join GAIA_SUPPLIER_BUSINESS b on a.CLIENT=b.CLIENT and a.BAT_SITE_CODE=b.SUP_SITE and a.BAT_SUPPLIER_CODE=b.SUP_SELF_CODE
+                where a.CLIENT=#{inData.clientId} and a.BAT_PRO_CODE=#{inData.proSelfCode}
+                order by CONCAT(a.BAT_CREATE_DATE,a.BAT_CREATE_TIME) desc,a.BAT_BATCH desc limit 1
+            ),
+        sale as (
+            select a.CLIENT as client,sum(a.GSSD_QTY) as movingQty
+            from GAIA_SD_SALE_D a
+            where a.CLIENT=#{inData.clientId}
+              and a.GSSD_DATE between DATE_FORMAT(adddate(now(),interval -30 day),'%Y%m%d') and DATE_FORMAT(adddate(now(),interval -1 day),'%Y%m%d')
+              and a.GSSD_PRO_ID=#{inData.proSelfCode}
+            -- 排除挂单
+            and not exists (select 1 from GAIA_SD_SALE_H b where a.CLIENT=b.CLIENT and a.GSSD_BR_ID=b.GSSH_BR_ID and a.GSSD_DATE=b.GSSH_DATE and a.GSSD_BILL_NO=b.GSSH_BILL_NO and b.GSSH_HIDE_FLAG='1')
+        ),
+        store as (
+            select a.CLIENT as client,IFNULL( ROUND(sum( a.GSS_QTY )), 0) as storeQty,sum(case when a.GSS_QTY>0 then 1 else 0 end) as storeNumers from GAIA_SD_STOCK a where a.CLIENT=#{inData.clientId} AND a.GSS_PRO_ID=#{inData.proSelfCode}
+        ),
+        wms as (
+            select a.CLIENT as client,IFNULL( ROUND(sum( a.WM_KCSL )), 0) as wmsQty from GAIA_WMS_KUCEN a where a.CLIENT=#{inData.clientId} AND a.WM_SP_BM=#{inData.proSelfCode} and a.WM_KCZT_BH='1000'
+        )
+        SELECT
+            pro.*,
+           	IFNULL( store.storeQty, 0) as storeQty,
+            IFNULL( wms.wmsQty, 0) as wmsQty,
+            IFNULL( ROUND(supplier.BAT_PO_PRICE,2), '') as lastSupplierPrice,
+            IFNULL( supplier.SUP_NAME, '') as lastSupplierFactory,
+            IFNULL( ROUND(sale.movingQty), 0) as movingQty,
+            store.storeNumers,
+            IFNULL( store.storeQty + wms.wmsQty, 0) as totalStockQty
+        FROM pro
+        LEFT JOIN store on pro.client = store.client
+        LEFT JOIN wms on pro.client = wms.client
+        LEFT JOIN supplier on pro.client = supplier.client
+        LEFT JOIN sale on pro.client = sale.client
+    </select>
+
+    <select id="queryStoreInfo" parameterType="com.gys.common.data.ProductStockQueryInData" resultType="com.gys.common.data.ProductStockQueryOutData">
+        -- 门店信息查询
+        with
+        basic as (
+        SELECT
+        a.STO_CODE as stoCode,
+        a.STO_NAME as stoName,
+        IFNULL( ROUND(sum( b.GSS_QTY )), 0) as storeQty,
+        IFNULL( ROUND(c.GSPP_PRICE_NORMAL,2), '') as proLSJ
+        FROM GAIA_STORE_DATA a
+        LEFT JOIN GAIA_SD_STOCK b on a.CLIENT=b.CLIENT and a.STO_CODE=b.GSS_BR_ID and b.GSS_PRO_ID=#{inData.proSelfCode}
+        LEFT JOIN GAIA_SD_PRODUCT_PRICE c on a.CLIENT=c.CLIENT and a.STO_CODE=c.GSPP_BR_ID and c.GSPP_PRO_ID=#{inData.proSelfCode}
+        where a.CLIENT=#{inData.clientId}
+        -- 排除非直营门店
+        <if test="inData.isContainDirectStore == '2'.toString()">
+            and not exists (select 1 from GAIA_SD_STORES_GROUP e where a.CLIENT=e.CLIENT and a.STO_CODE=e.GSSG_BR_ID and e.GSSG_TYPE='DX0003' and e.GSSG_ID='1')
+        </if>
+        <if test="inData.storeSearchInfo != null and inData.storeSearchInfo != ''">
+            and (a.STO_CODE like concat('%', #{inData.storeSearchInfo}, '%') or a.STO_NAME like concat('%', #{inData.storeSearchInfo}, '%'))
+        </if>
+        group by a.STO_CODE
+        ),
+        moving as (
+        SELECT
+        d.GSSD_BR_ID as stoCode,
+        IFNULL( ROUND(sum( d.GSSD_QTY )), 0) as movingQty
+        FROM GAIA_SD_SALE_D d
+        where d.CLIENT=#{inData.clientId}
+        and d.GSSD_DATE between DATE_FORMAT(adddate(now(),interval -30 day),'%Y%m%d') and DATE_FORMAT(adddate(now(),interval -1 day),'%Y%m%d')
+        and d.GSSD_PRO_ID=#{inData.proSelfCode}
+        group by d.GSSD_BR_ID
+        ),
+        cost as (
+        SELECT
+        ass.MAT_ASSESS_SITE as stoCode,
+        IFNULL( ROUND(( CASE WHEN sum( ass.MAT_TOTAL_QTY ) != 0 THEN sum( ass.MAT_ADD_AMT + ass.MAT_ADD_TAX ) / sum( ass.MAT_TOTAL_QTY )
+        ELSE ass.MAT_MOV_PRICE * ( 1+SUBSTRING_INDEX ( tax.TAX_CODE_VALUE, '%', 1 )/ 100 )  END ) , 2 ), 0) AS costAmt
+        FROM GAIA_MATERIAL_ASSESS ass
+        LEFT JOIN GAIA_PRODUCT_BUSINESS pb ON ( ass.CLIENT = pb.CLIENT AND ass.MAT_PRO_CODE = pb.PRO_SELF_CODE AND ass.MAT_ASSESS_SITE = pb.PRO_SITE )
+        LEFT JOIN GAIA_TAX_CODE tax ON tax.TAX_CODE = pb.PRO_INPUT_TAX AND tax.TAX_CODE_CLASS = '1'
+        where ass.CLIENT=#{inData.clientId} and ass.MAT_PRO_CODE=#{inData.proSelfCode}
+        group by ass.MAT_ASSESS_SITE
+        )
+        select basic.*,IFNULL(moving.movingQty, 0) as movingQty,IFNULL(cost.costAmt, 0) as costAmt
+        from basic
+        left join moving on basic.stoCode=moving.stoCode
+        left join cost on basic.stoCode=cost.stoCode
+        -- 排序类型 1-门店编码、2-门店名称、3-库存数量、4-30天移动销量
+        <if test="inData.sortType == '1'.toString()">
+            order by basic.stoCode asc
+        </if>
+        <if test="inData.sortType == '2'.toString()">
+            order by basic.stoName asc
+        </if>
+        <if test="inData.sortType == '3'.toString()">
+            order by basic.storeQty desc
+        </if>
+        <if test="inData.sortType == '4'.toString()">
+            order by moving.movingQty desc
+        </if>
+    </select>
+</mapper>

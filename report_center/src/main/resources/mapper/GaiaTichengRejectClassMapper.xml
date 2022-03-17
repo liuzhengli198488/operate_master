@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gys.mapper.GaiaTichengRejectClassMapper">
+  <resultMap id="BaseResultMap" type="com.gys.entity.GaiaTichengRejectClass">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="ID" jdbcType="BIGINT" property="id" />
+    <result column="PID" jdbcType="BIGINT" property="pid" />
+    <result column="PRO_BIG_CLASS" jdbcType="VARCHAR" property="proBigClass" />
+    <result column="PRO_MID_CLASS" jdbcType="VARCHAR" property="proMidClass" />
+    <result column="PRO_CLASS" jdbcType="VARCHAR" property="proClass" />
+    <result column="DELETE_FLAG" jdbcType="VARCHAR" property="deleteFlag" />
+    <result column="LAST_UPDATE_TIME" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    ID, PID, PRO_BIG_CLASS, PRO_MID_CLASS, PRO_CLASS, DELETE_FLAG, LAST_UPDATE_TIME
+  </sql>
+	<select id="selectClass" resultType="java.lang.String">
+      SELECT
+          PRO_BIG_CLASS
+      FROM
+          GAIA_TICHENG_REJECT_CLASS
+      <where>
+        <if test="pId!=null" >
+            PID = #{pId}
+        </if>
+      </where>
+      GROUP BY
+          PRO_BIG_CLASS UNION ALL
+      SELECT
+          PRO_MID_CLASS
+      FROM
+          GAIA_TICHENG_REJECT_CLASS
+        <where>
+            <if test="pId!=null" >
+                PID = #{pId}
+            </if>
+        </where>
+      GROUP BY
+          PRO_MID_CLASS UNION ALL
+      SELECT
+          PRO_CLASS
+      FROM
+          GAIA_TICHENG_REJECT_CLASS
+        <where>
+            <if test="pId!=null" >
+                PID = #{pId}
+            </if>
+        </where>
+      GROUP BY
+          PRO_CLASS
+    </select>
+</mapper>
